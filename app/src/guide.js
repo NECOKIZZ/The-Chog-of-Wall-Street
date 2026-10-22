@@ -93,7 +93,7 @@ window.Guide = (() => {
   // ---------- the first-round tour ----------
   const TOUR = () => [
     { title: "Welcome to Monad City", sel: "#board", dim: true, text: "40 squares. Every street, station and utility is named after a real Monad app. Other Chogs are moving around the board right now." },
-    { title: "Press ROLL", sel: "#roll", dim: true, wait: "rolled", doLabel: "Click ROLL", text: "Rolling moves your Chog. Your <b>plan</b> (below the button) decides what it buys where it lands. You get one roll every 30 minutes, up to 8." },
+    { title: "Press ROLL", sel: "#roll", dim: true, wait: "rolled", doLabel: "Click ROLL", text: () => "Rolling moves your Chog. Your <b>plan</b> (below the button) decides what it buys where it lands. You get one roll every 30 minutes, up to 8." + (G.mode !== "practice" ? " On-chain, a roll is <b>two wallet confirmations</b>: commit, then land (anyone can land it, so nobody can stall)." : "") },
     { title: "What just happened", sel: [".sheet", "#lastev"], wait: "sheetClosed", waitIf: () => !!document.querySelector(".sheet"), doLabel: "Close the card to continue", text: () => landingText() },
     { title: "Your buying plan", sel: [".cmid .plans", ".mplans"], text: "<b>Safe</b> buys up to 3 Bricks on cheap streets and keeps half your cash. <b>Balanced</b> buys up to 6. <b>Degen</b> buys up to 15. It's locked in before the dice land, so nobody can snipe you." },
     { title: "Rolls left", sel: "#energy", text: "Green bars are stored rolls. One refills every 30 minutes. Out of rolls? Wait, use <b>+2 hours</b>, or pay 100 $CHOG for an extra roll." },

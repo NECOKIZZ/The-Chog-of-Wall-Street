@@ -1,0 +1,418 @@
+"use strict";
+/* ============ The Chog of Wall Street: on-chain mode (Monad testnet + mainnet) ============
+   Reads the deployed contracts into the same G state the board renders, and turns every button into a real
+   transaction. Needs an injected wallet (MetaMask, Rabby, Phantom, Backpack…). ethers v6 is loaded from cdnjs. */
+window.Chain = (() => {
+  const CID = "bafybeihau2egcccbdxymeckmmbrqytbfor5gkt3en6d5fsbueymdbq7g6e";
+  const GATEWAYS = ["https://gateway.pinata.cloud/ipfs/", "https://ipfs.io/ipfs/"];
+  const NETS = {
+    testnet: {
+      key: "testnet", label: "Testnet City", name: "Monad Testnet", chainId: 10143, hex: "0x279f",
+      rpc: "https://testnet-rpc.monad.xyz", explorer: "https://testnet.monadvision.com",
+      game: "0x09741a1CBaBc28c7034cF6F941B571CA3601f30d", chog: "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF", nft: "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
+      mocks: true,
+      squares: { 1: { kind: "mock", label: "Swap MON → test $CHOG (mock nad.fun)" }, 3: { kind: "mock", label: "Swap MON → test $CHOG (mock pool)" }, 37: { kind: "mock", label: "Swap MON → test $CHOG (mock Uniswap)" }, 39: { kind: "mock", label: "Swap MON → test $CHOG (mock Kuru)" } },
+      adapters: { mock: "0x4204fef653DA46ba85cEDD47F4e9F10E4341d4f3" }, mockRate: 2500,
+      questMon: "0.5",
+    },
+    mainnet: {
+      key: "mainnet", label: "Mainnet City", name: "Monad", chainId: 143, hex: "0x8f",
+      rpc: "https://rpc.monad.xyz", explorer: "https://monadvision.com",
+      game: null, // filled from the mainnet deployment (see contracts/deployments/monad.json)
+      chog: "0x350035555E10d9AfAF1566AaebfCeD5BA6C27777", nft: "0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763",
+      mocks: false,
+      squares: {
+        1: { kind: "nad", label: "Buy real $CHOG on nad.fun, into your Chog" },
+        3: { kind: "nad", label: "Buy real $CHOG on nad.fun, into your Chog" },
+        5: { kind: "lst", lst: "0x1B68626dCa36c7fE922fD2d55E4f631d962dE19c", sym: "shMON", label: "Stake MON → shMON (FastLane), held by your Chog" },
+        25: { kind: "lst", lst: "0x0c65A0BC65a5D819235B71F554D210D3F80E0852", sym: "aprMON", label: "Stake MON → aprMON (aPriori), held by your Chog" },
+        35: { kind: "lst", lst: "0xA3227C5969757783154C60bF0bC1944180ed81B9", sym: "sMON", label: "Stake MON → sMON (Kintsu), held by your Chog", noPreview: true },
+        37: { kind: "uni", sym: "USDC", label: "Swap MON → USDC on Uniswap v3, held by your Chog" },
+      },
+      adapters: {}, // filled from deployment
+      lens: "0x7e78A8DE94f21804F7a17F4E8BF9EC2c872187ea", quoter: "0x661e93cca42afacb172121ef892830ca3b70f08d",
+      wmon: "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A", usdc: "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+      questMon: "20",
+      notWired: { 39: "Kuru moved to V2 order books routed by its off-chain Kuru Flow API, so there's no on-chain path we can prove yet.", 15: "Magma's public deposit functions revert on mainnet today. Stake in Magma's app instead." },
+    },
+  };
+  // Mainnet deployment (written by scripts/deploy-mainnet.js). Kept here so the static app needs no server.
+  const MAINNET_DEPLOYMENT = null;
+
+  const GAME_ABI = [
+    "function chogs(uint256) view returns (address owner,uint64 movedAt,uint64 woke,uint64 lastCash,uint64 taxUntil,uint64 checkpoint,uint64 rollTs,uint64 immuneUntil,uint64 hypeUntil,uint64 heistUntil,uint64 pendingBlock,uint32 rollsSeason,uint32 seasonNo,uint16 hypeBps,uint8 pos,uint8 rolls,uint8 jail,uint8 plan,uint8 planCommitted,uint8 doubles,uint8 guards,uint8 tier,bool jailCard,bool awake,uint256 cash,uint256 unclaimed,uint256 jar,uint256 sleepDebt,uint256 stamps,uint256 warden)",
+    "function props(uint256) view returns (uint128 p0,uint128 baseRent,uint64 supply,uint256 reserve,uint256 acc)",
+    "function bricks(uint256,uint256) view returns (uint64)",
+    "function awakeCount() view returns (uint256)", "function awakeList(uint256,uint256) view returns (uint256[])",
+    "function rollsOf(uint256) view returns (uint256)", "function pendingRent(uint256) view returns (uint256)",
+    "function sleepingDividend(uint256) view returns (uint256)", "function maxDeposit() view returns (uint256)", "function dailyCapLeft() view returns (uint256)",
+    "function commons() view returns (uint256)", "function lounge() view returns (uint256)", "function seasonPot() view returns (uint256)", "function burned() view returns (uint256)",
+    "function seasonNo() view returns (uint256)", "function seasonStart() view returns (uint256)", "function bellEnd() view returns (uint256)", "function accounted() view returns (uint256)",
+    "function cashOuts(uint256) view returns (address to,uint128 net,uint64 readyAt)", "function adapterOf(uint256) view returns (address)",
+    "function wake(uint256,uint256)", "function topUp(uint256,uint256)", "function setPlan(uint256,uint8)", "function roll(uint256)", "function settle(uint256)", "function buyExtraRoll(uint256)",
+    "function claim(uint256)", "function prepayTax(uint256,uint256)", "function payBail(uint256)", "function hireGuard(uint256)", "function hype(uint256,uint256)", "function heist(uint256,uint256)",
+    "function sellBricks(uint256,uint256,uint64,uint256)", "function quest(uint256,bytes) payable", "function requestCashOut(uint256,uint256)", "function claimCashOut(uint256)", "function sync(uint256)",
+    "event Landed(uint256 indexed tokenId, uint8 d1, uint8 d2, uint8 pos, uint256 rentPaid, uint64 bricksBought)",
+    "event Card(uint256 indexed tokenId, uint8 card)", "event Heist(uint256 indexed raider, uint256 indexed target, bool success, uint256 amount)",
+    "error NotOwner()", "error NotAwake()", "error Pending()", "error NoRolls()", "error NotHere()", "error Cap()", "error Funds()", "error Locked()", "error Bad()",
+  ];
+  const ERC20 = ["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)", "function mint(address,uint256)"];
+  const ERC721 = ["function ownerOf(uint256) view returns (address)", "function mint(address,uint256)"];
+  const ADAPTER = ["function held(uint256,address) view returns (uint256)", "function unlockAt(uint256) view returns (uint64)", "function withdraw(uint256,address)"];
+  const ERR = {
+    NotOwner: "That Chog isn't owned by the connected wallet.", NotAwake: "Wake this Chog first.", Pending: "A roll is already in flight. Land it first.",
+    NoRolls: "Out of rolls. Buy an extra roll or wait 30 minutes.", NotHere: "Stand on that square to do its quest.", Cap: "That's over a cap (deposit cap or today's city-wide cash-out cap).",
+    Funds: "Not enough cash inside your Chog.", Locked: "Locked for now (48h cash-out queue, 72h after a sale, or 7-day position lock).", Bad: "The game rejected that action in the current state.",
+  };
+  const CARD_TEXT = ["Airdrop: collect 200 from the Commons.", "Front-run by MEV: pay 300 to the Nad Lounge.", "Lucky Pyth roll: +1 free roll.", "Rugged: straight to Rug Jail.", "Advance to GENESIS.", "LP fees: collect 150 from the Commons.", "Vet bill: pay 100 to the Nad Lounge.", "Get out of Rug Jail free."];
+
+  let net = null, rp = null, bp = null, signer = null, me = null, myId = null, game = null, gameR = null, chogT = null, nft = null;
+  let busy = false, timer = null, extra = { positions: [], walletChog: 0, walletMon: 0, accounted: 0, held: 0, maxDeposit: Infinity, mine: [] };
+
+  const on = () => !!net && !!myId;
+  const sleepMs = ms => new Promise(r => setTimeout(r, ms));
+  /** Read with retries. A real revert (e.g. ownerOf on a token that doesn't exist) is returned as null, never retried;
+   *  rate limits and network errors are retried with backoff, so nothing is silently skipped. */
+  async function rc(fn, revertAsNull = false) {
+    for (let k = 0; ; k++) {
+      try { return await fn(); } catch (e) {
+        if (revertAsNull && (e.code === "CALL_EXCEPTION" || /revert/i.test(e.message || ""))) return null;
+        if (k >= 6) throw e;
+        await sleepMs(400 * 2 ** k);
+      }
+    }
+  }
+  /** Map with limited concurrency. */
+  async function pmap(items, fn, conc = 6) {
+    const out = new Array(items.length); let i = 0;
+    await Promise.all(Array.from({ length: Math.min(conc, items.length) }, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k], k); } }));
+    return out;
+  }
+  const cacheKey = () => `cows.mine.${net.key}.${me?.toLowerCase()}`;
+  const fe = x => Number(ethers.formatEther(x));
+  const W = n => ethers.parseEther(String(n));
+  const artOf = id => {
+    const emb = CHOG_ART.find(a => a.id === id); if (emb) return emb.img;
+    const row = CHOG_TABLE.find(r => r[0] === id); return row ? `${GATEWAYS[0]}${CID}/${row[2]}.webp` : "";
+  };
+  const rowOf = id => CHOG_TABLE.find(r => r[0] === id) || [id, `CHOG #${id}`, id, "Common", "", "", "", ""];
+  const wakeEl = () => document.querySelector("#wake .wake");
+  const say = m => toast(m);
+
+  function niceError(e) {
+    const data = e?.data || e?.info?.error?.data || e?.error?.data;
+    try { const p = game.interface.parseError(data); if (p && ERR[p.name]) return ERR[p.name]; } catch (_) { /* not ours */ }
+    const m = e?.shortMessage || e?.reason || e?.message || String(e);
+    if (/user rejected|denied/i.test(m)) return "You cancelled in your wallet.";
+    if (/insufficient funds/i.test(m)) return `Not enough ${net.key === "mainnet" ? "MON" : "testnet MON"} for gas.`;
+    return m.slice(0, 160);
+  }
+  async function tx(label, fn) {
+    if (busy) return null; busy = true;
+    try {
+      say(`${label}: confirm in your wallet…`);
+      const t = await fn(); say(`${label}: sent, waiting for Monad…`);
+      const r = await t.wait(); log(`${label} ✓ <a href="${net.explorer}/tx/${r.hash}" target="_blank" rel="noopener">tx</a>`, "me");
+      return r;
+    } catch (e) { say(niceError(e)); return null; } finally { busy = false; }
+  }
+
+  // ---------- entering a network ----------
+  function enter(key) {
+    net = NETS[key];
+    if (key === "mainnet" && MAINNET_DEPLOYMENT) applyDeployment(MAINNET_DEPLOYMENT);
+    G.mode = key;
+    rp = new ethers.JsonRpcProvider(net.rpc, net.chainId, { staticNetwork: true, batchMaxCount: 1 });
+    if (net.game) gameR = new ethers.Contract(net.game, GAME_ABI, rp);
+    chogT = new ethers.Contract(net.chog, ERC20, rp); nft = new ethers.Contract(net.nft, ERC721, rp);
+    document.body.dataset.mode = key;
+    renderConnect();
+  }
+  function applyDeployment(d) { net.game = d.game; for (const [sq, k] of Object.entries(d.squares || {})) net.adapters[sq] = d.adapters[k]; }
+
+  function renderConnect(extraHtml = "") {
+    const el = wakeEl();
+    const live = !!net.game;
+    el.innerHTML = `
+      <div class="row sp"><span class="tag">${net.label} · ${net.name} (chain ${net.chainId})</span><button class="btn sm ghost" data-mode-back>← Choose another city</button></div>
+      <h1>${net.key === "mainnet" ? "Real Chogs. Real $CHOG." : "Play on-chain, for free."}</h1>
+      <p class="lead">${net.key === "mainnet"
+        ? "Connect the wallet that holds your Chog Genesis NFT. Your deposit is real $CHOG, every roll is a real transaction, and six squares do real things on Monad: buy $CHOG on nad.fun, stake into shMON, aprMON or sMON, and swap on Uniswap."
+        : "Same contracts as mainnet, on Monad testnet. Mint a free test Chog and free test $CHOG, then every roll, rent payment and cash-out is a real testnet transaction."}</p>
+      ${!live ? `<div class="card"><b>Mainnet contracts are not deployed yet.</b><div class="sub">The deploy runs as soon as the deployer wallet is funded. Until then, play Practice or Testnet.</div></div>` : ""}
+      ${!window.ethereum ? `<div class="card"><b>No wallet found in this browser.</b><div class="sub">Install MetaMask, Rabby, Phantom or Backpack, then reload this page.</div></div>` : ""}
+      ${live && window.ethereum ? (me ? myChogsHtml() : `<button class="btn gold" data-chain="connect">Connect wallet</button>`) : ""}
+      ${extraHtml}
+      <div class="note">${net.key === "mainnet" ? "Unaudited hackathon contracts. Deposits are capped and cash-outs are taxed 10–20% with a 48-hour wait. Only play with what you can afford to lose." : "Testnet only. Nothing here has real value. You need a little testnet MON for gas (faucet.monad.xyz)."}</div>`;
+  }
+
+  async function connect() {
+    try {
+      bp = new ethers.BrowserProvider(window.ethereum);
+      await bp.send("eth_requestAccounts", []);
+      await ensureChain();
+      signer = await bp.getSigner(); me = await signer.getAddress();
+      game = new ethers.Contract(net.game, GAME_ABI, signer);
+      window.ethereum.on?.("accountsChanged", () => location.reload());
+      window.ethereum.on?.("chainChanged", () => location.reload());
+      await loadWallet(); renderConnect(); scanMyChogs();
+    } catch (e) { say(niceError(e)); }
+  }
+  async function ensureChain() {
+    const cur = await bp.send("eth_chainId", []);
+    if (cur === net.hex) return;
+    try { await bp.send("wallet_switchEthereumChain", [{ chainId: net.hex }]); }
+    catch (e) {
+      if (e?.error?.code === 4902 || e?.code === 4902 || /Unrecognized|not added/i.test(e?.message || "")) {
+        await bp.send("wallet_addEthereumChain", [{ chainId: net.hex, chainName: net.name, nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 }, rpcUrls: [net.rpc], blockExplorerUrls: [net.explorer] }]);
+      } else throw e;
+    }
+    bp = new ethers.BrowserProvider(window.ethereum);
+  }
+  async function loadWallet() {
+    const c = await rc(() => chogT.balanceOf(me)), m = await rc(() => rp.getBalance(me)), md = await rc(() => gameR.maxDeposit());
+    extra.walletChog = fe(c); extra.walletMon = fe(m); extra.maxDeposit = md > W(1e12) ? Infinity : fe(md);
+  }
+
+  // ---------- finding the player's Chogs ----------
+  async function scanMyChogs(force) {
+    extra.awake = extra.awake || {};
+    let cached = null; try { cached = JSON.parse(localStorage.getItem(cacheKey()) || "null"); } catch (e) { /* storage blocked */ }
+    if (cached && !force) {
+      // re-verify cached ids (they may have been sold)
+      const owners = await pmap(cached, id => rc(() => nft.ownerOf(id), true));
+      extra.mine = cached.filter((id, k) => owners[k] && owners[k].toLowerCase() === me.toLowerCase());
+    } else {
+      extra.mine = []; extra.scan = 0; renderConnect();
+      const ids = Array.from({ length: 1969 }, (_, i) => i + 1);
+      for (let i = 0; i < ids.length; i += 60) {
+        const part = ids.slice(i, i + 60);
+        const owners = await pmap(part, id => rc(() => nft.ownerOf(id), true));
+        owners.forEach((o, k) => { if (o && o.toLowerCase() === me.toLowerCase()) extra.mine.push(part[k]); });
+        extra.scan = Math.min(1969, i + 60); renderConnect();
+      }
+    }
+    try { localStorage.setItem(cacheKey(), JSON.stringify(extra.mine)); } catch (e) { /* ignore */ }
+    for (const id of extra.mine) extra.awake[id] = (await rc(() => gameR.chogs(id))).awake;
+    extra.scan = "done"; renderConnect();
+  }
+  async function useId(id) {
+    if (!(id >= 1 && id <= 1969)) return say("Chog IDs run from 1 to 1,969.");
+    const o = await rc(() => nft.ownerOf(id), true);
+    if (!o || o.toLowerCase() !== me.toLowerCase()) return say(`Chog #${id} isn't in this wallet.`);
+    if (!extra.mine.includes(id)) extra.mine.push(id);
+    extra.awake[id] = (await rc(() => gameR.chogs(id))).awake; extra.pick = id; renderConnect();
+  }
+  function myChogsHtml() {
+    const scanning = extra.scan !== "done";
+    const list = extra.mine.map(id => { const r = rowOf(id); return `<button data-pick="${id}" aria-pressed="${extra.pick === id}"><span class="im" style="background-image:url(${artOf(id)})"></span><b>${r[1]}</b><small>${r[3]}${extra.awake?.[id] ? " · awake" : ""}</small></button>`; }).join("");
+    const pick = extra.pick, awake = pick && extra.awake?.[pick];
+    const maxDep = Math.floor(Math.min(extra.walletChog, extra.maxDeposit));
+    return `<div class="card"><dl class="kv"><dt>Wallet</dt><dd>${me.slice(0, 6)}…${me.slice(-4)}</dd><dt>$CHOG in wallet</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON for gas${net.key === "mainnet" ? " and quests" : ""}</dt><dd>${extra.walletMon.toFixed(3)}</dd>${extra.maxDeposit < Infinity ? `<dt>Deposit cap per Chog</dt><dd>${fmt(extra.maxDeposit)}</dd>` : ""}</dl>
+      ${net.mocks ? `<div class="row"><button class="btn sm" data-chain="faucetChog">Get 100,000 test $CHOG</button><button class="btn sm" data-chain="mintChog">Mint a free test Chog</button></div>` : `<div class="sub">Need $CHOG? Buy it on <a href="https://nad.fun" target="_blank" rel="noopener">nad.fun</a>, or wake with any amount from 10,000.</div>`}</div>
+      <div class="h">1. Your Chogs ${scanning ? `<span class="sub">checking ${extra.scan || 0} / 1,969…</span>` : `<span class="sub">${extra.mine.length} found</span>`}</div>
+      <div class="row"><label class="sub" for="cId">Know your Chog's token ID?</label><input id="cId" class="qamt" type="number" min="1" max="1969" placeholder="e.g. 561"><button class="btn sm" data-chain="useId">Use it</button>${scanning ? "" : `<button class="btn sm ghost" data-chain="rescan">Scan again</button>`}</div>
+      ${list ? `<div class="pick">${list}</div>` : scanning ? "" : `<p class="sub">This wallet holds no ${net.mocks ? "test " : ""}Chog${net.mocks ? ". Mint one above." : " Genesis NFT. Buy one on a Monad NFT marketplace (OpenSea, Magic Eden), or try Testnet City."}</p>`}
+      ${pick ? `<div class="card"><div class="h">2. ${awake ? "Enter the city" : "Wake it"}</div>
+        ${awake ? `<button class="btn gold" data-chain="enterCity">Play ${rowOf(pick)[1]}</button>`
+          : `<label class="sub" for="cDep">Deposit (min 10,000 $CHOG)</label><input type="range" id="cDep" min="10000" max="${Math.max(10000, maxDep)}" step="1000" value="${Math.max(10000, Math.min(20000, maxDep))}"><div class="row sp"><b class="num" id="cDepV">${fmt(Math.max(10000, Math.min(20000, maxDep)))}</b><button class="btn gold" data-chain="wake" ${maxDep < 10000 ? "disabled" : ""}>Approve and wake</button></div>${maxDep < 10000 ? `<div class="sub">You need at least 10,000 $CHOG in this wallet.</div>` : ""}`}</div>` : ""}`;
+  }
+
+  // ---------- reading the city ----------
+  async function refresh() {
+    if (!gameR) return;
+    const now = Math.floor(Date.now() / 1000);
+    const n = Number(await rc(() => gameR.awakeCount()));
+    const ids = n ? (await rc(() => gameR.awakeList(0, Math.min(n, 100)))).map(Number) : [];
+    const cs = await pmap(ids, id => rc(() => gameR.chogs(id)));
+    const rolls = await pmap(ids, id => rc(() => gameR.rollsOf(id)));
+    const pend = await pmap(ids, id => rc(() => gameR.pendingRent(id)));
+    const propsR = await pmap(PROPS, p => rc(() => gameR.props(p.i)));
+    const potFns = [() => gameR.commons(), () => gameR.lounge(), () => gameR.seasonPot(), () => gameR.burned(), () => gameR.seasonNo(), () => gameR.seasonStart(), () => gameR.bellEnd(), () => gameR.accounted(), () => chogT.balanceOf(net.game), () => gameR.sleepingDividend(0)];
+    const pots = await pmap(potFns, f => rc(f), 4);
+    const pairs = PROPS.filter((p, k) => Number(propsR[k].supply) > 0).flatMap(p => ids.map(id => [p.i, id]));
+    const brick = await pmap(pairs, ([sq, id]) => rc(() => gameR.bricks(sq, id)).then(b => [sq, id, Number(b)]));
+    G.t = Math.floor(now / 60);
+    G.commons = fe(pots[0]); G.lounge = fe(pots[1]); G.season = fe(pots[2]); G.burned = fe(pots[3]); G.seasonNo = Number(pots[4]);
+    G.seasonStartT = Number(pots[5]) / 60; G.bellEnd = Number(pots[6]) ? Number(pots[6]) / 60 : null; extra.accounted = fe(pots[7]); extra.held = fe(pots[8]);
+    G.sleep = fe(pots[9]) * SUPPLY;
+    PROPS.forEach((p, k) => { p.supply = Number(propsR[k].supply); p.reserve = fe(propsR[k].reserve); p.h = {}; });
+    brick.forEach(([sq, id, b]) => { if (b) SQ[sq].h[id] = b; });
+    const prev = new Map(G.chogs.map(c => [c.id, c]));
+    G.chogs = ids.map((id, k) => {
+      const s = cs[k], r = rowOf(id), old = prev.get(id) || {};
+      const st = new Set(); let bits = BigInt(s.stamps); for (let i = 0; bits; i++, bits >>= 1n) if (bits & 1n) st.add(i);
+      return {
+        ...old, id, name: r[1].replace(/^CHOG /, ""), full: r[1], img: artOf(id), tier: r[3] || "Common", eyes: r[4], head: r[5], body: r[6], mouth: r[7],
+        bot: id !== myId, pos: Number(s.pos), cash: fe(s.cash), unclaimed: fe(s.unclaimed) + fe(pend[k]), jar: fe(s.jar), rolls: Number(rolls[k]),
+        hypeMult: Number(s.hypeBps) / 10000 || 1, hypeUntil: Number(s.hypeUntil) / 60, guards: Number(s.guards), jail: Number(s.jail), jailCard: s.jailCard,
+        lastCash: Number(s.lastCash) / 60, woke: Number(s.woke) / 60, taxUntil: Number(s.taxUntil) / 60, immuneUntil: Number(s.immuneUntil) / 60, heistUntil: Number(s.heistUntil),
+        stamps: st, qday: old.qday || {}, pos_: {}, warden: Number(s.warden), rollsSeason: Number(s.rollsSeason), plan: ["safe", "balanced", "degen"][Number(s.plan)] || "balanced",
+        pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, seasonAppraisal: old.seasonAppraisal ?? 0, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
+      };
+    });
+    G.me = G.chogs.find(c => c.id === myId) || G.me;
+    if (G.me && me) {
+      const q = await rc(() => gameR.cashOuts(myId));
+      G.me.queue = Number(q.net) ? [{ net: fe(q.net), at: Number(q.readyAt) / 60, ready: now >= Number(q.readyAt) }] : [];
+      await loadPositions(); await loadWallet();
+    }
+    render();
+  }
+  async function loadPositions() {
+    extra.positions = [];
+    for (const [sq, s] of Object.entries(net.squares)) {
+      if (!s.lst && s.kind !== "uni") continue;
+      const a = net.adapters[sq]; if (!a) continue;
+      const ad = new ethers.Contract(a, ADAPTER, rp); const asset = s.lst || net.usdc;
+      const h = await rc(() => ad.held(myId, asset)), u = await rc(() => ad.unlockAt(myId));
+      if (h > 0n) extra.positions.push({ sq: +sq, sym: s.sym, asset, adapter: a, amount: s.kind === "uni" ? Number(h) / 1e6 : fe(h), unlock: Number(u) });
+    }
+  }
+
+  // ---------- actions ----------
+  async function ensureAllowance(amountWei) {
+    const t = new ethers.Contract(net.chog, ERC20, signer);
+    if ((await t.allowance(me, net.game)) >= amountWei) return true;
+    return !!(await tx("Approve $CHOG", () => t.approve(net.game, ethers.MaxUint256)));
+  }
+  async function wake() {
+    const amt = W($("#cDep").value);
+    if (!(await ensureAllowance(amt))) return;
+    if (await tx("Wake your Chog", () => game.wake(extra.pick, amt))) { extra.awake[extra.pick] = true; enterCity(); }
+  }
+  async function enterCity() {
+    myId = extra.pick; G.wallet = { chog: extra.walletChog, mon: extra.walletMon, usdc: 0 };
+    $("#wake").hidden = true;
+    $("#lastev").textContent = "Press ROLL. Every roll is two quick transactions: commit, then land.";
+    await refresh(); clearInterval(timer); timer = setInterval(() => { if (!busy && !G.busy && !document.hidden) refresh().catch(() => {}); }, 15000);
+    window.Guide?.on("woke");
+  }
+  async function roll() {
+    const c = G.me; if (!c || G.busy || busy) return;
+    G.busy = true; render();
+    try {
+      const onchainPlan = ["safe", "balanced", "degen"].indexOf(c.plan), want = ["safe", "balanced", "degen"].indexOf(G.plan);
+      if (onchainPlan !== want && !(await tx(`Set plan to ${G.plan}`, () => game.setPlan(myId, want)))) return;
+      if (!c.pendingBlock) {
+        if (c.rolls === 0 && !(await tx("Buy an extra roll (100 $CHOG)", () => game.buyExtraRoll(myId)))) return;
+        if (!(await tx("Commit roll", () => game.roll(myId)))) return;
+      }
+      const from = c.pos;
+      for (let k = 0; k < 20; k++) { // wait one block before landing
+        const cur = await rc(() => rp.getBlockNumber()); const s = await rc(() => gameR.chogs(myId));
+        if (cur > Number(s.pendingBlock)) break; await new Promise(r => setTimeout(r, 500));
+      }
+      const r = await tx("Land the roll", () => game.settle(myId));
+      if (!r) return;
+      let landed = null, card = null;
+      for (const l of r.logs) { try { const p = game.interface.parseLog(l); if (p?.name === "Landed") landed = p.args; if (p?.name === "Card") card = Number(p.args.card); } catch (_) { /* other contract */ } }
+      if (landed) {
+        await showDice(Number(landed.d1), Number(landed.d2));
+        const steps = (Number(landed.pos) - from + 40) % 40;
+        for (let k = 0; k < steps && !Number(landed.d1 === landed.d2 && false); k++) { c.pos = (c.pos + 1) % 40; renderPawns(); await new Promise(res => setTimeout(res, 110)); }
+        let msg = `Rolled ${landed.d1}+${landed.d2} → ${SQ[Number(landed.pos)].name}.`;
+        if (landed.rentPaid > 0n) msg += ` Paid ${fmt(fe(landed.rentPaid))} rent.`;
+        if (landed.bricksBought > 0n) msg += ` Your plan bought ${landed.bricksBought} Bricks.`;
+        if (card !== null) msg += ` Card: ${CARD_TEXT[card]}`;
+        log(msg, "me"); $("#lastev").textContent = msg;
+      }
+      await refresh();
+      const pos = G.me.pos;
+      if (card !== null) openCard("Card", CARD_TEXT[card]);
+      else if (SQ[pos].t === "prop") openTile(pos, true);
+      else if (SQ[pos].t === "heist") openHeist();
+      window.Guide?.on("rolled", { r: {}, pos, sq: SQ[pos], jail: G.me.jail > 0 });
+    } finally { G.busy = false; render(); }
+  }
+  const after = async (r, ev, data) => { if (r) { await refresh(); window.Guide?.on(ev, data); } return r; };
+  const claim = async () => after(await tx("Claim rent", () => game.claim(myId)), "claimed");
+  const tax = async days => after(await tx(`Prepay ${days} day${days > 1 ? "s" : ""} of Property Tax`, () => game.prepayTax(myId, days * 86400)), "tax");
+  const bail = async () => after(await tx("Pay bail", () => game.payBail(myId)), "bail");
+  const guard = async () => after(await tx("Hire a guard", () => game.hireGuard(myId)), "guard");
+  const sell = async sq => after(await tx("Sell 1 Brick", () => game.sellBricks(myId, sq, 1, 0)), "sell");
+  const claimCashOut = async () => after(await tx("Claim cash-out", () => game.claimCashOut(myId)), "cashoutClaimed");
+  async function cashOut(amount) { return after(await tx("Request cash-out", () => game.requestCashOut(myId, W(Math.floor(amount)))), "cashout"); }
+  async function topUp(amount) { const a = W(amount); if (!(await ensureAllowance(a))) return; return after(await tx("Top up your Chog", () => game.topUp(myId, a)), "topup"); }
+  async function hype(target, amount) { const a = W(amount); if (!(await ensureAllowance(a))) return; return after(await tx("Hype", () => game.hype(target, a)), "hyped"); }
+  async function heist(target) {
+    const r = await tx("Heist", () => game.heist(myId, target)); if (!r) return;
+    for (const l of r.logs) { try { const p = game.interface.parseLog(l); if (p?.name === "Heist") say(p.args.success ? `Heist worked: +${fmt(fe(p.args.amount))}` : `Caught! You paid ${fmt(fe(p.args.amount))} and went to Rug Jail.`); } catch (_) { /* skip */ } }
+    closeSheet(); await refresh();
+  }
+  async function withdrawPos(i) { const p = extra.positions[i]; const ad = new ethers.Contract(p.adapter, ADAPTER, signer); await after(await tx(`Withdraw ${p.sym}`, () => ad.withdraw(myId, p.asset)), "withdraw"); }
+
+  // ---------- dapp quests ----------
+  async function minOutFor(sq, value) {
+    const s = net.squares[sq];
+    if (s.kind === "mock") return (value * BigInt(net.mockRate) * 95n) / 100n;
+    if (s.kind === "nad") { const lens = new ethers.Contract(net.lens, ["function getAmountOut(address,uint256,bool) view returns (address,uint256)"], rp); const [, out] = await lens.getAmountOut(net.chog, value, true); return (out * 97n) / 100n; }
+    if (s.kind === "uni") {
+      const q = new ethers.Contract(net.quoter, ["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountOut,uint160,uint32,uint256)"], rp);
+      const [out] = await q.quoteExactInputSingle.staticCall({ tokenIn: net.wmon, tokenOut: net.usdc, amountIn: value, fee: 3000, sqrtPriceLimitX96: 0 }); return (out * 97n) / 100n;
+    }
+    if (s.kind === "lst" && !s.noPreview) { const l = new ethers.Contract(s.lst, ["function previewDeposit(uint256) view returns (uint256)"], rp); return ((await l.previewDeposit(value)) * 98n) / 100n; }
+    return 0n;
+  }
+  async function quest(sq) {
+    const s = net.squares[sq]; if (!s) return;
+    const amt = $("#qAmt")?.value || net.questMon; const value = W(amt);
+    let minOut;
+    try { minOut = await minOutFor(sq, value); } catch (e) { return say("Couldn't get a quote: " + niceError(e)); }
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [minOut]);
+    const r = await tx(s.label, () => game.quest(myId, data, { value }));
+    if (r) { await refresh(); openTile(sq, true); window.Guide?.on("quest", { i: sq, first: true }); }
+  }
+  function questHtml(p, here) {
+    const s = net.squares[p.i], why = net.notWired?.[p.i];
+    if (!s) return `<div class="quest"><div class="row sp"><b>Dapp quest · ${p.dapp}</b><span class="pill tier">Link only</span></div>
+      <div>${why || "This square links to the real app. Proof-of-visit stamps need our receipt signer, which isn't live yet, so no stamp here for now."}</div>
+      <div class="row"><a class="btn sm" href="${p.url}" target="_blank" rel="noopener">Open ${p.dapp} ↗</a></div></div>`;
+    return `<div class="quest"><div class="row sp"><b>Dapp quest · ${p.dapp}</b><span class="pill ok">On-chain${net.mocks ? " (test)" : ", real"}</span></div>
+      <div>${s.label}.</div>
+      <div class="sub">First time: a permanent Patron Stamp (+1% claim weight). Once a day: +1 free roll. ${s.kind === "lst" || s.kind === "uni" ? "The position is held for this Chog and can be withdrawn by its holder after 7 days." : ""}</div>
+      ${here ? `<div class="row"><label class="sub" for="qAmt">MON</label><input id="qAmt" class="qamt" type="number" min="0.01" step="0.01" value="${net.questMon}"><button class="btn purple sm" data-chainquest="${p.i}">Do it on-chain</button></div>` : `<span class="sub">Land here to do this quest.</span>`}
+      <div class="row"><a class="btn sm" href="${p.url}" target="_blank" rel="noopener">Open ${p.dapp} ↗</a></div></div>`;
+  }
+  function positionsHtml() {
+    const now = Date.now() / 1000;
+    return `<div class="card"><div class="h">Dapp positions held by your Chog</div>
+      ${extra.positions.length ? `<div class="list">${extra.positions.map((p, i) => `<div class="li"><span class="sw" style="background:${D[SQ[p.sq].d].c}"></span><span><div class="t">${p.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${p.sym}</div><div class="s">${SQ[p.sq].name} · ${now >= p.unlock ? "unlocked" : "unlocks " + new Date(p.unlock * 1000).toLocaleString()}</div></span>${now >= p.unlock ? `<button class="btn sm" data-chainwd="${i}">Withdraw</button>` : `<span class="pill warn">locked</span>`}</div>`).join("")}</div>`
+        : `<p class="sub">None yet. Stations and Uniswap Boardwalk put real positions inside your Chog.</p>`}
+      <div class="note">Positions belong to the NFT. If you sell the Chog, the buyer can withdraw them.</div></div>`;
+  }
+  function walletHtml() {
+    return `<div class="card"><div class="h">Your wallet (outside the Chog)</div>
+      <dl class="kv"><dt>$CHOG</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON</dt><dd>${extra.walletMon.toFixed(3)}</dd></dl>
+      <div class="row"><button class="btn sm" data-chain="topup5k">Top up 5,000 $CHOG into the Chog</button><a class="btn sm ghost" href="${net.explorer}/address/${net.game}" target="_blank" rel="noopener">Game contract ↗</a></div></div>`;
+  }
+  function ledgerHtml() {
+    const ok = Math.abs(extra.held - extra.accounted) < 1e-6;
+    return `<div class="card"><div class="h">Zero-sum check (on-chain)</div><div class="sub">The contract's $CHOG balance must equal everything it owes. Read live from ${net.name}.</div>
+      <dl class="kv"><dt>$CHOG held by the game</dt><dd>${fmt(extra.held)}</dd><dt>accounted()</dt><dd>${fmt(extra.accounted)}</dd><dt>Status</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill no">mismatch</span>'}</dd></dl></div>`;
+  }
+
+  // ---------- wiring ----------
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("[data-chain],[data-pick],[data-chainquest],[data-chainwd],[data-mode-back]"); if (!b || !net) return;
+    if (b.dataset.modeBack !== undefined) { location.hash = ""; location.reload(); return; }
+    if (b.dataset.pick) { extra.pick = +b.dataset.pick; renderConnect(); const s = $("#cDep"); if (s) s.oninput = () => { $("#cDepV").textContent = fmt(+s.value); }; return; }
+    if (b.dataset.chainquest) return quest(+b.dataset.chainquest);
+    if (b.dataset.chainwd) return withdrawPos(+b.dataset.chainwd);
+    const a = b.dataset.chain;
+    if (a === "connect") return connect();
+    if (a === "wake") return wake();
+    if (a === "enterCity") return enterCity();
+    if (a === "topup5k") return topUp(5000);
+    if (a === "useId") return useId(+$("#cId").value);
+    if (a === "rescan") return scanMyChogs(true);
+    if (a === "faucetChog") { const t = new ethers.Contract(net.chog, ERC20, signer); if (await tx("Mint 100,000 test $CHOG", () => t.mint(me, W(100000)))) { await loadWallet(); renderConnect(); } return; }
+    if (a === "mintChog") {
+      const n = new ethers.Contract(net.nft, ERC721, signer); let id = 0;
+      for (let k = 0; k < 30; k++) { const c = 6 + Math.floor(Math.random() * 1960); try { await nft.ownerOf(c); } catch (_) { id = c; break; } }
+      if (id && (await tx(`Mint test Chog #${id}`, () => n.mint(me, id)))) { extra.mine.push(id); extra.awake[id] = false; extra.pick = id; renderConnect(); }
+    }
+  });
+
+  return { on, enter, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
+})();

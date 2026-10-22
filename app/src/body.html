@@ -2,7 +2,7 @@
 <header class="top">
   <div class="bar">
     <span class="logo">THE CHOG OF WALL STREET</span>
-    <span class="tag">Practice City · play money</span>
+    <button class="tag modebadge" id="modeBadge" title="Switch city">Practice City · play money</button>
     <div class="clock">
       <span class="when" id="when">Season 1 · Day 1 · 00:00 UTC</span>
       <button class="btn sm ghost" id="speed" aria-label="Change game speed">Speed: 1×</button>
@@ -72,7 +72,37 @@
   </div>
 </div>
 
-<div class="overlay" id="wake">
+<div class="overlay" id="modes">
+  <div class="wake modes">
+    <div>
+      <div class="tag" style="display:inline-block;margin-bottom:10px">The Chog of Wall Street · Chogathon 2026</div>
+      <h1>Pick your city.</h1>
+    </div>
+    <p class="lead">Same board, same rules, three ways to play. Start with Practice if it's your first time.</p>
+    <div class="citycards">
+      <button class="citycard" data-mode="practice">
+        <span class="cc-top"><b>Practice City</b><span class="pill ok">No wallet</span></span>
+        <span class="cc-what">Play money, 14 bot Chogs that keep playing, and a guided tour. Fast-forward time to see rent, Prestige and seasons play out.</span>
+        <span class="cc-shows"><b>You'll see:</b> the whole game, simulated in your browser. Nothing is on-chain.</span>
+        <span class="btn gold">Play Practice</span>
+      </button>
+      <button class="citycard" data-mode="testnet">
+        <span class="cc-top"><b>Testnet City</b><span class="pill tier">Monad testnet</span></span>
+        <span class="cc-what">The real contracts on Monad testnet. Mint a free test Chog and free test $CHOG. Every roll, rent payment and cash-out is a real testnet transaction.</span>
+        <span class="cc-shows"><b>You'll see:</b> other players' real Chogs on the board. Dapp squares use a mock swap. You need a wallet and a little testnet MON for gas.</span>
+        <span class="btn">Enter Testnet</span>
+      </button>
+      <button class="citycard main" data-mode="mainnet">
+        <span class="cc-top"><b>Mainnet City</b><span class="pill warn">Real money</span></span>
+        <span class="cc-what">Your real Chog Genesis NFT and real $CHOG deposits. Six squares do real things on Monad: buy $CHOG on nad.fun, stake into shMON, aprMON or sMON, swap on Uniswap.</span>
+        <span class="cc-shows"><b>You'll see:</b> real positions held inside your Chog. Other squares link to the real apps. Unaudited and capped. Cash-outs are taxed.</span>
+        <span class="btn">Enter Mainnet</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="wake" hidden>
   <div class="wake">
     <div>
       <div class="tag" style="display:inline-block;margin-bottom:10px">Chogathon 2026 · Practice City</div>

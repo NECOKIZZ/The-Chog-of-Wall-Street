@@ -18,7 +18,33 @@ Built for **Chogathon 2026**.
 ## Play
 **Live: https://necokizz.github.io/The-Chog-of-Wall-Street/** (republished automatically on every push to `main` that touches `app/`).
 
-Or open [`app/index.html`](app/index.html) in a browser. That's the **Practice City**: play money, 14 bot Chogs, and real Chog Genesis art. You don't need a wallet or a server.
+The first screen lets you pick a city:
+
+| City | What it is | You need |
+|---|---|---|
+| **Practice** | Play money, 14 bots, guided tour, fast-forward. Fully simulated in the browser | Nothing |
+| **Testnet** | The real contracts on Monad testnet. Mint a free test Chog and test $CHOG in the app; every action is a testnet transaction | A wallet plus a little testnet MON |
+| **Mainnet** | Your real Chog Genesis NFT and real $CHOG deposits. Six squares do real things on Monad (see below); the others link to the apps | A wallet, a Chog Genesis NFT, at least 10,000 $CHOG, and MON for gas and quests |
+
+**Real dapp squares on mainnet.** Each one was verified on-chain and tested on a mainnet fork (`contracts/test/mainnet.fork.test.js`):
+
+| Square | Action |
+|---|---|
+| nad.fun Lane, Chog Alley | Buy real $CHOG with MON on nad.fun's DEX router. It lands as the Chog's cash |
+| FastLane Station | Stake MON into shMON |
+| aPriori Station | Stake MON into aprMON |
+| Kintsu Station | Stake MON into sMON |
+| Uniswap Boardwalk | Swap MON into USDC on Uniswap v3 |
+
+Staked and swapped positions are held for the Chog's tokenId. They move with a sale, and the holder can withdraw them after 7 days.
+
+**Not wired yet:**
+- **Kuru Tower:** Kuru's v1 order books are inactive, and Kuru Flow needs its off-chain quote API.
+- **Magma Station:** Magma's public deposit functions revert on mainnet.
+
+Both link to the real apps instead.
+
+You can also open [`app/index.html`](app/index.html) directly in a browser. That's the **Practice City**: play money, 14 bot Chogs, and real Chog Genesis art. You don't need a wallet or a server.
 
 - A guided tour walks you through your first roll.
 - The **First rounds** checklist has **Show me** buttons that point at exactly where to click.

@@ -17,7 +17,7 @@ const K = {
   exitBase: 20, exitFloor: 10, queue: 2 * DAY, dailyCapPct: 0.02, prestigeDay: 1, prestigeCap: 50,
   hypeStep: 0.10, hypeMax: 1.5, hypeDur: 4 * HOUR, hypeBurn: 0.10,
   inflowCommons: 0.8, inflowSleep: 0.1, inflowSeason: 0.1, seasonLen: 7 * DAY,
-  monToChog: 2500, // practice rate only
+  monToChog: 15, // ≈ mainnet rate (1 MON ≈ 14.9 $CHOG via nad.fun, Oct 2026)
 };
 const LEVEL_X = [0, 10, 40, 120, 300, 700];      // reserve ÷ base price thresholds
 const LEVEL_MULT = [1, 2, 4, 7, 11, 16];
@@ -41,11 +41,11 @@ const ECO = "https://www.monad.xyz/ecosystem";
 // q: [tier, kind, text]   kind: swap (MON→$CHOG into the Chog), stake (MON→LST), deposit (USDC→vault), visit (proof-of-visit receipt)
 const SQ = [
   { t: "go", name: "GENESIS", sub: "Collect 1% of your Bricks" },
-  { t: "prop", d: "brown", name: "nad.fun Lane", dapp: "nad.fun", url: "https://nad.fun", q: ["A", "swap", "Buy any nad.fun token with 0.5 MON from your Chog"], fair: true },
+  { t: "prop", d: "brown", name: "nad.fun Lane", dapp: "nad.fun", url: "https://nad.fun", q: ["A", "swap", "Buy $CHOG on nad.fun with 50 MON, into your Chog"], fair: true },
   { t: "chest", name: "Commons Chest" },
-  { t: "prop", d: "brown", name: "Chog Alley", dapp: "$CHOG pool", url: "https://nad.fun", q: ["A", "swap", "Swap 1 MON → $CHOG straight into your Chog"], fair: true },
+  { t: "prop", d: "brown", name: "Chog Alley", dapp: "$CHOG pool", url: "https://nad.fun", q: ["A", "swap", "Swap 50 MON → $CHOG straight into your Chog"], fair: true },
   { t: "tax", name: "Gas Tax", sub: "5% of cash" },
-  { t: "prop", d: "station", name: "FastLane Station", dapp: "FastLane shMON", url: "https://www.fastlane.xyz", q: ["A", "stake", "Stake 0.5 MON → shMON in your Chog's vault"] },
+  { t: "prop", d: "station", name: "FastLane Station", dapp: "FastLane shMON", url: "https://www.fastlane.xyz", q: ["A", "stake", "Stake 20 MON → shMON, held by your Chog"] },
   { t: "prop", d: "lblue", name: "OpenSea Ave", dapp: "OpenSea", url: "https://opensea.io", q: ["B", "visit", "Buy or list any Monad NFT"] },
   { t: "chance", name: "Entropy" },
   { t: "prop", d: "lblue", name: "Magic Eden Way", dapp: "Magic Eden", url: "https://magiceden.io", q: ["B", "visit", "Buy or list any Monad NFT"] },
@@ -55,7 +55,7 @@ const SQ = [
   { t: "prop", d: "util", name: "Pyth Entropy Works", dapp: "Pyth", url: "https://pyth.network", q: ["B", "visit", "Pyth powers the dice. Read a price feed on Monad"] },
   { t: "prop", d: "pink", name: "MetaMask Ct", dapp: "MetaMask", url: "https://metamask.io", q: ["B", "visit", "Bridge or onramp to Monad"] },
   { t: "prop", d: "pink", name: "Portal Pl", dapp: "Portal", url: ECO, q: ["B", "visit", "Make a payment through Portal"] },
-  { t: "prop", d: "station", name: "Magma Station", dapp: "Magma gMON", url: ECO, q: ["A", "stake", "Stake 0.5 MON → gMON in your Chog's vault"] },
+  { t: "prop", d: "station", name: "Magma Station", dapp: "Magma gMON", url: ECO, q: ["A", "stake", "Stake 20 MON → gMON, held by your Chog"] },
   { t: "prop", d: "orange", name: "Kalshi Row", dapp: "Kalshi", url: "https://kalshi.com", q: ["B", "visit", "Deposit on Monad"] },
   { t: "chest", name: "Commons Chest" },
   { t: "prop", d: "orange", name: "Polymarket Sq", dapp: "Polymarket", url: "https://polymarket.com", q: ["B", "visit", "Deposit on Monad"] },
@@ -65,7 +65,7 @@ const SQ = [
   { t: "chance", name: "Entropy" },
   { t: "prop", d: "red", name: "Obsidian Ave", dapp: "Obsidian", url: ECO, q: ["B", "visit", "Open and close a position"] },
   { t: "prop", d: "red", name: "Narwhal Wharf", dapp: "Narwhal", url: ECO, q: ["B", "visit", "Open and close a position"] },
-  { t: "prop", d: "station", name: "aPriori Station", dapp: "aPriori aprMON", url: ECO, q: ["A", "stake", "Stake 0.5 MON → aprMON in your Chog's vault"] },
+  { t: "prop", d: "station", name: "aPriori Station", dapp: "aPriori aprMON", url: ECO, q: ["A", "stake", "Stake 20 MON → aprMON, held by your Chog"] },
   { t: "prop", d: "yellow", name: "Pendle Gardens", dapp: "Pendle", url: "https://app.pendle.finance", q: ["B", "visit", "Buy any PT on Monad"] },
   { t: "prop", d: "yellow", name: "Maple Grove", dapp: "Maple syrupUSDC", url: "https://maple.finance", q: ["A", "deposit", "Deposit 5 USDC (ERC-4626 vault)"] },
   { t: "prop", d: "util", name: "Chainlink Data Works", dapp: "Chainlink", url: "https://chain.link", q: ["B", "visit", "Read a Chainlink feed on Monad"] },
@@ -75,11 +75,11 @@ const SQ = [
   { t: "prop", d: "green", name: "Euler Ct", dapp: "Euler", url: "https://www.euler.finance", q: ["A", "deposit", "Supply to an Euler vault (ERC-4626)"] },
   { t: "heist", name: "HEIST", sub: "Rob unclaimed rent" },
   { t: "prop", d: "green", name: "Neverland Park", dapp: "Neverland", url: ECO, q: ["B", "visit", "Supply to Neverland"] },
-  { t: "prop", d: "station", name: "Kintsu Station", dapp: "Kintsu sMON", url: ECO, q: ["A", "stake", "Stake 0.5 MON → sMON in your Chog's vault"] },
+  { t: "prop", d: "station", name: "Kintsu Station", dapp: "Kintsu sMON", url: ECO, q: ["A", "stake", "Stake 20 MON → sMON, held by your Chog"] },
   { t: "chance", name: "Entropy" },
-  { t: "prop", d: "dblue", name: "Uniswap Boardwalk", dapp: "Uniswap", url: "https://app.uniswap.org", q: ["A", "swap", "Swap 1 MON → $CHOG on Uniswap, into your Chog"] },
+  { t: "prop", d: "dblue", name: "Uniswap Boardwalk", dapp: "Uniswap", url: "https://app.uniswap.org", q: ["A", "swap", "Swap MON → USDC on Uniswap v3, held by your Chog"] },
   { t: "tax", name: "MEV Tax", sub: "Pay 750" },
-  { t: "prop", d: "dblue", name: "Kuru Tower", dapp: "Kuru", url: "https://www.kuru.io", q: ["A", "swap", "Swap 1 MON → $CHOG on Kuru, into your Chog"] },
+  { t: "prop", d: "dblue", name: "Kuru Tower", dapp: "Kuru", url: "https://www.kuru.io", q: ["A", "swap", "Trade MON on Kuru (link only on mainnet for now)"] },
 ];
 SQ.forEach((s, i) => { s.i = i; if (s.t === "prop") { s.p0 = D[s.d].p0; s.base = D[s.d].rent; s.supply = 0; s.reserve = 0; s.h = {}; } });
 const PROPS = SQ.filter(s => s.t === "prop");
@@ -108,7 +108,7 @@ const G = {
   t: 0, commons: 60000, lounge: 4000, season: 0, sleep: 0, burned: 0, inflow: 0, outflow: 0,
   seasonNo: 1, seasonStartT: 0, bellEnd: null, lastBuyer: null, golden: null, cashedToday: 0, cashDay: 0,
   me: null, chogs: [], feed: [], plan: "balanced", busy: false, speed: 1, tab: "chog", sheet: null,
-  wallet: { chog: 100000, mon: 40, usdc: 50 },
+  wallet: { chog: 100000, mon: 1000, usdc: 50 }, mode: "practice",
 };
 let seed = 7;
 const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
@@ -370,6 +370,7 @@ function endSeason() {
 
 // ---------- my actions ----------
 async function rollMe() {
+  if (window.Chain?.on()) return Chain.roll();
   const c = G.me; if (!c || G.busy) return;
   closeSheet();
   if (c.rolls <= 0) {
@@ -403,15 +404,16 @@ async function rollMe() {
 }
 
 function doQuest(i) {
+  if (window.Chain?.on()) return Chain.quest(i);
   const c = G.me, s = SQ[i], [tier, kind] = s.q; const day = Math.floor(G.t / DAY);
   if (kind === "swap") {
-    if (G.wallet.mon < 1) return toast("Your practice wallet is out of MON.");
-    G.wallet.mon -= 1; const got = K.monToChog * (0.97 + rnd() * 0.04); c.cash += got; G.inflow += got;
-    log(`Quest at ${s.name}: swapped 1 MON → ${fmt(got)} $CHOG on ${s.dapp}, straight into your Chog.`, "me");
+        if (G.wallet.mon < 50) return toast("Your practice wallet is out of MON.");
+    G.wallet.mon -= 50; const got = 50 * K.monToChog * (0.97 + rnd() * 0.04); c.cash += got; G.inflow += got;
+    log(`Quest at ${s.name}: swapped 50 MON → ${fmt(got)} $CHOG on ${s.dapp}, straight into your Chog.`, "me");
   } else if (kind === "stake") {
-    if (G.wallet.mon < 0.5) return toast("Your practice wallet is out of MON.");
-    G.wallet.mon -= 0.5; c.pos_[s.dapp] = (c.pos_[s.dapp] || 0) + 0.5 * K.monToChog;
-    log(`Quest at ${s.name}: staked 0.5 MON → ${s.dapp.split(" ")[1]} inside your Chog's vault (locked 7 days).`, "me");
+        if (G.wallet.mon < 20) return toast("Your practice wallet is out of MON.");
+    G.wallet.mon -= 20; c.pos_[s.dapp] = (c.pos_[s.dapp] || 0) + 20 * K.monToChog;
+    log(`Quest at ${s.name}: staked 20 MON → ${s.dapp.split(" ")[1]} inside your Chog's vault (locked 7 days).`, "me");
   } else if (kind === "deposit") {
     if (G.wallet.usdc < 5) return toast("Your practice wallet is out of USDC.");
     G.wallet.usdc -= 5; c.pos_[s.dapp] = (c.pos_[s.dapp] || 0) + 5 * 862; // ≈ $5 in $CHOG at $0.00116
@@ -450,7 +452,7 @@ function openTile(i, landed) {
   const holders = Object.entries(p.h).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id, k]) => { const h = byId(+id); return `<span><i style="background-image:url(${h.img})"></i>${h === c ? "You" : h.name} · ${Math.round(k / p.supply * 100)}%</span>`; }).join("");
   const [tier, kind, text] = p.q; const done = c.stamps.has(i); const today = c.qday[i] === Math.floor(G.t / DAY);
   const here = c.pos === i;
-  const action = kind === "swap" ? "Swap 1 MON (practice)" : kind === "stake" ? "Stake 0.5 MON (practice)" : kind === "deposit" ? "Deposit 5 USDC (practice)" : "Submit receipt (practice)";
+  const action = kind === "swap" ? "Swap 50 MON (practice)" : kind === "stake" ? "Stake 20 MON (practice)" : kind === "deposit" ? "Deposit 5 USDC (practice)" : "Submit receipt (practice)";
   sheet(`<div class="band" style="background:${D[p.d].c}"></div>
   <h3>${p.name}${hot ? ' <span class="pill warn">Hot ×2 today</span>' : ""}</h3>
   <p class="sub">${D[p.d].n} · ${LEVEL_NAME[lvl]}${p.fair ? " · Fair Start street (Chogs under 50k only)" : ""}</p>
@@ -462,7 +464,7 @@ function openTile(i, landed) {
     <dt>Your Bricks</dt><dd>${n} ${n ? `(${Math.round(n / p.supply * 100)}%)` : ""}</dd>
   </dl>
   ${holders ? `<div><div class="sub" style="margin-bottom:4px">Owned by these Chogs</div><div class="holders">${holders}</div></div>` : `<p class="sub">No Bricks yet. The first Chog to land here with a buying plan opens the street.</p>`}
-  <div class="quest">
+  ${window.Chain?.on() ? Chain.questHtml(p, here) : `<div class="quest">
     <div class="row sp"><b>Dapp quest · ${p.dapp}</b><span class="pill ${tier === "A" ? "ok" : "tier"}">${tier === "A" ? "On-chain, from your Chog" : "Proof-of-visit"}</span></div>
     <div>${text}.</div>
     <div class="sub">${done ? "Patron Stamp collected." : "First time: a permanent Patron Stamp (+1% claim weight)."} ${today ? "Today's free roll used." : "Once a day: +1 free roll."}</div>
@@ -470,7 +472,7 @@ function openTile(i, landed) {
       ${here ? `<button class="btn purple sm" data-quest="${i}" ${today && done ? "disabled" : ""}>${action}</button>` : `<span class="sub">Land here to do this quest.</span>`}
       <a class="btn sm" href="${p.url}" target="_blank" rel="noopener">Open ${p.dapp} ↗</a>
     </div>
-  </div>
+  </div>`}
   ${n ? `<div class="row"><button class="btn sm" data-sell="${i}" data-n="1">Sell 1 Brick (+${fmt(sellValue(p, 1) * 0.95)})</button><span class="sub">5% spread goes to the Commons. Cash stays in your Chog.</span></div>` : ""}
   <button class="btn gold" data-close>${landed ? "Keep playing" : "Close"}</button>`);
   window.Guide?.on("tile", { i, landed });
@@ -618,13 +620,14 @@ var renderPane = function () {
       <div class="row sp"><div class="h">Patron Stamps ${c.stamps.size}/28</div><span class="sub">One per Monad dapp</span></div>
       <div class="stamps">${PROPS.map(p => `<i class="${c.stamps.has(p.i) ? "got" : ""}" style="${c.stamps.has(p.i) ? "background:" + D[p.d].c : ""}" title="${p.dapp}">${p.dapp.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase()}</i>`).join("")}</div>
     </div>
-    <div class="card">
-      <div class="h">Practice wallet (outside the Chog)</div>
+    <div class="card practice-wallet">
+      <div class="h practice-wallet-h">Practice wallet (outside the Chog)</div>
       <dl class="kv"><dt>$CHOG</dt><dd>${fmt(G.wallet.chog)}</dd><dt>MON</dt><dd>${G.wallet.mon.toFixed(1)}</dd><dt>USDC</dt><dd>${fmt(G.wallet.usdc)}</dd></dl>
       <div class="row"><button class="btn sm" id="topup">Top up 5,000 $CHOG into the Chog</button></div>
     </div>`;
-    $("#claimBtn").onclick = () => { const g = claim(c); log(`Claimed ${fmt(g)} into your Chog's cash.`, "me"); toast(`+${fmt(g)} claimed. It stays in the Chog.`); render(); window.Guide?.on("claimed"); };
-    $("#topup").onclick = () => { if (G.wallet.chog < 5000) return toast("Practice wallet is empty."); G.wallet.chog -= 5000; c.cash += 5000; G.inflow += 5000; c.broke = false; render(); };
+    $("#claimBtn").onclick = () => { if (window.Chain?.on()) return Chain.claim(); const g = claim(c); log(`Claimed ${fmt(g)} into your Chog's cash.`, "me"); toast(`+${fmt(g)} claimed. It stays in the Chog.`); render(); window.Guide?.on("claimed"); };
+    if (window.Chain?.on()) { const w = pane.querySelector(".practice-wallet"); if (w) w.outerHTML = Chain.walletHtml(); }
+    const tu = $("#topup"); if (tu) tu.onclick = () => { if (G.wallet.chog < 5000) return toast("Practice wallet is empty."); G.wallet.chog -= 5000; c.cash += 5000; G.inflow += 5000; c.broke = false; render(); };
   }
   if (G.tab === "land") {
     const mine = PROPS.filter(p => myBricks(c, p));
@@ -648,10 +651,11 @@ var renderPane = function () {
       <div class="sub">Each guard costs 500 (half burned, half to the Commons) and lowers Heist odds against you by 5%. Max 4.</div>
       <div class="row sp"><span class="num">${c.guards} / 4 guards · ${c.warden} Warden pts</span><button class="btn sm" id="guard" ${c.guards >= 4 ? "disabled" : ""}>Hire a guard</button></div>
     </div>`;
-    pane.querySelectorAll("[data-tax]").forEach(b => b.onclick = () => { const r = prepayTax(c, +b.dataset.tax); if (r === -1) toast("Not enough cash in the Chog."); else { log(`Prepaid ${fmt(r)} Property Tax.`, "me"); render(); window.Guide?.on("tax"); } });
-    $("#autoTax").onchange = e => { c.autoTax = e.target.checked; render(); window.Guide?.on("tax"); };
+    pane.querySelectorAll("[data-tax]").forEach(b => b.onclick = () => { if (window.Chain?.on()) return Chain.tax(+b.dataset.tax); const r = prepayTax(c, +b.dataset.tax); if (r === -1) toast("Not enough cash in the Chog."); else { log(`Prepaid ${fmt(r)} Property Tax.`, "me"); render(); window.Guide?.on("tax"); } });
+    if (window.Chain?.on()) { $("#autoTax").closest("label").remove(); pane.insertAdjacentHTML("beforeend", Chain.positionsHtml()); }
+    else $("#autoTax").onchange = e => { c.autoTax = e.target.checked; render(); window.Guide?.on("tax"); };
     pane.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openTile(+b.dataset.open, false));
-    $("#guard").onclick = () => { if (c.cash < K.guardCost) return toast("Not enough cash."); payTo(c, 250, "burn"); payTo(c, 250, "commons"); c.guards++; render(); };
+    $("#guard").onclick = () => { if (window.Chain?.on()) return Chain.guard(); if (c.cash < K.guardCost) return toast("Not enough cash."); payTo(c, 250, "burn"); payTo(c, 250, "commons"); c.guards++; render(); };
   }
   if (G.tab === "vault") {
     const tr = exitTax(c), capLeft = dailyCapLeft();
@@ -695,8 +699,8 @@ var renderPane = function () {
       $("#coV").textContent = fmt(a); $("#coT").textContent = "−" + fmt(t); $("#coC").textContent = fmt(t / 2);
       $("#coB").textContent = `${fmt(t / 4)} · ${fmt(t / 4)}`; $("#coN").textContent = fmt(a - t); $("#coGo").disabled = a < 100;
     };
-    $("#coGo").onclick = () => { requestCashOut(+sl.value); G.coAmt = 0; };
-    const cl = $("#coClaim"); if (cl) cl.onclick = claimCashOuts;
+    $("#coGo").onclick = () => { if (window.Chain?.on()) return Chain.cashOut(+sl.value); requestCashOut(+sl.value); G.coAmt = 0; };
+    const cl = $("#coClaim"); if (cl) cl.onclick = () => window.Chain?.on() ? Chain.claimCashOut() : claimCashOuts();
   }
   if (G.tab === "city") {
     const ranked = [...G.chogs].sort((a, b) => appraisal(b) - appraisal(a));
@@ -719,7 +723,8 @@ var renderPane = function () {
       <dt>Difference</dt><dd>${Math.abs(G.inflow - G.outflow - G.burned - held) < 5 ? '<span class="pill ok">balanced</span>' : fmt(G.inflow - G.outflow - G.burned - held)}</dd></dl>
     </div>
     <div class="card"><div class="h">City feed</div><div class="feed">${G.feed.map(f => `<div class="${f.cls}"><time>${clockStr(f.t)}</time>${f.text}</div>`).join("")}</div></div>`;
-    const h = $("#hypeTop"); if (h) h.onclick = () => { const t = ranked.find(x => x !== c); if (hype(c, t, 300)) { render(); window.Guide?.on("hyped"); } else toast("Not enough cash."); };
+    if (window.Chain?.on()) { const z = [...pane.querySelectorAll(".card")].find(x => /Zero-sum check/.test(x.textContent)); if (z) z.outerHTML = Chain.ledgerHtml(); }
+    const h = $("#hypeTop"); if (h) h.onclick = () => { if (window.Chain?.on()) return Chain.hype(ranked.find(x => x !== c).id, 300); const t = ranked.find(x => x !== c); if (hype(c, t, 300)) { render(); window.Guide?.on("hyped"); } else toast("Not enough cash."); };
   }
   if (G.tab !== "city") {
     const f = document.createElement("div"); f.className = "card"; f.innerHTML = `<div class="h">Latest</div><div class="feed" style="max-height:150px">${G.feed.slice(0, 12).map(f => `<div class="${f.cls}"><time>${clockStr(f.t)}</time>${f.text}</div>`).join("")}</div>`; pane.appendChild(f);
@@ -772,13 +777,15 @@ function wakeScreen() {
 document.addEventListener("click", e => {
   if (e.target.closest("[data-close]")) { closeSheet(); window.Guide?.on("sheetClosed"); return; }
   const q = e.target.closest("[data-quest]"); if (q) return doQuest(+q.dataset.quest);
+  if (window.Chain?.on() && e.target.closest("[data-sell]")) return Chain.sell(+e.target.closest("[data-sell]").dataset.sell);
+  if (window.Chain?.on() && e.target.closest("[data-heist]")) return Chain.heist(+e.target.closest("[data-heist]").dataset.heist);
   const s = e.target.closest("[data-sell]"); if (s) { const p = SQ[+s.dataset.sell]; const got = sellBricks(G.me, p, +s.dataset.n); log(`Sold a Brick on ${p.name} for ${fmt(got)} (stays in your Chog).`, "me"); openTile(p.i, false); render(); return; }
   const h = e.target.closest("[data-heist]"); if (h) { const t = byId(+h.dataset.heist); const r = heist(G.me, t); closeSheet(); toast(r.win ? `Heist worked: +${fmt(r.amt)} from ${t.name}.` : `Caught! You paid ${fmt(r.amt)} to ${t.name} and went to Rug Jail.`); render(); return; }
 });
 document.querySelectorAll(".plans button").forEach(b => b.onclick = () => { G.plan = b.dataset.plan; if (G.me) G.me.plan = G.plan; render(); window.Guide?.on("plan", G.plan); });
 function setTab(t) { G.tab = t; document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", String(x.dataset.tab === t))); renderPane(); }
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { setTab(b.dataset.tab); window.Guide?.on("tab", b.dataset.tab); });
-$("#bail").onclick = () => { const c = G.me; if (!c || !c.jail) return; if (c.cash < K.bail) return toast("Not enough cash for bail."); payTo(c, K.bail / 2, "burn"); payTo(c, K.bail / 2, "lounge"); c.jail = 0; log("You paid 500 bail (half burned, half to the Nad Lounge).", "me"); render(); window.Guide?.on("bail"); };
+$("#bail").onclick = () => { if (window.Chain?.on()) return Chain.bail(); const c = G.me; if (!c || !c.jail) return; if (c.cash < K.bail) return toast("Not enough cash for bail."); payTo(c, K.bail / 2, "burn"); payTo(c, K.bail / 2, "lounge"); c.jail = 0; log("You paid 500 bail (half burned, half to the Nad Lounge).", "me"); render(); window.Guide?.on("bail"); };
 $("#roll").onclick = rollMe;
 $("#ff1").onclick = () => { advance(2 * HOUR); render(); window.Guide?.on("ff"); };
 $("#ffd").onclick = () => { advance(DAY); render(); window.Guide?.on("ff"); };
@@ -795,4 +802,4 @@ function renderLive() {
   if (!touching && now - lastPane > 2500) { lastPane = now; render(); return; }
   const keep = renderPane; renderPane = () => {}; render(); renderPane = keep;
 }
-setInterval(() => { if (!G.me || !G.speed || G.busy) return; advance(10 * G.speed); renderLive(); }, 1000);
+setInterval(() => { if (!G.me || !G.speed || G.busy || G.mode !== "practice") return; advance(10 * G.speed); renderLive(); }, 1000);

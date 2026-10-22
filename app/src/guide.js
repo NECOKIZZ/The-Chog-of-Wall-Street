@@ -101,6 +101,7 @@ window.Guide = (() => {
     { title: "The title deed", sel: "#modal", wait: "sheetClosed", doLabel: "Close the card to continue", text: "Rent per level, the Brick price, and which Chogs own it. This is the only place you see other Chogs: <b>Message</b> or <b>Hype</b> them from here." },
     { room: "map", title: "Your buying plan", sel: "#plans", text: "<b>Safe</b> buys a few Bricks and keeps half your cash. <b>Balanced</b> buys up to 6. <b>Degen</b> spends it all. It's set before the dice land." },
     { room: "bank", title: "The Bank", sel: ["#claimBtn", "#bankTax"], text: "Claim rent, keep Property Tax paid (autopay is on), and see what leaving would cost. Cash-out tax goes to the Chogs who stay." },
+    { room: "leaders", title: "Leaders", sel: [".podium", "#room-leaders .lbtabs"], text: "Its own page. <b>This season</b> ranks growth and pays the prizes. <b>Richest</b> ranks total net worth. The bottom quarter pays 5% of its cash into the pot when the season ends." },
     { room: "desk", title: "Your first rounds", sel: "#goals", text: "Work down this list. Press <b>Show me</b> and the game points at exactly where to click." },
   ].map(s => ({ ...s, tour: true }));
   function startTour() { if (!G.me) return; queue.length = 0; hide(); closeSheet(); tour = { steps: TOUR(), i: 0 }; show(tour.steps[0]); }

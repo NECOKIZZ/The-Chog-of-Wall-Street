@@ -17,7 +17,17 @@ function dur(mins) { mins = Math.max(0, Math.floor(mins)); const d = Math.floor(
 const seasonEnd = () => G.bellEnd ?? (G.seasonStartT + K.seasonLen);
 
 // ---------- views ----------
-const U = { view: "landing", room: "desk", angled: true, city: null, pick: null };
+const U = { view: "landing", room: "desk", angled: false, city: null, pick: null, lb: "season" };
+try { U.angled = localStorage.getItem("cows.view") === "3d"; } catch (e) { /* storage blocked */ }
+
+// ---------- light / dark ----------
+const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>';
+const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+const isDark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+function paintThemeBtn() { const b = $("#themeBtn"); b.innerHTML = isDark() ? ICON_SUN : ICON_MOON; b.setAttribute("aria-label", isDark() ? "Switch to light mode" : "Switch to dark mode"); }
+$("#themeBtn").onclick = () => { const next = isDark() ? "light" : "dark"; document.documentElement.dataset.theme = next; try { localStorage.setItem("cows.theme", next); } catch (e) { /* storage blocked */ } paintThemeBtn(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", paintThemeBtn);
+paintThemeBtn();
 function go(view) {
   U.view = view;
   $("#landing").hidden = view !== "landing"; $("#onboard").hidden = view !== "onboard"; $("#app").hidden = view !== "app";
@@ -156,6 +166,7 @@ function render() {
   if (U.room === "desk") renderDesk();
   if (U.room === "map") renderMap();
   if (U.room === "bank") renderBank();
+  if (U.room === "leaders") renderLeaders();
   if (U.room === "rules" && !$("#room-rules").dataset.built) renderRules();
   window.Guide?.on("render");
 }
@@ -181,33 +192,52 @@ function threads() {
   return [...by.entries()].sort((a, b) => b[1].t - a[1].t);
 }
 function ranking() { return [...G.chogs].sort((a, b) => appraisal(b) - appraisal(a)); }
-function leaderboardHtml() {
-  const r = ranking(), me = r.indexOf(G.me), rows = [];
-  const line = (x, i) => `<div class="lb ${x === G.me ? "me" : ""}"><span class="num">#${i + 1}</span><i class="avatar" style="background-image:url(${x.img})"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x === G.me ? "You" : esc(x.name)}</span><span class="num">${fmt(appraisal(x))}</span></div>`;
-  r.slice(0, 5).forEach((x, i) => rows.push(line(x, i)));
-  if (me >= 5) { if (me > 5) rows.push(`<div class="lb gap">· · ·</div>`); rows.push(line(G.me, me)); }
-  if (r.length > 8) { rows.push(`<div class="lb gap">bottom of the city</div>`); r.slice(-3).forEach((x, k) => { const i = r.length - 3 + k; if (i > Math.max(4, me)) rows.push(line(x, i)); }); }
-  return rows.join("");
-}
-function renderDesk() {
+function seasonGain(c) { return appraisal(c) - (c.seasonAppraisal || 0); }
+function renderLeaders() {
+  const bySeason = U.lb === "season";
+  const r = bySeason ? [...G.chogs].sort((a, b) => seasonGain(b) - seasonGain(a)) : ranking();
+  const n = r.length, bottomFrom = n - Math.floor(n / 4), me = r.indexOf(G.me), left = seasonEnd() - G.t;
+  const val = x => bySeason ? seasonGain(x) : appraisal(x);
+  const money = v => `<span class="num ${v > 0 ? "up" : v < 0 ? "down" : ""}">${v > 0 ? "+" : v < 0 ? "−" : ""}${fmt(Math.abs(v))}</span>`;
+  const plinth = (x, k) => x ? `<div class="plinth p${k + 1}"><i class="avatar" style="background-image:url(${x.img})"></i><b>${x === G.me ? "You" : esc(x.name)}</b><span class="small">${bySeason ? money(val(x)) : `<span class="num">${fmt(val(x))}</span>`}</span><div class="base">${k + 1}</div></div>` : "<div></div>";
+  const row = (x, i) => `<div class="lbrow ${x === G.me ? "me" : ""} ${i >= bottomFrom ? "inbottom" : ""}"><span class="num"><b>#${i + 1}</b></span><i class="avatar" style="background-image:url(${x.img})"></i><span class="nm">${x === G.me ? "You" : esc(x.name)}</span><span class="num">${fmt(appraisal(x))}</span><span class="chg">${money(seasonGain(x))}</span></div>`;
+  const rows = [];
+  r.forEach((x, i) => {
+    if (i === 0) rows.push(`<div class="lbzone top"><span>Top 10 · share 40% of the season pot</span><span>${fmt(G.season)} in the pot</span></div>`);
+    if (i === 10 && bottomFrom > 10) rows.push(`<div class="lbzone"><span>Middle</span><span></span></div>`);
+    if (i === bottomFrom && n >= 4) rows.push(`<div class="lbzone bottom"><span>Bottom quarter · pays 5% of cash at season end</span><span>if active</span></div>`);
+    rows.push(row(x, i));
+  });
+  $("#room-leaders").innerHTML = `
+  <div class="pagehead"><div><div class="eyebrow">Season ${G.seasonNo} · ends in ${dur(left)}</div><h1>Leaders</h1></div>
+    <div class="lbtabs" role="group" aria-label="Rank by"><button data-lb="season" aria-pressed="${bySeason}">This season</button><button data-lb="rich" aria-pressed="${!bySeason}">Richest</button></div></div>
+  <p class="muted" style="margin:-8px 0 20px;max-width:64ch">${bySeason ? "Ranked by how much each Chog grew this season. This is the board that pays prizes." : "Ranked by total net worth: cash, Bricks, unclaimed rent and app positions inside the Chog."} You're <b>#${me + 1}</b> of ${n}.</p>
+  <div class="cols"><div class="card"><div class="podium">${plinth(r[1], 1)}${plinth(r[0], 0)}${plinth(r[2], 2)}</div>
+      <div class="lbrow" style="background:none;font-size:11.5px;font-weight:800;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase"><span>Rank</span><span></span><span>Chog</span><span>Net worth</span><span class="chg">This season</span></div>
+      <div class="lbtable">${rows.join("")}</div></div>
+    <div class="stack"><div class="card stack"><h3>How the season pays</h3><dl class="kv"><dt>Top 10 by growth</dt><dd>40%</dd><dt>Every Chog with 20+ rolls</dt><dd>30%</dd><dt>Best defenders (heists stopped)</dt><dd>15%</dd><dt>Closing Bell (last Brick buyer)</dt><dd>10%</dd><dt>#1 of the season</dt><dd>5%</dd></dl>
+      <p class="tiny">Before the payout, the bottom quarter of active Chogs pays 5% of its cash into the pot. Bricks are never taxed.</p></div>
+      <div class="card tint stack"><h3>Your season</h3><dl class="kv"><dt>Rank this season</dt><dd>#${[...G.chogs].sort((a, b) => seasonGain(b) - seasonGain(a)).indexOf(G.me) + 1}</dd><dt>Rank by net worth</dt><dd>#${ranking().indexOf(G.me) + 1}</dd><dt>Growth this season</dt><dd>${money(seasonGain(G.me))}</dd><dt>Rolls this season</dt><dd>${G.me.rollsSeason}</dd></dl></div></div></div>`;
+  document.querySelectorAll("[data-lb]").forEach(b => b.onclick = () => { U.lb = b.dataset.lb; renderLeaders(); });
+}function renderDesk() {
   const c = G.me, pr = prestige(c), th = threads(), unread = G.inbox.filter(m => m.to === c.id && !m.read).length;
-  const left = seasonEnd() - G.t, bell = G.bellEnd !== null;
+  const left = seasonEnd() - G.t, bell = G.bellEnd !== null, rank = ranking().indexOf(c) + 1, hot = SQ[hotIndex()];
   $("#room-desk").innerHTML = `
   <div class="pagehead"><div><div class="eyebrow">${G.mode === "practice" ? "Practice City" : Chain.net()?.label || ""} · Season ${G.seasonNo} · ${clockStr(G.t)}</div><h1>Your desk, ${esc(c.name)}</h1></div>
-    ${G.mode === "practice" ? `<div class="row"><span class="tiny">Practice clock</span><button class="btn sm ghost" id="ff2">+2 hours</button><button class="btn sm ghost" id="ffd">+1 day</button></div>` : ""}</div>
+    ${G.mode === "practice" ? `<div class="row"><span class="tiny">Practice clock</span><button class="btn sm" id="ff2">+2 hours</button><button class="btn sm" id="ffd">+1 day</button></div>` : ""}</div>
   <div class="cols">
     <div class="card" id="deskChog">
       <div class="deskhero"><i class="avatar" style="background-image:url(${c.img})"></i><div class="stack" style="gap:6px">
-        <div class="row"><span class="pill purple">${c.tier}</span><span class="pill">${c.mood}</span>${c.jail ? '<span class="pill bad">In Rug Jail</span>' : ""}${c.bankrupt === G.seasonNo ? '<span class="pill bad">Bankrupt</span>' : ""}</div>
+        <div class="row" style="gap:6px"><span class="pill purple">${c.tier}</span><span class="pill">${c.mood}</span>${c.jail ? '<span class="pill bad">In Rug Jail</span>' : ""}${c.bankrupt === G.seasonNo ? '<span class="pill bad">Bankrupt</span>' : ""}</div>
         <div class="eyebrow">What this Chog is worth</div><div class="big" id="deskWorth">${fmt(appraisal(c))} <span class="small muted">$CHOG</span></div>
-        <div class="tiny">Prestige +${pr}% · ${c.stamps.size} stamps · season rank #${ranking().indexOf(c) + 1} of ${G.chogs.length}</div></div></div>
-      <div class="stats"><div class="stat"><span>Cash</span><b>${fmt(c.cash)}</b></div><div class="stat"><span>Unclaimed rent</span><b>${fmt(c.unclaimed)}</b></div><div class="stat"><span>Bricks</span><b>${fmt(brickValue(c))}</b></div><div class="stat"><span>Streets</span><b>${PROPS.filter(p => myBricks(c, p)).length}</b></div></div>
+        <div class="tiny">Prestige +${pr}% · ${c.stamps.size} stamps · <button class="linkbtn" data-room="leaders">#${rank} of ${G.chogs.length} in the city</button></div></div></div>
+      <div class="stats"><div class="stat"><span>Cash</span><b>${fmt(c.cash)}</b></div><div class="stat"><span>Unclaimed rent</span><b>${fmt(c.unclaimed)}</b></div><div class="stat"><span>Bricks</span><b>${fmt(brickValue(c))}</b></div><div class="stat"><span>This season</span><b class="${seasonGain(c) > 0 ? "up" : seasonGain(c) < 0 ? "down" : ""}">${seasonGain(c) >= 0 ? "+" : "−"}${fmt(Math.abs(seasonGain(c)))}</b></div></div>
     </div>
     <div class="card move stack" id="deskMove">
       <div class="row between"><h3>Your move</h3><span class="tiny">1 roll every 30 min</span></div>
       <div class="pips" aria-label="${c.rolls} rolls ready">${Array.from({ length: K.rollCap + (c.tier !== "Common" ? 1 : 0) }, (_, k) => `<i class="${k < c.rolls ? "on" : ""}"></i>`).join("")}</div>
-      <button class="btn primary lg" id="deskRoll" ${c.bankrupt === G.seasonNo ? "disabled" : ""}>${c.rolls ? `Roll now (${c.rolls} ready)` : "Roll (extra roll 100 $CHOG)"}</button>
-      <div class="row between"><span class="tiny">Season ${bell ? "ends (Closing Bell) in" : "ends in"}</span><span class="timer" style="color:${bell ? "var(--red)" : "inherit"}">${dur(left)}</span></div>
+      <button class="btn gold lg" id="deskRoll" ${c.bankrupt === G.seasonNo ? "disabled" : ""}>${c.rolls ? `Roll now · ${c.rolls} ready` : "Roll · extra roll 100 $CHOG"}</button>
+      <div class="row between"><span class="tiny">Season ${bell ? "ends (Closing Bell) in" : "ends in"}</span><span class="timer" style="color:${bell ? "var(--gold)" : "inherit"}">${dur(left)}</span></div>
     </div>
   </div>
   <div class="cols" style="margin-top:18px">
@@ -215,46 +245,52 @@ function renderDesk() {
     <div class="stack">
       <div class="card" id="deskTodo"><h3>To do</h3><div class="todo">${todos().map(([t, a]) => `<button data-todo="${a}"><span>${t}</span><span aria-hidden="true">→</span></button>`).join("") || `<p class="empty">All clear.</p>`}</div></div>
       <div class="card" id="deskInbox"><div class="row between"><h3>Messages ${unread ? `<span class="pill purple">${unread} new</span>` : ""}</h3></div>
-        ${th.length ? th.slice(0, 5).map(([id, m]) => { const o = byId(id); if (!o) return ""; const un = G.inbox.some(x => x.from === id && x.to === c.id && !x.read); return `<button class="thread" data-thread="${id}"><i class="avatar" style="background-image:url(${o.img})"></i><span style="min-width:0"><span class="t">${esc(o.name)}</span><span class="s" style="display:block">${m.from === c.id ? "You: " : ""}${esc(m.text)}</span></span>${un ? '<span class="unread"></span>' : `<span class="tiny">${ago(m.t)}</span>`}</button>`; }).join("") : `<p class="empty">No messages yet. Open any street on the Map to message its owners.</p>`}</div>
+        ${th.length ? th.slice(0, 5).map(([id, m]) => { const o = byId(id); if (!o) return ""; const un = G.inbox.some(x => x.from === id && x.to === c.id && !x.read); return `<button class="thread" data-thread="${id}"><i class="avatar" style="background-image:url(${o.img})"></i><span style="min-width:0"><span class="t">${esc(o.name)}</span><span class="s" style="display:block">${m.from === c.id ? "You: " : ""}${esc(m.text)}</span></span>${un ? '<i class="unread"></i>' : ""}</button>`; }).join("") : `<p class="empty">No messages yet. Open any street on the Map to message its owners.</p>`}</div>
+      <div class="card tint" id="deskCity"><h3>City today</h3><div class="citytoday" style="margin-top:8px"><div><div class="tiny">Hot Street (rent ×2)</div><button class="linkbtn" data-tile="${hot.i}"><b>${hot.name}</b></button></div><div><div class="tiny">Nad Lounge pot</div><b class="num">${fmt(G.lounge)}</b></div><div><div class="tiny">Season pot</div><b class="num">${fmt(G.season)}</b></div></div></div>
+      <div id="goals"></div>
     </div>
-  </div>
-  <div class="cols" style="margin-top:18px">
-    <div id="goals"></div>
-    <div class="card" id="deskBoard"><div class="row between"><h3>Richest Chogs</h3><span class="tiny">net worth</span></div>${leaderboardHtml()}
-      <p class="tiny" style="margin-top:10px">Season end: the top 10 share the season pot (${fmt(G.season)}). The bottom quarter of active Chogs pay 5% of their cash into it.</p></div>
   </div>`;
   const ff2 = $("#ff2"); if (ff2) { ff2.onclick = () => { advance(2 * HOUR); render(); window.Guide?.on("ff"); }; $("#ffd").onclick = () => { advance(DAY); render(); window.Guide?.on("ff"); }; }
   $("#deskRoll").onclick = () => { room("map"); setTimeout(rollMe, 250); };
   const mr = $("#markRead"); if (mr) mr.onclick = () => { G.lastSeen = G.t; render(); };
-}
-function renderMap() {
+}function renderMap() {
   const host = $("#room-map");
   if (!host.dataset.built) {
-    host.innerHTML = `<div class="pagehead"><div><div class="eyebrow">Monad City</div><h1>Map</h1></div><div class="seg" style="width:200px" role="group" aria-label="View"><button data-view="angled" aria-pressed="true">Angled</button><button data-view="flat" aria-pressed="false">Flat</button><span hidden></span></div></div>
-      <div class="grid-map"><div class="mapbox angled" id="mapBox"></div>
-      <div class="rail"><div class="card stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
-        <button class="rollbtn" id="roll">ROLL</button><button class="btn danger" id="bail" hidden>Pay 500 bail</button>
-        <div><div class="tiny" style="margin-bottom:6px">Buying plan: what your Chog buys where it lands</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
-        <div class="row between"><span class="tiny">Rolls ready</span><span class="pips" id="mapPips" style="color:var(--ink)"></span></div>
-        <p class="result" id="lastev">Press ROLL. Your Chog moves, and your plan buys Bricks where it lands.</p></div>
-      <div class="card tint stack" id="hereCard"></div></div></div>`;
+    host.innerHTML = `<div class="grid-map">
+      <div class="stage"><div class="stagebar"><div><div class="eyebrow">Monad City</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
+          <button class="viewswitch" id="viewSwitch" role="switch" aria-checked="${U.angled}" aria-label="3D view"><span data-v="flat">Flat</span><span class="vs"><i></i></span><span data-v="3d">3D</span></button></div>
+        <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div>
+        <div class="legend"><span><i style="background:var(--purple)"></i>You are here</span><span><i style="background:var(--gold);border-radius:50%"></i>Your streets</span><span><i style="background:var(--red)"></i>Hot Street (rent ×2)</span><span>Tap any square for its card</span></div></div>
+      <div class="rail">
+        <div class="card hudme" id="hudMe"></div>
+        <div class="card dock stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
+          <button class="rollbtn" id="roll">ROLL</button><button class="btn danger" id="bail" hidden>Pay 500 bail</button>
+          <div class="row between"><span class="tiny">Rolls ready</span><span class="pips" id="mapPips"></span></div>
+          <div><div class="tiny" style="margin-bottom:6px">Buying plan: what your Chog buys where it lands</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
+          <p class="result" id="lastev">Press ROLL. Your Chog moves, and your plan buys Bricks where it lands.</p></div>
+        <div class="card tint stack" id="hereCard"></div></div></div>`;
     buildBoard($("#mapBox")); drawDie($("#d1"), 6); drawDie($("#d2"), 6); host.dataset.built = 1;
-    host.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { U.angled = b.dataset.view === "angled"; $("#mapBox").classList.toggle("angled", U.angled); host.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); requestAnimationFrame(renderPawns); });
+    paintSwitch();
+    $("#viewSwitch").onclick = () => { U.angled = !U.angled; try { localStorage.setItem("cows.view", U.angled ? "3d" : "flat"); } catch (e) { /* storage blocked */ } $("#mapBox").classList.toggle("angled", U.angled); paintSwitch(); requestAnimationFrame(renderPawns); };
     $("#roll").onclick = rollMe; $("#bail").onclick = payBail;
     $("#plans").onclick = e => { const b = e.target.closest("[data-plan]"); if (!b) return; G.plan = b.dataset.plan; if (G.me) G.me.plan = G.plan; render(); window.Guide?.on("plan", G.plan); };
     addEventListener("resize", () => U.room === "map" && renderPawns());
   }
   const c = G.me, s = SQ[c.pos];
   renderTiles($("#mapBox"));
+  $("#hudMe").innerHTML = `<i class="avatar" style="background-image:url(${c.img})"></i><div style="min-width:0"><div class="row between"><b>${esc(c.name)}</b><span class="tiny">#${ranking().indexOf(c) + 1} in the city</span></div><div class="row between" style="margin-top:4px"><span class="tiny">Cash</span><b class="num">${fmt(c.cash)}</b></div><div class="row between"><span class="tiny">Worth</span><b class="num">${fmt(appraisal(c))}</b></div></div>`;
   $("#plans").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.plan === G.plan)));
   $("#planNote").textContent = { safe: "Up to 3 Bricks, only on cheap streets. Keeps half your cash.", balanced: "Up to 6 Bricks anywhere. Keeps a quarter of your cash.", degen: "Up to 15 Bricks. Keeps nothing back." }[G.plan];
   $("#mapPips").innerHTML = Array.from({ length: K.rollCap + (c.tier !== "Common" ? 1 : 0) }, (_, k) => `<i class="${k < c.rolls ? "on" : ""}" style="width:9px;height:14px"></i>`).join("");
-  $("#roll").textContent = c.jail ? "Roll for doubles" : c.rolls ? "ROLL" : "ROLL · 100 $CHOG";
+  $("#roll").textContent = c.jail ? "ROLL FOR DOUBLES" : c.rolls ? "ROLL" : "ROLL · 100";
   $("#roll").disabled = G.busy || c.bankrupt === G.seasonNo; $("#bail").hidden = !c.jail;
-  $("#hereCard").innerHTML = `<div class="eyebrow">You are on</div><h3>${s.name}</h3><p class="small muted">${s.t === "prop" ? `${D[s.d].n} · rent ${s.d === "util" ? "dice × " + 20 * LEVEL_MULT[level(s)] : fmt(rentOf(s))}` : squareText(s)}</p><button class="btn sm" data-tile="${c.pos}">Open card</button><p class="tiny">Tap any square on the map to see its card. The gold dot marks streets you own.</p>`;
+  $("#hereCard").innerHTML = `<div class="eyebrow">You are on</div><h3>${s.name}</h3><p class="small muted">${s.t === "prop" ? `${D[s.d].n} · rent ${s.d === "util" ? "dice × " + 20 * LEVEL_MULT[level(s)] : fmt(rentOf(s))}` : squareText(s)}</p><div><button class="btn sm" data-tile="${c.pos}">Open its card</button></div>`;
   requestAnimationFrame(renderPawns);
 }
-function squareText(s) {
+function paintSwitch() {
+  const sw = $("#viewSwitch"); if (!sw) return; sw.setAttribute("aria-checked", String(U.angled));
+  sw.querySelector('[data-v="flat"]').className = U.angled ? "" : "on"; sw.querySelector('[data-v="3d"]').className = U.angled ? "on" : "";
+}function squareText(s) {
   return { go: "Pass it to collect 1% of your Bricks' value (max 500) from the Commons.", chest: "Draw a Commons Chest card: payouts, moves and a get-out-of-jail card.", chance: "Draw a Market News card: payouts, fees, moves.", tax: s.name === "Gas Tax" ? "Pay 5% of your cash (max 1,000) into the Nad Lounge pot." : "Pay 750 into the Nad Lounge pot.", jail: "Just visiting, unless you were sent here. To get out: roll doubles (3 tries), pay 500, or use a card.", lounge: `Land here to win 25% of the Nad Lounge pot (now ${fmt(G.lounge)}).`, gojail: "Go straight to Rug Jail without passing GENESIS.", heist: "Pick a Chog and try to rob 10% of its unclaimed rent." }[s.t] || "";
 }
 function renderBank() {
@@ -329,7 +365,7 @@ function openTile(i, landed) {
   <div class="body">
     <table class="renttable">${LEVEL_NAME.map((nm, k) => `<tr class="${k === l ? "cur" : ""}"><td>${nm}${k === l ? " · now" : ""}</td><td>${p.d === "util" ? "dice × " + 20 * LEVEL_MULT[k] : fmt(p.base * LEVEL_MULT[k])}</td></tr>`).join("")}</table>
     <dl class="kv"><dt>Brick price now</dt><dd>${fmt(price(p))}</dd><dt>Bricks issued</dt><dd>${fmt(p.supply)}</dd><dt>You own</dt><dd>${n} ${n ? `(${Math.round(n / p.supply * 100)}%)` : ""}</dd></dl>
-    <div><div class="eyebrow" style="margin-bottom:4px">Owners</div>${owners.length ? owners.slice(0, 6).map(([id, k]) => { const o = byId(+id); if (!o) return ""; const isMe = o === c; return `<div class="owner"><i class="avatar" style="background-image:url(${o.img})"></i><span><b>${isMe ? "You" : esc(o.name)}</b> <span class="tiny">${Math.round(k / p.supply * 100)}%</span></span>${isMe ? "" : `<span class="row"><button class="btn sm ghost" data-dm="${o.id}">Message</button><button class="btn sm ghost" data-hype="${o.id}">Hype</button></span>`}</div>`; }).join("") : `<p class="empty">Nobody owns this street yet. Land here with a buying plan to open it.</p>`}</div>
+    <div><div class="eyebrow" style="margin-bottom:4px">Owners</div>${owners.length ? owners.slice(0, 6).map(([id, k]) => { const o = byId(+id); if (!o) return ""; const isMe = o === c; return `<div class="owner"><i class="avatar" style="background-image:url(${o.img})"></i><span><b>${isMe ? "You" : esc(o.name)}</b> <span class="tiny">${Math.round(k / p.supply * 100)}%</span></span>${isMe ? "" : `<span class="row"><button class="btn sm" data-dm="${o.id}">Message</button><button class="btn sm gold" data-hype="${o.id}">Hype</button></span>`}</div>`; }).join("") : `<p class="empty">Nobody owns this street yet. Land here with a buying plan to open it.</p>`}</div>
     ${p.q ? (chainQuest ?? `<div class="questbox"><div class="row between"><b>${p.dapp}</b><span class="pill ok">Real Monad app</span></div><p class="small">${p.q[2]}.</p><p class="tiny">${done ? "Patron Stamp collected." : "First time: a Patron Stamp (+1% claim weight)."} ${today ? "Today's free roll used." : "Once a day: +1 free roll."}</p>${here ? `<button class="btn primary sm" data-quest="${i}" ${today && done ? "disabled" : ""}>${p.q[1] === "swap" ? "Swap 50 MON (practice)" : "Use 20 MON (practice)"}</button>` : `<p class="tiny">Land here to do this.</p>`}</div>`) : ""}
     ${n ? `<button class="btn sm ghost" data-sell="${i}">Sell 1 Brick (+${fmt(sellValue(p, 1) * 0.95)})</button>` : ""}
     <button class="btn primary" data-close>${landed ? "Keep playing" : "Close"}</button>
@@ -452,7 +488,7 @@ setInterval(() => {
   if (!$("#scrim").hidden || document.activeElement?.matches("input,textarea")) return;
   // full re-render only when something you can see changed; otherwise just tick the clocks (keeps clicks and hovers steady)
   const c = G.me, sig = [U.room, c.rolls, Math.round(c.cash), Math.round(c.unclaimed), c.pos, c.jail, G.activity.length, G.inbox.length, G.seasonNo, G.bellEnd !== null, Math.round(appraisal(c) / 50)].join("|");
-  if (sig !== U.sig) { U.sig = sig; if (U.room === "desk" || U.room === "map") render(); return; }
+  if (sig !== U.sig) { U.sig = sig; if (U.room === "desk" || U.room === "map" || U.room === "leaders") render(); return; }
   document.querySelectorAll("#room-desk .timer").forEach(t => t.textContent = dur(seasonEnd() - G.t));
   const eb = $("#room-desk .pagehead .eyebrow"); if (eb) eb.textContent = eb.textContent.replace(/Day \d+ · \d\d:\d\d/, clockStr(G.t));
 }, 1000);

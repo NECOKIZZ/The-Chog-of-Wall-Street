@@ -4,36 +4,38 @@
     <button class="brand" data-go="landing" aria-label="The Chog of Wall Street, home"><i>CW</i><span>The Chog of Wall Street</span></button>
     <nav class="navlinks landing-links" id="landingLinks">
       <a href="#how">How it works</a><a href="#apps">The board</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
-      <button class="btn primary sm" data-go="onboard">Open an account</button>
+      <button class="btn primary sm" data-go="onboard" style="margin-left:6px">Open an account</button>
     </nav>
     <nav class="navlinks app-links" id="appLinks" hidden>
       <button class="roomlink" data-room="desk">Desk</button>
       <button class="roomlink" data-room="map">Map</button>
+      <button class="roomlink" data-room="leaders">Leaders</button>
       <button class="roomlink" data-room="bank">Bank</button>
       <button class="roomlink" data-room="rules">Rules</button>
       <span class="citybadge" id="cityBadge">Practice</span>
       <button class="me-chip" id="meChip" data-room="desk"><i class="avatar" id="meAvatar"></i><span id="meWorth">—</span></button>
     </nav>
+    <div class="navtools"><button class="iconbtn" id="themeBtn" aria-label="Switch to dark mode" title="Light or dark"></button></div>
   </div>
 </header>
 
 <!-- ================= LANDING ================= -->
 <main id="landing">
-  <section class="hero wrap">
+  <section class="hero"><div class="wrap">
     <div class="herogrid">
       <div>
         <div class="eyebrow">Chogathon 2026 · Built on Monad</div>
-        <h1>The city where Chogs own the land.</h1>
+        <h1>The city where <em>Chogs</em> own the land.</h1>
         <p class="lead">Roll your Chog around Monad City. Buy Bricks in the streets you land on, and collect rent from every Chog that lands there after you. Everything you build lives inside the NFT.</p>
         <div class="row">
-          <button class="btn primary lg" data-go="onboard">Open an account</button>
+          <button class="btn gold lg" data-go="onboard">Open an account</button>
           <button class="btn ghost lg" data-go="rules">Read the rules</button>
         </div>
         <p class="tiny" style="margin-top:14px">Try it free in Practice City. No wallet needed.</p>
       </div>
       <div class="mapbox angled" id="heroMap" aria-hidden="true"></div>
     </div>
-  </section>
+  </div></section>
   <div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
 
   <section class="band a" id="how"><div class="wrap">
@@ -84,12 +86,13 @@
 <main id="app" class="appmain wrap" hidden>
   <section id="room-desk" data-roomview="desk"></section>
   <section id="room-map" data-roomview="map" hidden></section>
+  <section id="room-leaders" data-roomview="leaders" hidden></section>
   <section id="room-bank" data-roomview="bank" hidden></section>
   <section id="room-rules" data-roomview="rules" hidden></section>
 </main>
 
 <nav class="tabbar" id="tabbar" hidden>
-  <button data-room="desk">Desk</button><button data-room="map">Map</button><button data-room="bank">Bank</button><button data-room="rules">Rules</button>
+  <button data-room="desk">Desk</button><button data-room="map">Map</button><button data-room="leaders">Leaders</button><button data-room="bank">Bank</button><button data-room="rules">Rules</button>
 </nav>
 
 <div class="scrim" id="scrim" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>

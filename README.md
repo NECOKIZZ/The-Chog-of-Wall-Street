@@ -16,7 +16,9 @@
 Built for **Chogathon 2026**.
 
 ## Play
-Open [`app/index.html`](app/index.html) in a browser. That's the **Practice City**: play money, 14 bot Chogs, and real Chog Genesis art. You don't need a wallet or a server.
+**Live: https://necokizz.github.io/The-Chog-of-Wall-Street/** (republished automatically on every push to `main` that touches `app/`).
+
+Or open [`app/index.html`](app/index.html) in a browser. That's the **Practice City**: play money, 14 bot Chogs, and real Chog Genesis art. You don't need a wallet or a server.
 
 - A guided tour walks you through your first roll.
 - The **First rounds** checklist has **Show me** buttons that point at exactly where to click.

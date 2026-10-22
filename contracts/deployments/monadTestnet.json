@@ -1,0 +1,19 @@
+{
+  "network": "monadTestnet",
+  "chainId": 10143,
+  "deployer": "0x6D55dF0ca3E3DbDcBb2eE0edc54633aE313dac3d",
+  "deployedAt": "2026-10-22T16:20:19.353Z",
+  "chogToken": "0x8A4fD1897924D182Db1BD0C7B4ed13fCC610feb6",
+  "chogNft": "0x9B4AC1ab5503920BCCE821AA0A9CB8A9d838619E",
+  "questSigner": "0x6D55dF0ca3E3DbDcBb2eE0edc54633aE313dac3d",
+  "mocks": true,
+  "game": "0xD4A674261A992A4f4E3a7FEC1A0e7A07F7AC6bC6",
+  "swapAdapter": "0x6ED957563A36fAf67C58b017a35Db7AAf5724f60",
+  "smoke": {
+    "woke": true,
+    "pos": 8,
+    "cash": "19619.93",
+    "settleTx": "0x202f4b52d048c7298ae152873806a86e56689ffb7cbe13e8b5c4cc033aafc277",
+    "zeroSum": true
+  }
+}

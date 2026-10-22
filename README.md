@@ -33,6 +33,21 @@ Or open [`app/index.html`](app/index.html) in a browser. That's the **Practice C
 | `docs/PLAN.md` | The full design: economy, board, withdrawal rules, retention, exploits, MVP |
 | `docs/research/` | Teardowns of Chog Raid, Fomopoly, Daemon, Hoodopoly, Stonkboard, Vault Street, Upland and $MONO, and what we took from each |
 
+## Live on Monad testnet (chain 10143)
+| Contract | Address |
+|---|---|
+| ChogOfWallStreet (game) | [`0xD4A674261A992A4f4E3a7FEC1A0e7A07F7AC6bC6`](https://testnet.monadvision.com/address/0xD4A674261A992A4f4E3a7FEC1A0e7A07F7AC6bC6) |
+| Mock $CHOG | [`0x8A4fD1897924D182Db1BD0C7B4ed13fCC610feb6`](https://testnet.monadvision.com/address/0x8A4fD1897924D182Db1BD0C7B4ed13fCC610feb6) |
+| Mock Chog Genesis | [`0x9B4AC1ab5503920BCCE821AA0A9CB8A9d838619E`](https://testnet.monadvision.com/address/0x9B4AC1ab5503920BCCE821AA0A9CB8A9d838619E) |
+| Mock Kuru-style swap adapter (quests on squares 1, 3, 37, 39) | [`0x6ED957563A36fAf67C58b017a35Db7AAf5724f60`](https://testnet.monadvision.com/address/0x6ED957563A36fAf67C58b017a35Db7AAf5724f60) |
+
+**Smoke test on-chain:**
+- Chog #1 was woken with 20,000 $CHOG.
+- It rolled and landed: [settle tx](https://testnet.monadvision.com/tx/0x202f4b52d048c7298ae152873806a86e56689ffb7cbe13e8b5c4cc033aafc277).
+- `balanceOf(game) == accounted()` held.
+
+The full record is in [`contracts/deployments/monadTestnet.json`](contracts/deployments/monadTestnet.json).
+
 ## Contracts
 ```bash
 cd contracts

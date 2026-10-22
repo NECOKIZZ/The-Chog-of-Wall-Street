@@ -11,7 +11,7 @@ window.Chain = (() => {
       rpc: "https://testnet-rpc.monad.xyz", explorer: "https://testnet.monadvision.com",
       game: "0x09741a1CBaBc28c7034cF6F941B571CA3601f30d", chog: "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF", nft: "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
       mocks: true,
-      squares: { 1: { kind: "mock", label: "Swap MON → test $CHOG (mock nad.fun)" }, 3: { kind: "mock", label: "Swap MON → test $CHOG (mock pool)" }, 37: { kind: "mock", label: "Swap MON → test $CHOG (mock Uniswap)" }, 39: { kind: "mock", label: "Swap MON → test $CHOG (mock Kuru)" } },
+      squares: { 1: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for nad.fun)" }, 3: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for nad.fun)" }, 5: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for FastLane shMON)" }, 25: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for aPriori aprMON)" }, 35: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for Kintsu sMON)" }, 37: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for Uniswap)" } },
       adapters: { mock: "0x4204fef653DA46ba85cEDD47F4e9F10E4341d4f3" }, mockRate: 2500,
       questMon: "0.5",
     },
@@ -33,7 +33,6 @@ window.Chain = (() => {
       lens: "0x7e78A8DE94f21804F7a17F4E8BF9EC2c872187ea", quoter: "0x661e93cca42afacb172121ef892830ca3b70f08d",
       wmon: "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A", usdc: "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
       questMon: "20",
-      notWired: { 39: "Kuru moved to V2 order books routed by its off-chain Kuru Flow API, so there's no on-chain path we can prove yet.", 15: "Magma's public deposit functions revert on mainnet today. Stake in Magma's app instead." },
     },
   };
   // Mainnet deployment (written by scripts/deploy-mainnet.js). Kept here so the static app needs no server.
@@ -96,7 +95,7 @@ window.Chain = (() => {
     const row = CHOG_TABLE.find(r => r[0] === id); return row ? `${GATEWAYS[0]}${CID}/${row[2]}.webp` : "";
   };
   const rowOf = id => CHOG_TABLE.find(r => r[0] === id) || [id, `CHOG #${id}`, id, "Common", "", "", "", ""];
-  const wakeEl = () => document.querySelector("#wake .wake");
+  const wakeEl = () => document.querySelector("#onboard");
   const say = m => toast(m);
 
   function niceError(e) {
@@ -133,17 +132,19 @@ window.Chain = (() => {
   function renderConnect(extraHtml = "") {
     const el = wakeEl();
     const live = !!net.game;
-    el.innerHTML = `
-      <div class="row sp"><span class="tag">${net.label} · ${net.name} (chain ${net.chainId})</span><button class="btn sm ghost" data-mode-back>← Choose another city</button></div>
-      <h1>${net.key === "mainnet" ? "Real Chogs. Real $CHOG." : "Play on-chain, for free."}</h1>
-      <p class="lead">${net.key === "mainnet"
-        ? "Connect the wallet that holds your Chog Genesis NFT. Your deposit is real $CHOG, every roll is a real transaction, and six squares do real things on Monad: buy $CHOG on nad.fun, stake into shMON, aprMON or sMON, and swap on Uniswap."
-        : "Same contracts as mainnet, on Monad testnet. Mint a free test Chog and free test $CHOG, then every roll, rent payment and cash-out is a real testnet transaction."}</p>
-      ${!live ? `<div class="card"><b>Mainnet contracts are not deployed yet.</b><div class="sub">The deploy runs as soon as the deployer wallet is funded. Until then, play Practice or Testnet.</div></div>` : ""}
-      ${!window.ethereum ? `<div class="card"><b>No wallet found in this browser.</b><div class="sub">Install MetaMask, Rabby, Phantom or Backpack, then reload this page.</div></div>` : ""}
-      ${live && window.ethereum ? (me ? myChogsHtml() : `<button class="btn gold" data-chain="connect">Connect wallet</button>`) : ""}
+    el.innerHTML = `<div class="stepper"><span class="done">1 · ${net.label}</span><span class="${me ? "done" : "on"}">2 · Wallet</span><span class="${me ? "on" : ""}">3 · Chog and deposit</span></div>
+      <div class="row between" style="margin-bottom:8px"><span class="pill purple">${net.name} · chain ${net.chainId}</span><button class="btn sm ghost" data-mode-back>← Choose another city</button></div>
+      <h1 style="font-size:clamp(2rem,4.5vw,3.2rem)">${net.key === "mainnet" ? "Real Chogs. Real $CHOG." : "Play on-chain, for free."}</h1>
+      <p class="muted" style="margin:10px 0 22px;max-width:62ch">${net.key === "mainnet"
+        ? "Connect the wallet that holds your Chog Genesis NFT. Your deposit is real $CHOG, every roll is a real transaction, and six squares do real things on Monad."
+        : "Same contracts as mainnet, on Monad testnet. Mint a free test Chog and free test $CHOG. Every roll, rent payment and cash-out is a real testnet transaction."}</p>
+      <div class="stack">
+      ${!live ? `<div class="card"><h3>Not open yet</h3><p class="muted small">Mainnet contracts aren't deployed. Play Practice or Testnet for now.</p></div>` : ""}
+      ${!window.ethereum ? `<div class="card"><h3>No wallet found in this browser</h3><p class="muted small">Install MetaMask, Rabby, Phantom or Backpack, then reload this page.</p></div>` : ""}
+      ${live && window.ethereum ? (me ? myChogsHtml() : `<div><button class="btn primary lg" data-chain="connect">Connect wallet</button></div>`) : ""}
       ${extraHtml}
-      <div class="note">${net.key === "mainnet" ? "Unaudited hackathon contracts. Deposits are capped and cash-outs are taxed 10–20% with a 48-hour wait. Only play with what you can afford to lose." : "Testnet only. Nothing here has real value. You need a little testnet MON for gas (faucet.monad.xyz)."}</div>`;
+      <p class="tiny">${net.key === "mainnet" ? "Unaudited hackathon contracts. Deposits are capped and cash-outs are taxed 10 to 20% with a 48-hour wait. Only play with what you can afford to lose." : "Testnet only. Nothing here has real value. You need a little testnet MON for gas (faucet.monad.xyz)."}</p></div>`;
+    const sl = $("#cDep"); if (sl) sl.oninput = () => { $("#cDepV").textContent = fmt(+sl.value); };
   }
 
   async function connect() {
@@ -188,8 +189,11 @@ window.Chain = (() => {
       for (let i = 0; i < ids.length; i += 60) {
         const part = ids.slice(i, i + 60);
         const owners = await pmap(part, id => rc(() => nft.ownerOf(id), true));
+        const had = extra.mine.length;
         owners.forEach((o, k) => { if (o && o.toLowerCase() === me.toLowerCase()) extra.mine.push(part[k]); });
-        extra.scan = Math.min(1969, i + 60); renderConnect();
+        extra.scan = Math.min(1969, i + 60);
+        // only redraw when a Chog turns up; otherwise just tick the counter so clicks on the page aren't lost
+        const n = document.getElementById("scanN"); if (extra.mine.length !== had || !n) renderConnect(); else n.textContent = `checking ${extra.scan} / 1,969…`;
       }
     }
     try { localStorage.setItem(cacheKey(), JSON.stringify(extra.mine)); } catch (e) { /* ignore */ }
@@ -207,15 +211,15 @@ window.Chain = (() => {
     const scanning = extra.scan !== "done";
     const list = extra.mine.map(id => { const r = rowOf(id); return `<button data-pick="${id}" aria-pressed="${extra.pick === id}"><span class="im" style="background-image:url(${artOf(id)})"></span><b>${r[1]}</b><small>${r[3]}${extra.awake?.[id] ? " · awake" : ""}</small></button>`; }).join("");
     const pick = extra.pick, awake = pick && extra.awake?.[pick];
-    const maxDep = Math.floor(Math.min(extra.walletChog, extra.maxDeposit));
-    return `<div class="card"><dl class="kv"><dt>Wallet</dt><dd>${me.slice(0, 6)}…${me.slice(-4)}</dd><dt>$CHOG in wallet</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON for gas${net.key === "mainnet" ? " and quests" : ""}</dt><dd>${extra.walletMon.toFixed(3)}</dd>${extra.maxDeposit < Infinity ? `<dt>Deposit cap per Chog</dt><dd>${fmt(extra.maxDeposit)}</dd>` : ""}</dl>
-      ${net.mocks ? `<div class="row"><button class="btn sm" data-chain="faucetChog">Get 100,000 test $CHOG</button><button class="btn sm" data-chain="mintChog">Mint a free test Chog</button></div>` : `<div class="sub">Need $CHOG? Buy it on <a href="https://nad.fun" target="_blank" rel="noopener">nad.fun</a>, or wake with any amount from 10,000.</div>`}</div>
-      <div class="h">1. Your Chogs ${scanning ? `<span class="sub">checking ${extra.scan || 0} / 1,969…</span>` : `<span class="sub">${extra.mine.length} found</span>`}</div>
-      <div class="row"><label class="sub" for="cId">Know your Chog's token ID?</label><input id="cId" class="qamt" type="number" min="1" max="1969" placeholder="e.g. 561"><button class="btn sm" data-chain="useId">Use it</button>${scanning ? "" : `<button class="btn sm ghost" data-chain="rescan">Scan again</button>`}</div>
-      ${list ? `<div class="pick">${list}</div>` : scanning ? "" : `<p class="sub">This wallet holds no ${net.mocks ? "test " : ""}Chog${net.mocks ? ". Mint one above." : " Genesis NFT. Buy one on a Monad NFT marketplace (OpenSea, Magic Eden), or try Testnet City."}</p>`}
-      ${pick ? `<div class="card"><div class="h">2. ${awake ? "Enter the city" : "Wake it"}</div>
-        ${awake ? `<button class="btn gold" data-chain="enterCity">Play ${rowOf(pick)[1]}</button>`
-          : `<label class="sub" for="cDep">Deposit (min 10,000 $CHOG)</label><input type="range" id="cDep" min="10000" max="${Math.max(10000, maxDep)}" step="1000" value="${Math.max(10000, Math.min(20000, maxDep))}"><div class="row sp"><b class="num" id="cDepV">${fmt(Math.max(10000, Math.min(20000, maxDep)))}</b><button class="btn gold" data-chain="wake" ${maxDep < 10000 ? "disabled" : ""}>Approve and wake</button></div>${maxDep < 10000 ? `<div class="sub">You need at least 10,000 $CHOG in this wallet.</div>` : ""}`}</div>` : ""}`;
+    const maxDep = Math.floor(Math.min(extra.walletChog, extra.maxDeposit)), dep = Math.max(10000, Math.min(20000, maxDep));
+    return `<div class="card"><dl class="kv"><dt>Wallet</dt><dd>${me.slice(0, 6)}…${me.slice(-4)}</dd><dt>$CHOG in wallet</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON for gas${net.key === "mainnet" ? " and app squares" : ""}</dt><dd>${extra.walletMon.toFixed(3)}</dd>${extra.maxDeposit < Infinity ? `<dt>Deposit cap per Chog</dt><dd>${fmt(extra.maxDeposit)}</dd>` : ""}</dl>
+      ${net.mocks ? `<div class="row" style="margin-top:12px"><button class="btn sm" data-chain="faucetChog">Get 100,000 test $CHOG</button><button class="btn sm" data-chain="mintChog">Mint a free test Chog</button></div>` : `<p class="tiny" style="margin-top:10px">Need $CHOG? Land on a nad.fun square in the game, or wake with any amount from 10,000.</p>`}</div>
+      <div class="row between"><h3>Your Chogs</h3><span class="tiny" id="scanN">${scanning ? `checking ${extra.scan || 0} / 1,969…` : `${extra.mine.length} found`}</span></div>
+      <div class="row"><label class="tiny" for="cId">Know your Chog's token ID?</label><input id="cId" class="qamt" type="number" min="1" max="1969" placeholder="e.g. 561"><button class="btn sm" data-chain="useId">Use it</button>${scanning ? "" : `<button class="btn sm ghost" data-chain="rescan">Scan again</button>`}</div>
+      ${list ? `<div class="pick">${list}</div>` : scanning ? "" : `<p class="muted small">This wallet holds no ${net.mocks ? "test Chog yet. Mint one above." : "Chog Genesis NFT. Try Testnet City instead."}</p>`}
+      ${pick ? `<div class="card stack"><h3>${awake ? "Open the account" : `Open an account for ${rowOf(pick)[1]}`}</h3>
+        ${awake ? `<p class="muted small">This Chog already has an account.</p><button class="btn primary lg" data-chain="enterCity">Enter as ${rowOf(pick)[1]}</button>`
+          : `<label class="tiny" for="cDep">Deposit (min 10,000 $CHOG)</label><input type="range" id="cDep" min="10000" max="${Math.max(10000, maxDep)}" step="1000" value="${dep}"><div class="row between"><b class="num" id="cDepV">${fmt(dep)}</b><button class="btn primary" data-chain="wake" ${maxDep < 10000 ? "disabled" : ""}>Approve and open account</button></div>${maxDep < 10000 ? `<p class="tiny">You need at least 10,000 $CHOG in this wallet.</p>` : ""}`}</div>` : ""}`;
   }
 
   // ---------- reading the city ----------
@@ -251,13 +255,40 @@ window.Chain = (() => {
         pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, seasonAppraisal: old.seasonAppraisal ?? 0, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
       };
     });
+    const before = G.me && G.me.id === myId ? { unclaimed: G.me.unclaimed, jar: G.me.jar } : null;
     G.me = G.chogs.find(c => c.id === myId) || G.me;
+    liveDiff(before, G.me);
     if (G.me && me) {
       const q = await rc(() => gameR.cashOuts(myId));
       G.me.queue = Number(q.net) ? [{ net: fe(q.net), at: Number(q.readyAt) / 60, ready: now >= Number(q.readyAt) }] : [];
-      await loadPositions(); await loadWallet();
+      await loadPositions(); await loadWallet(); saveSnap();
     }
     render();
+  }
+  const snapKey = () => `cows.snap.${net.key}.${myId}`;
+  function snapOf(c) { return { t: G.t, unclaimed: c.unclaimed, jar: c.jar, cash: c.cash, bricks: brickValue(c), pos: c.pos, season: G.seasonNo, warden: c.warden }; }
+  function awaySummary(old) {
+    const c = G.me; if (!c) return;
+    G.activity = []; G.lastSeen = old ? old.t : G.t;
+    if (!old) act("welcome", `Welcome to ${net.label}. Everything that happens to ${c.name} while you're away shows up here`);
+    else {
+      const rent = c.unclaimed - old.unclaimed, hyped = c.jar - old.jar;
+      if (rent > 0.5) act("rent", `While you were away, Chogs landed on your streets and paid ${fmt(rent)} rent`, rent);
+      if (hyped > 0.5) act("hype", `Someone hyped you with ${fmt(hyped)} $CHOG while you were away`, hyped);
+      if (c.warden > old.warden) act("guard", "Your guards caught a robber while you were away");
+      if (G.seasonNo > old.season) act("season", `Season ${old.season} ended while you were away`);
+      if (rent < -0.5 && c.cash <= old.cash) act("heist", `Your unclaimed rent dropped by ${fmt(-rent)}. Someone may have pulled off a HEIST`, rent);
+      G.activity.forEach(a => a.t = old.t + 1);
+    }
+    saveSnap();
+  }
+  function saveSnap() { if (G.me) try { localStorage.setItem(snapKey(), JSON.stringify(snapOf(G.me))); } catch (_) { /* storage blocked */ } }
+  // live changes while you're here
+  function liveDiff(prev, c) {
+    if (!prev || !c) return;
+    const rent = c.unclaimed - prev.unclaimed;
+    if (rent > 0.5 && !G.busy) act("rent", `Another Chog landed on your streets and paid you ${fmt(rent)} rent`, rent);
+    if (c.jar - prev.jar > 0.5) act("hype", `Someone hyped you with ${fmt(c.jar - prev.jar)} $CHOG`, c.jar - prev.jar);
   }
   async function loadPositions() {
     extra.positions = [];
@@ -283,10 +314,12 @@ window.Chain = (() => {
   }
   async function enterCity() {
     myId = extra.pick; G.wallet = { chog: extra.walletChog, mon: extra.walletMon, usdc: 0 };
-    $("#wake").hidden = true;
-    $("#lastev").textContent = "Press ROLL. Every roll is two quick transactions: commit, then land.";
-    await refresh(); clearInterval(timer); timer = setInterval(() => { if (!busy && !G.busy && !document.hidden) refresh().catch(() => {}); }, 15000);
-    window.Guide?.on("woke");
+    say("Loading the city…");
+    let old = null; try { old = JSON.parse(localStorage.getItem(snapKey()) || "null"); } catch (_) { /* storage blocked */ }
+    await refresh(); awaySummary(old);
+    enterApp();
+    const le = $("#lastev"); if (le) le.textContent = "Press ROLL. Every roll is two quick transactions: commit, then land.";
+    clearInterval(timer); timer = setInterval(() => { if (!busy && !G.busy && !document.hidden) refresh().catch(() => {}); }, 15000);
   }
   async function roll() {
     const c = G.me; if (!c || G.busy || busy) return;
@@ -315,7 +348,7 @@ window.Chain = (() => {
         if (landed.rentPaid > 0n) msg += ` Paid ${fmt(fe(landed.rentPaid))} rent.`;
         if (landed.bricksBought > 0n) msg += ` Your plan bought ${landed.bricksBought} Bricks.`;
         if (card !== null) msg += ` Card: ${CARD_TEXT[card]}`;
-        log(msg, "me"); $("#lastev").textContent = msg;
+        log(msg, "me"); const le = $("#lastev"); if (le) le.textContent = msg;
       }
       await refresh();
       const pos = G.me.pos;
@@ -364,39 +397,34 @@ window.Chain = (() => {
     if (r) { await refresh(); openTile(sq, true); window.Guide?.on("quest", { i: sq, first: true }); }
   }
   function questHtml(p, here) {
-    const s = net.squares[p.i], why = net.notWired?.[p.i];
-    if (!s) return `<div class="quest"><div class="row sp"><b>Dapp quest · ${p.dapp}</b><span class="pill tier">Link only</span></div>
-      <div>${why || "This square links to the real app. Proof-of-visit stamps need our receipt signer, which isn't live yet, so no stamp here for now."}</div>
-      <div class="row"><a class="btn sm" href="${p.url}" target="_blank" rel="noopener">Open ${p.dapp} ↗</a></div></div>`;
-    return `<div class="quest"><div class="row sp"><b>Dapp quest · ${p.dapp}</b><span class="pill ok">On-chain${net.mocks ? " (test)" : ", real"}</span></div>
-      <div>${s.label}.</div>
-      <div class="sub">First time: a permanent Patron Stamp (+1% claim weight). Once a day: +1 free roll. ${s.kind === "lst" || s.kind === "uni" ? "The position is held for this Chog and can be withdrawn by its holder after 7 days." : ""}</div>
-      ${here ? `<div class="row"><label class="sub" for="qAmt">MON</label><input id="qAmt" class="qamt" type="number" min="0.01" step="0.01" value="${net.questMon}"><button class="btn purple sm" data-chainquest="${p.i}">Do it on-chain</button></div>` : `<span class="sub">Land here to do this quest.</span>`}
-      <div class="row"><a class="btn sm" href="${p.url}" target="_blank" rel="noopener">Open ${p.dapp} ↗</a></div></div>`;
+    const s = net.squares[p.i]; if (!s) return null;
+    return `<div class="questbox"><div class="row between"><b>${p.dapp}</b><span class="pill ok">${net.mocks ? "On-chain (test stand-in)" : "Real, on Monad"}</span></div>
+      <p class="small">${s.label}.</p>
+      <p class="tiny">First time: a permanent Patron Stamp (+1% claim weight). Once a day: +1 free roll.${s.kind === "lst" || s.kind === "uni" ? " The position is held by this Chog and its holder can withdraw it after 7 days." : ""}</p>
+      ${here ? `<div class="row"><label class="tiny" for="qAmt">MON</label><input id="qAmt" class="qamt" type="number" min="0.01" step="0.01" value="${net.questMon}"><button class="btn primary sm" data-chainquest="${p.i}">Do it on-chain</button></div>` : `<p class="tiny">Land here to use it.</p>`}</div>`;
   }
   function positionsHtml() {
     const now = Date.now() / 1000;
-    return `<div class="card"><div class="h">Dapp positions held by your Chog</div>
-      ${extra.positions.length ? `<div class="list">${extra.positions.map((p, i) => `<div class="li"><span class="sw" style="background:${D[SQ[p.sq].d].c}"></span><span><div class="t">${p.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${p.sym}</div><div class="s">${SQ[p.sq].name} · ${now >= p.unlock ? "unlocked" : "unlocks " + new Date(p.unlock * 1000).toLocaleString()}</div></span>${now >= p.unlock ? `<button class="btn sm" data-chainwd="${i}">Withdraw</button>` : `<span class="pill warn">locked</span>`}</div>`).join("")}</div>`
-        : `<p class="sub">None yet. Stations and Uniswap Boardwalk put real positions inside your Chog.</p>`}
-      <div class="note">Positions belong to the NFT. If you sell the Chog, the buyer can withdraw them.</div></div>`;
+    return `<div class="card"><h3>App positions held by your Chog</h3>
+      ${extra.positions.length ? `<div class="stack" style="margin-top:10px">${extra.positions.map((p, i) => `<div class="row between"><span><b>${p.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${p.sym}</b><br><span class="tiny">${SQ[p.sq].name} · ${now >= p.unlock ? "unlocked" : "unlocks " + new Date(p.unlock * 1000).toLocaleString()}</span></span>${now >= p.unlock ? `<button class="btn sm" data-chainwd="${i}">Withdraw</button>` : `<span class="pill warn">locked</span>`}</div>`).join("")}</div>`
+        : `<p class="muted small" style="margin-top:6px">None yet. The station squares and Uniswap Boardwalk put real positions inside your Chog.</p>`}
+      <p class="tiny" style="margin-top:10px">Positions belong to the NFT. If you sell the Chog, the buyer can withdraw them.</p></div>`;
   }
   function walletHtml() {
-    return `<div class="card"><div class="h">Your wallet (outside the Chog)</div>
-      <dl class="kv"><dt>$CHOG</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON</dt><dd>${extra.walletMon.toFixed(3)}</dd></dl>
-      <div class="row"><button class="btn sm" data-chain="topup5k">Top up 5,000 $CHOG into the Chog</button><a class="btn sm ghost" href="${net.explorer}/address/${net.game}" target="_blank" rel="noopener">Game contract ↗</a></div></div>`;
+    return `<dl class="kv"><dt>$CHOG in your wallet</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON</dt><dd>${extra.walletMon.toFixed(3)}</dd><dt>Game contract</dt><dd><a href="${net.explorer}/address/${net.game}" target="_blank" rel="noopener">${net.game.slice(0, 8)}…</a></dd></dl>`;
   }
   function ledgerHtml() {
     const ok = Math.abs(extra.held - extra.accounted) < 1e-6;
-    return `<div class="card"><div class="h">Zero-sum check (on-chain)</div><div class="sub">The contract's $CHOG balance must equal everything it owes. Read live from ${net.name}.</div>
-      <dl class="kv"><dt>$CHOG held by the game</dt><dd>${fmt(extra.held)}</dd><dt>accounted()</dt><dd>${fmt(extra.accounted)}</dd><dt>Status</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill no">mismatch</span>'}</dd></dl></div>`;
+    return `<dl class="kv"><dt>$CHOG held by the game</dt><dd>${fmt(extra.held)}</dd><dt>Owed to players and pots</dt><dd>${fmt(extra.accounted)}</dd><dt>Zero-sum check</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill bad">mismatch</span>'}</dd></dl>`;
   }
+  // Chog-to-Chog messages need their own contract (ChogMail), which isn't deployed yet.
+  function dm() { toast("On-chain messages between Chogs are coming soon. They work in Practice City today."); }
 
   // ---------- wiring ----------
   document.addEventListener("click", async e => {
     const b = e.target.closest("[data-chain],[data-pick],[data-chainquest],[data-chainwd],[data-mode-back]"); if (!b || !net) return;
     if (b.dataset.modeBack !== undefined) { location.hash = ""; location.reload(); return; }
-    if (b.dataset.pick) { extra.pick = +b.dataset.pick; renderConnect(); const s = $("#cDep"); if (s) s.oninput = () => { $("#cDepV").textContent = fmt(+s.value); }; return; }
+    if (b.dataset.pick) { extra.pick = +b.dataset.pick; renderConnect(); return; }
     if (b.dataset.chainquest) return quest(+b.dataset.chainquest);
     if (b.dataset.chainwd) return withdrawPos(+b.dataset.chainwd);
     const a = b.dataset.chain;
@@ -414,5 +442,5 @@ window.Chain = (() => {
     }
   });
 
-  return { on, enter, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
+  return { on, enter, dm, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
 })();

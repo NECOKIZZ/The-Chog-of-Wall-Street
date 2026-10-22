@@ -211,7 +211,7 @@ function payRent(c, p, dice) {
     if (h === G.me && c !== G.me && share > 0) {
       if (G.t <= h.taxUntil) act("rent", `${c.name} landed on ${p.name} and paid you rent`, share);
       else act("taxlost", `${c.name} landed on ${p.name}, but your Property Tax was unpaid. ${fmt(share)} went to the Commons`, -share);
-      if (c.bot && rnd() < 0.08) sendDM(c, G.me, line("rentPaid", p.name));
+      if (c.bot && rnd() < 0.03) sendDM(c, G.me, line("rentPaid", p.name));
     }
   }
   if (paid < rent) { c.broke = true; toJail(c); }
@@ -378,7 +378,18 @@ function advance(mins) {
   }
   G.tick = 0;
 }
+// Season-end wealth tax: the bottom quarter of active Chogs (5+ rolls, awake 3+ days) pays 5% of its cash into the pot, which then pays the top.
+function wealthTax() {
+  const eligible = G.chogs.filter(c => c.rollsSeason >= 5 && G.t - c.woke >= 3 * DAY && !c.bankrupt);
+  const ranked = [...eligible].sort((a, b) => appraisal(a) - appraisal(b));
+  const bottom = ranked.slice(0, Math.floor(eligible.length / 4));
+  let total = 0;
+  bottom.forEach(c => { const x = c.cash * 0.05; c.cash -= x; G.season += x; total += x; if (c === G.me) act("wealthtax", `Season ended with you in the bottom quarter. You paid 5% of your cash to the season pot`, -x); });
+  if (total) log(`Wealth tax: the bottom ${bottom.length} Chogs paid ${fmt(total)} into the season pot.`);
+  return bottom;
+}
 function endSeason() {
+  wealthTax();
   const pot = G.season; const ranked = [...G.chogs].sort((a, b) => (appraisal(b) - b.seasonAppraisal) - (appraisal(a) - a.seasonAppraisal));
   const top = ranked.slice(0, 10); const tw = top.reduce((a, _, i) => a + (10 - i), 0);
   top.forEach((c, i) => { c.cash += pot * 0.4 * (10 - i) / tw; });

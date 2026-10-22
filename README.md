@@ -54,7 +54,7 @@ You can also open [`app/index.html`](app/index.html) directly in a browser. That
 ## Repo
 | Path | What |
 |---|---|
-| `app/` | The game UI. `app/src/build.sh` builds `app/index.html` from `src/` (rules engine `game.js`, onboarding `guide.js`, styles `head.html`) |
+| `app/` | The game UI. `app/src/build.sh` builds `app/index.html` from `src/` (styles `style.html`, page `shell.html`, rules `engine.js`, interface `ui.js`, onboarding `guide.js`, on-chain `chain.js`) |
 | `contracts/` | Solidity core (`ChogOfWallStreet.sol`), mocks, Hardhat tests (incl. the zero-sum invariant), deploy script |
 | `docs/PLAN.md` | The full design: economy, board, withdrawal rules, retention, exploits, MVP |
 | `docs/research/` | Teardowns of Chog Raid, Fomopoly, Daemon, Hoodopoly, Stonkboard, Vault Street, Upland and $MONO, and what we took from each |

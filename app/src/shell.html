@@ -1,0 +1,96 @@
+
+<header class="nav">
+  <div class="navpill">
+    <button class="brand" data-go="landing" aria-label="The Chog of Wall Street, home"><i>CW</i><span>The Chog of Wall Street</span></button>
+    <nav class="navlinks landing-links" id="landingLinks">
+      <a href="#how">How it works</a><a href="#apps">The board</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
+      <button class="btn primary sm" data-go="onboard">Open an account</button>
+    </nav>
+    <nav class="navlinks app-links" id="appLinks" hidden>
+      <button class="roomlink" data-room="desk">Desk</button>
+      <button class="roomlink" data-room="map">Map</button>
+      <button class="roomlink" data-room="bank">Bank</button>
+      <button class="roomlink" data-room="rules">Rules</button>
+      <span class="citybadge" id="cityBadge">Practice</span>
+      <button class="me-chip" id="meChip" data-room="desk"><i class="avatar" id="meAvatar"></i><span id="meWorth">—</span></button>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= LANDING ================= -->
+<main id="landing">
+  <section class="hero wrap">
+    <div class="herogrid">
+      <div>
+        <div class="eyebrow">Chogathon 2026 · Built on Monad</div>
+        <h1>The city where Chogs own the land.</h1>
+        <p class="lead">Roll your Chog around Monad City. Buy Bricks in the streets you land on, and collect rent from every Chog that lands there after you. Everything you build lives inside the NFT.</p>
+        <div class="row">
+          <button class="btn primary lg" data-go="onboard">Open an account</button>
+          <button class="btn ghost lg" data-go="rules">Read the rules</button>
+        </div>
+        <p class="tiny" style="margin-top:14px">Try it free in Practice City. No wallet needed.</p>
+      </div>
+      <div class="mapbox angled" id="heroMap" aria-hidden="true"></div>
+    </div>
+  </section>
+  <div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
+
+  <section class="band a" id="how"><div class="wrap">
+    <div class="sechead"><div class="eyebrow">How it works</div><h2>Four moves. That's the whole game.</h2><p>You never wait for a turn. Play a few rolls whenever you like, and your Chog keeps earning while you're away.</p></div>
+    <div class="steps">
+      <div class="card step"><div class="n">1</div><h3>Open an account</h3><p class="muted">Deposit $CHOG into your Chog. That's its cash for the city.</p></div>
+      <div class="card step"><div class="n">2</div><h3>Roll</h3><p class="muted">Your Chog moves. Your buying plan buys Bricks (shares) of the street it lands on.</p></div>
+      <div class="card step"><div class="n">3</div><h3>Collect rent</h3><p class="muted">Every Chog that lands on your street pays rent to its Brick holders. Claim it from your Desk.</p></div>
+      <div class="card step"><div class="n">4</div><h3>Stay or sell</h3><p class="muted">Bricks never leave the Chog. Cashing out costs 10 to 20%. Selling the whole Chog keeps everything.</p></div>
+    </div>
+  </div></section>
+
+  <section class="band b" id="apps"><div class="wrap">
+    <div class="sechead"><div class="eyebrow">The board</div><h2>Six squares are real Monad apps.</h2><p>Land on one and your Chog does the real thing on Monad, without leaving the game. The positions belong to the NFT.</p></div>
+    <div class="apps" id="appCards"></div>
+  </div></section>
+
+  <section class="band c" id="why"><div class="wrap split">
+    <div class="sechead" style="margin:0"><div class="eyebrow" style="color:inherit;opacity:.7">Why your Chog gets more valuable</div><h2>The land belongs to the NFT, not to your wallet.</h2>
+      <p>Bricks, stamps and Prestige are recorded against your Chog's token ID. They can't be withdrawn or sent anywhere. Sell the Chog and the buyer gets the whole empire. That's what makes every Chog worth more than its floor.</p></div>
+    <div class="stack">
+      <div class="card"><h3>Nothing is minted</h3><p class="muted">Every coin you earn was paid by another Chog or a fan. The game never prints money.</p></div>
+      <div class="card"><h3>Leaving costs, staying pays</h3><p class="muted">Cash-outs are taxed 10 to 20% and the tax goes to the players who stay. Every day you stay adds 1% Prestige.</p></div>
+      <div class="card"><h3>Fair for newcomers</h3><p class="muted">One Chog can own at most 40% of a street, and the cheapest streets are reserved for small Chogs.</p></div>
+    </div>
+  </div></section>
+
+  <section class="band a" id="cities"><div class="wrap">
+    <div class="sechead"><div class="eyebrow">Three cities</div><h2>Same board. Pick your stakes.</h2></div>
+    <div class="cities">
+      <button class="city" data-city="practice"><span class="row between"><h3>Practice City</h3><span class="pill ok">No wallet</span></span><span class="what">Play money and 14 bot Chogs that keep playing. Fast-forward time to see rent, Prestige and seasons play out.</span><span class="btn primary">Play Practice</span></button>
+      <button class="city" data-city="testnet"><span class="row between"><h3>Testnet City</h3><span class="pill purple">Monad testnet</span></span><span class="what">The real contracts on Monad testnet. Mint a free test Chog and free test $CHOG. Every move is a real transaction.</span><span class="btn">Enter Testnet</span></button>
+      <button class="city" data-city="mainnet"><span class="row between"><h3>Mainnet City</h3><span class="pill warn">Coming soon</span></span><span class="what">Your real Chog Genesis NFT and real $CHOG. The six app squares do real things on Monad.</span><span class="btn" disabled>Not open yet</span></button>
+    </div>
+  </div></section>
+
+  <section class="band c" id="faq"><div class="wrap">
+    <div class="sechead"><div class="eyebrow" style="color:inherit;opacity:.7">FAQ</div><h2>Questions people ask</h2></div>
+    <div class="faq" id="faqList"></div>
+    <footer>The Chog of Wall Street · a Chogathon 2026 project · community-built, not an official Chog product · unaudited contracts, play with what you can afford to lose.</footer>
+  </div></section>
+</main>
+
+<!-- ================= OPEN AN ACCOUNT ================= -->
+<main id="onboard" class="onboard wrap" hidden></main>
+
+<!-- ================= APP ================= -->
+<main id="app" class="appmain wrap" hidden>
+  <section id="room-desk" data-roomview="desk"></section>
+  <section id="room-map" data-roomview="map" hidden></section>
+  <section id="room-bank" data-roomview="bank" hidden></section>
+  <section id="room-rules" data-roomview="rules" hidden></section>
+</main>
+
+<nav class="tabbar" id="tabbar" hidden>
+  <button data-room="desk">Desk</button><button data-room="map">Map</button><button data-room="bank">Bank</button><button data-room="rules">Rules</button>
+</nav>
+
+<div class="scrim" id="scrim" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>

@@ -42,11 +42,11 @@ Full design: [`PLAN.md`](PLAN.md). Research on the 8 reference projects: [`resea
 | `contracts/config/monad-mainnet.js` | Every verified mainnet address, plus the notes on what's **not** wired (Kuru, Magma) and why |
 | `contracts/test/*.test.js` | 10 unit tests (incl. the zero-sum invariant) and 7 mainnet-fork tests (`FORK=1 npx hardhat test test/mainnet.fork.test.js`) |
 | `app/src/` | The app parts. `build.sh` builds the single file `app/index.html` |
-| `app/src/game.js` | **Current** UI and engine (one file). It's what the live site uses today |
-| `app/src/engine.js` | **New** engine-only split of `game.js` (see §4). Not wired into the build yet |
-| `app/src/chain.js` | On-chain mode: wallet connect, find your Chogs (with retry), wake, roll+land, claim, tax, hype, heist, cash-out, real quests with quotes, positions |
-| `app/src/guide.js` | Onboarding: a 10-step tour, one-time hints, the "First rounds" checklist, Help and glossary |
-| `app/src/modes.js` | The city picker (Practice, Testnet, Mainnet) |
+| `app/src/style.html`, `shell.html` | Design tokens and styles (light and dark), and the page skeleton: landing, open-an-account, the app rooms, modal, toast |
+| `app/src/engine.js` | Rules engine for Practice: board, Bricks, rent, tax, cards, heist, hype, seasons (incl. the wealth tax), bots, `act()` for the Desk, DMs with bot replies |
+| `app/src/ui.js` | The interface: landing, open an account, Desk, Map (angled or flat), Bank, Rules, title deed, DM, card and heist modals, the Practice clock |
+| `app/src/chain.js` | On-chain mode: wallet connect, find your Chogs (with retry), open an account, roll+land, claim, tax, hype, heist, cash-out, real app squares with quotes, positions, "While you were away" from a local snapshot |
+| `app/src/guide.js` | Onboarding: an 8-step tour (Desk → Map → Roll → title deed → plan → Bank → checklist), one-time tips tied to their room, the "First rounds" checklist on the Desk |
 | `app/src/logos.js` | Embedded brand icons for the 5 wired dapps (nad.fun, FastLane, aPriori, Kintsu, Uniswap) |
 | `app/src/chogtable.js`, `chogart.js` | All 1,969 Chogs (name, image number, tier, traits) plus 15 embedded portraits |
 
@@ -112,28 +112,23 @@ Full design: [`PLAN.md`](PLAN.md). Research on the 8 reference projects: [`resea
    - Dark mode: paper `#0E1511`, card `#18231C`, ink `#ECF2EA`, purple `#9C7CFF`, green `#33D07D`.
    - Light is the default, and every colour is a token.
 
-**State of the rebuild:**
-- `engine.js` is extracted from `game.js` lines 1–370. It has the new board names, cards, `act()` for the Desk and the DM system with bot replies.
-- `logos.js` is ready.
-- **Next:**
-  1. Write `ui.js` (landing, onboarding, Desk, Map, Bank, Rules, title deed, DM, card and heist modals). Port the remaining practice actions from `game.js` (lines 371–805: `rollMe`, `doQuest`, `requestCashOut`, `claimCashOuts`, `initWorld`, `wakeScreen`) into it.
-  2. Rewrite `head.html` and `body.html`.
-  3. Point `guide.js` selectors at the new elements: the tour becomes Desk → Map/ROLL → title deed → Bank → checklist.
-  4. Adapt `chain.js`: it renders into the onboarding step and calls `openTile`, `openCard`, `openHeist`, `showDice`, `renderPawns`, `render`, `log`, `toast`, `closeSheet`. Keep those names. For "While you were away" on-chain, save a per-Chog snapshot in `localStorage` and show the differences on return (rent earned, rent robbed, hype received). Event logs are limited to 100 blocks.
-  5. Update `build.sh` to include `logos.js engine.js ui.js` (and drop `game.js`).
-  6. Re-run the browser tests (§6), then push.
+**State of the rebuild: done and live.** `build.sh` now builds from `style.html`, `shell.html`, `logos.js`, `engine.js`, `ui.js`, `guide.js`, `chain.js`. The old `game.js`, `head.html`, `body.html` and `modes.js` are deleted.
 
-  The old `game.js` stays live until the new UI passes the tests.
+Tested in headless Chromium (scripts are simple Playwright drivers, not in the repo):
+- Practice: landing → open an account → the full tour → 8 rolls with app squares → +3 days → Bank → title deed → DM → two full seasons. Ledger balanced to the coin, no JS errors, no horizontal scroll at 400 px.
+- Testnet: connect (injected test wallet) → enter Chog #2 → roll on-chain (commit + land) → station title deed shows its on-chain action → Bank shows the on-chain zero-sum check "balanced".
+
+Testnet squares: all six branded squares (1, 3, 5, 25, 35, 37) now route through the mock swap adapter (`contracts/scripts/wire-testnet-squares.js`); square 39 was unhooked because it's a plain street now.
 
 ---
 
 ## 5. Requested mechanics, not built yet (judge each against the golden rule)
 | Request | Recommended simple version | Notes |
 |---|---|---|
-| **Leaderboard** of top and bottom players by net worth (cash + Bricks + houses) | Rank by Appraisal (`appraisal(c)` / on-chain `appraisal(id)`). Show top 10, your rank, and the bottom 3 | Contradicts "only see others via tiles" a little. That's acceptable: it's a list, not the map |
-| **Season timer** | A countdown on the Desk and the Map rail to `seasonStart + 7 days`, turning into the Closing Bell timer in the last 24 h | Data exists: `G.seasonStartT`, `G.bellEnd`; on-chain `seasonStart()`, `bellEnd()` |
-| **Bankrupt means your game ends** | Bankrupt = cash 0 and can't pay rent (Bricks were auto-sold). The Chog is **out until next season** (can't roll), unless the owner tops up | Already partly there: auto-sell, then Broke, then Rug Jail. On-chain it needs a `bankruptUntilSeason` flag |
-| **Season end: the bottom pays the top** | **Wealth tax:** at season end, the bottom 25% of *active* Chogs pay 5% of their **cash** (never Bricks) into the season pot, which goes to the top 10 | Zero-sum. Spare inactive or new Chogs (woken under 3 days), or newcomers churn. In Practice it's easy (`endSeason()`). On-chain it needs a Merkle or keeper settlement: **do it in Practice first, on-chain later** |
+| **Leaderboard** | **Built.** Desk shows the top 5, you, and the bottom 3 by net worth (Appraisal) | — |
+| **Season timer** | **Built.** Countdown on the Desk; turns red in the Closing Bell | — |
+| **Bankrupt means your game ends** | **Built in Practice.** Cash 0 and no Bricks left to sell → can't roll until next season, unless you top up in the Bank | On-chain it still needs a `bankruptUntilSeason` flag |
+| **Season end: the bottom pays the top** | **Built in Practice** (`wealthTax()` in `engine.js`): the bottom 25% of active Chogs (5+ rolls, awake 3+ days) pay 5% of their cash into the season pot before it's paid out | On-chain needs a Merkle or keeper settlement. Later |
 | **Absent players** | Rolls store up to 8. Property Tax can be prepaid 3 days (autopay in Practice). The Sleeping Chog Dividend and Prestige keep growing. **On-chain autopilot:** `setAutopilot(id, plan, until)`, then anyone can call `autoRoll(id)` (commit) and `settle(id)` for the 5 $CHOG tip | Autopilot isn't on-chain yet. It's a small contract change |
 | **Over-present players** | Already handled: 1 roll per 30 min (cap 8), extra rolls cost 100 $CHOG (max 10 a day), the 40% per-Chog cap per street, Fair Start streets, Property Tax that scales with holdings, and no cash transfers between Chogs | — |
 | **nad.fun "launch a token on landing"** | Not as a real launch: the game can't spend a player's MON while they're offline. An in-game "Chog coin" curve is possible but overlaps with Bricks | **Parked** |

@@ -120,6 +120,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
     mapping(uint256 => mapping(uint256 => uint64)) public questDay; // tokenId => square => last UTC day
     mapping(uint256 => address) public adapterOf; // square => Tier-A adapter
     mapping(bytes32 => bool) public usedReceipt;
+    uint256[] public awakeIds; // every woken Chog, for the app to draw the board
+    uint256 public maxDeposit = type(uint256).max; // guarded launch: cap on a Chog's cash after a deposit
 
     struct CashOut { address to; uint128 net; uint64 readyAt; }
     mapping(uint256 => CashOut) public cashOuts;
@@ -192,6 +194,16 @@ contract ChogOfWallStreet is ReentrancyGuard {
         for (uint256 i; i < ids.length; ++i) chogs[ids[i]].tier = tiers[i];
     }
     function freezeTiers() external { if (msg.sender != admin) revert NotOwner(); tiersFrozen = true; }
+    /// @notice Guarded launch: limits how much $CHOG a Chog can hold after a deposit. Never touches funds.
+    function setMaxDeposit(uint256 m) external { if (msg.sender != admin) revert NotOwner(); maxDeposit = m; }
+    function awakeCount() external view returns (uint256) { return awakeIds.length; }
+    function awakeList(uint256 from, uint256 n) external view returns (uint256[] memory ids) {
+        uint256 len = awakeIds.length;
+        if (from >= len) return ids;
+        if (from + n > len) n = len - from;
+        ids = new uint256[](n);
+        for (uint256 i; i < n; ++i) ids[i] = awakeIds[from + i];
+    }
 
     // ------------------------------------------------------------------ views
     function kind(uint256 sq) public pure returns (uint8) { return uint8(KINDS[sq]); }
@@ -292,6 +304,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         Chog storage c = chogs[id];
         if (CHOGS.ownerOf(id) != msg.sender) revert NotOwner();
         if (c.awake || amount < MIN_DEPOSIT) revert Bad();
+        if (amount > maxDeposit) revert Cap();
         CHOG.safeTransferFrom(msg.sender, address(this), amount);
         uint256 div = (sleepAcc - c.sleepDebt) / E;
         if (div > sleepPool) div = sleepPool;
@@ -308,6 +321,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         c.rolls = uint8(ROLL_CAP);
         c.plan = 1;
         c.seasonNo = uint32(seasonNo);
+        awakeIds.push(id);
         _addCash(c, amount + div);
         emit Woke(id, msg.sender, amount, div);
     }
@@ -321,6 +335,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     function topUp(uint256 id, uint256 amount) external nonReentrant {
         if (!chogs[id].awake) revert NotAwake();
+        if (chogs[id].cash + amount > maxDeposit) revert Cap();
         CHOG.safeTransferFrom(msg.sender, address(this), amount);
         _addCash(chogs[id], amount);
     }

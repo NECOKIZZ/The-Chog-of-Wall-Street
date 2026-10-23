@@ -105,6 +105,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* ---------- nav ---------- */
 .nav{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--card);border-bottom:1.5px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
 .navpill{display:flex;align-items:center;gap:6px;max-width:1200px;height:64px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand .mark{width:30px;height:30px;flex:none}
+.L-foot .brand{color:#fff}
+.L-foot .brand .mark rect{fill:#fff}
 .brand{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.02em;white-space:nowrap;display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);border:0;background:none;padding:0}
 .brand i{width:32px;height:32px;border-radius:10px;background:var(--purple);display:grid;place-items:center;color:var(--on-purple);font-style:normal;font-size:13px;font-family:var(--display);font-weight:800;box-shadow:0 3px 0 var(--purple-deep)}
 .navlinks{display:flex;gap:2px;margin-left:auto;align-items:center}
@@ -113,7 +116,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .navlinks .roomlink[aria-current="page"]{color:var(--purple)}
 .navlinks .roomlink[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-13px;height:3px;border-radius:3px 3px 0 0;background:var(--purple)}
 .navtools{display:flex;gap:6px;align-items:center;margin-left:6px}
-@media (max-width:760px){.landing-links a{display:none}.brand span{display:none}}
+@media (max-width:760px){.landing-links a{display:none}}
+@media (max-width:420px){.app-links~* .brand span,body:has(#app:not([hidden])) .brand span{display:none}}
 
 /* ---------- landing ---------- */
 .hero{background:radial-gradient(1100px 620px at 78% 35%,var(--stage-2),var(--stage));color:var(--on-stage);padding-top:150px;padding-bottom:120px;position:relative;overflow:hidden}
@@ -535,6 +539,7 @@ details.more .renttable{margin-top:8px}
 @media (max-width:720px){.L-stats{grid-template-columns:1fr}}
 .L-logos{display:flex;flex-wrap:wrap;gap:16px 44px;align-items:center}
 .L-logos span{display:flex;align-items:center;gap:12px;font-weight:800;font-size:clamp(17px,2vw,22px);opacity:.9}
+.L-logos img.full{padding:0;background:none}
 .L-logos img,.L-logos b{width:36px;height:36px;border-radius:10px;background:#fff;object-fit:contain;padding:3px;display:grid;place-items:center;color:#1C1433;font-size:18px}
 .L-cities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:clamp(56px,9vh,96px);border-top:1px solid var(--line-2)}
 .L-city{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:12px;padding:32px 28px 36px 0;border-right:1px solid var(--line-2);color:var(--ink)}

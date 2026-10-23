@@ -69,7 +69,7 @@ function renderLanding() {
     ["Seasons", "Every week the Chogs that grew most share the prize pool.", "t4", `<div class="L-podium">${[758, 561, 1].map((id, k) => `<div class="p${k}"><i style="background-image:url(${art(id)})"></i><b>${[2, 1, 3][k]}</b></div>`).join("")}</div><span class="L-chip L-c2">Season pot $13.24</span>`],
   ];
   $("#landTiles").innerHTML = tiles.map(([h, p, cls, scene]) => `<figure class="L-tile"><div class="L-scene ${cls}">${scene}</div><figcaption><b>${h}</b><span>${p}</span></figcaption></figure>`).join("");
-  $("#landLogos").innerHTML = ["nadfun", "fastlane", "apriori", "kintsu", "uniswap"].map(k => `<span><img src="${LOGOS[k]}" alt="">${WIRED[k].name}</span>`).join("") + `<span><b class="L-morpho">M</b>Morpho</span><span><b class="L-monad">◆</b>Monad</span>`;
+  $("#landLogos").innerHTML = ["nadfun", "fastlane", "apriori", "kintsu", "uniswap"].map(k => `<span><img src="${LOGOS[k]}" alt="">${WIRED[k].name}</span>`).join("") + `<span><img class="full" src="${LOGOS.morpho}" alt="">Morpho</span><span><img class="full" src="${LOGOS.monad}" alt="">Monad</span>`;
   // statements light up word by word as they scroll into view
   document.querySelectorAll(".L-reveal").forEach(el => { if (!el.dataset.split) { el.dataset.split = 1; el.innerHTML = el.textContent.split(" ").map(w => `<span>${w}</span>`).join(" "); } });
   const lit = () => document.querySelectorAll(".L-reveal").forEach(el => { const r = el.getBoundingClientRect(), k = Math.min(1, Math.max(0, (innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.35))), w = el.children, n = Math.round(k * w.length); for (let i = 0; i < w.length; i++) w[i].classList.toggle("on", i < n); });
@@ -444,7 +444,7 @@ function deskSavings() {
   return savingsCard({ value: v, principal: pr, wallet: G.wallet.usdc, apy: `${(G.vault.apy * 100).toFixed(1)}% a year`, venue: "Morpho · Hyperithm USDC Apex", note: "In Practice the vault pays a steady rate on play money. On mainnet this is the real Morpho vault on Monad and the rate moves with the market." });
 }
 function savingsCard(o) {
-  return `<div class="cols"><div class="card stack"><div class="row between"><h3>Savings desk</h3><span class="pill purple">${o.venue}</span></div>
+  return `<div class="cols"><div class="card stack"><div class="row between"><h3>Savings desk</h3><span class="pill purple" style="display:inline-flex;align-items:center;gap:6px"><img src="${LOGOS.morpho}" alt="" style="width:16px;height:16px;border-radius:4px">${o.venue}</span></div>
       <div class="treasury"><div class="stat"><span>Saved</span><b>${fmt(o.value)}</b></div><div class="stat"><span>Interest earned</span><b class="${o.value - o.principal > 0.5 ? "up" : ""}">${fmt(Math.max(0, o.value - o.principal))}</b></div><div class="stat"><span>Rate</span><b style="font-size:15px">${o.apy}</b></div><div class="stat"><span>USDC in wallet</span><b>${fmt(o.wallet)}</b></div></div>
       <div class="row"><label class="tiny" for="saveAmt">USDC</label><input id="saveAmt" class="qamt" type="number" min="0.01" step="0.01" value="${Math.max(0, Math.min(10, o.wallet / 1000)).toFixed(2)}"><button class="btn primary sm" data-save>Save</button>${o.value >= 1 ? `<button class="btn sm" data-unsave>Withdraw everything</button>` : ""}</div></div>
     <div class="card tint stack"><h3>Not game money</h3><p class="small muted">Savings never enter the game. Your dollars go from your wallet into a USDC lending vault on Monad and earn what borrowers there pay. Other players never pay for it, so the city stays zero-sum.</p>

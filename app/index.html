@@ -1448,11 +1448,7 @@ function renderLeaders() {
   const plinth = (x, k) => x ? `<div class="plinth p${k + 1}" data-profile="${x.id}" role="button" tabindex="0"><i class="avatar" style="background-image:url(${x.img})"></i><b>${x === G.me ? "You" : esc(x.name)}</b><span class="small">${bySeason ? money(val(x)) : `<span class="num">${fmt(val(x))}</span>`}</span><div class="base">${k + 1}</div></div>` : "<div></div>";
   const row = (x, i) => `<div class="lbrow ${x === G.me ? "me" : ""} ${bq.has(x) ? "inbottom" : ""}" data-profile="${x.id}" role="button" tabindex="0"><span class="num"><b>#${i + 1}</b></span><i class="avatar" style="background-image:url(${x.img})"></i><span class="nm">${x === G.me ? "You" : esc(x.name)}${bq.has(x) ? ' <span class="pill bad" title="Bottom quarter of active Chogs: pays 5% of cash at season end">5%</span>' : ""}</span><span class="num">${fmt(appraisal(x))}</span><span class="chg">${money(seasonGain(x))}</span></div>`;
   const rows = [];
-  r.forEach((x, i) => {
-    if (i === 0) rows.push(`<div class="lbzone top"><span>Top 10 · share 45% of the prize pool</span><span>${fmt(G.season)} in the pot</span></div>`);
-    if (i === 10 && n > 10) rows.push(`<div class="lbzone"><span>Everyone else</span><span>a red 5% marks the bottom quarter of active Chogs</span></div>`);
-    rows.push(row(x, i));
-  });
+  r.forEach((x, i) => { if (i >= 3) rows.push(row(x, i)); }); // the top 3 are on the podium
   $("#room-leaders").innerHTML = `
   <div class="pagehead"><div><div class="eyebrow">Season ${G.seasonNo} · ends in ${dur(left)}</div><h1>Leaders</h1></div>
     <div class="lbtabs" role="group" aria-label="Rank by"><button data-lb="season" aria-pressed="${bySeason}">This season</button><button data-lb="rich" aria-pressed="${!bySeason}">Richest</button></div></div>

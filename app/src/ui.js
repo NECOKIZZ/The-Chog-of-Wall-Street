@@ -67,8 +67,6 @@ function renderLanding() {
   const streets = PROPS.filter(x => !x.brand).slice(0, 15), card = (a, k) => { const st = streets[k % streets.length], g = ((a.id * 37) % 900 + 40) * 10, nw = 20000 + ((a.id * 53) % 400) * 120;
     return `<div class="ccard"><i class="cimg" style="background-image:url(${a.img})"></i><div class="cbody"><div class="row between"><b>${esc(a.name.replace(/^CHOG /, ""))}</b><span class="pill purple">${a.tier}</span></div><div class="cstreet"><i style="background:${D[st.d].c}"></i>${st.name}</div><div class="row between"><span class="num">${fmt(nw)}</span><span class="num up">+${fmt(g)}</span></div></div></div>`; };
   $("#heroCards").innerHTML = [0, 1, 2].map(col => { const set = CHOG_ART.filter((_, i) => i % 3 === col).map((a, k) => card(a, k * 3 + col)).join(""); return `<div class="ccol c${col}"><div class="ctrack">${set}${set}</div></div>`; }).join("");
-  $("#heroAvatars").innerHTML = CHOG_ART.slice(0, 5).map(a => `<i class="avatar" style="background-image:url(${a.img})"></i>`).join("");
-  $("#heroLogo").src = LOGOS.nadfun; $("#heroRentAv").style.backgroundImage = `url(${(CHOG_ART.find(a => a.id === 1462) || CHOG_ART[1]).img})`;
 }
 
 // ---------- the board (used by the hero and the Map) ----------

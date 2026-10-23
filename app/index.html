@@ -115,16 +115,16 @@ button{font:inherit;color:inherit;cursor:pointer}
 @media (max-width:760px){.landing-links a{display:none}.brand span{display:none}}
 
 /* ---------- landing ---------- */
-.hero{background:radial-gradient(1100px 620px at 78% 35%,var(--stage-2),var(--stage));color:var(--on-stage);padding-top:116px;padding-bottom:76px;position:relative;overflow:hidden}
+.hero{background:radial-gradient(1100px 620px at 78% 35%,var(--stage-2),var(--stage));color:var(--on-stage);padding-top:150px;padding-bottom:120px;position:relative;overflow:hidden}
 .hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1.2px,transparent 1.2px);background-size:22px 22px;pointer-events:none}
 .hero .wrap{position:relative;z-index:1}
-.herogrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:40px;align-items:center}
+.herogrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:80px;align-items:center;min-height:min(640px,calc(100vh - 230px))}
 @media (max-width:940px){.herogrid{grid-template-columns:1fr}}
 .heropill{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;letter-spacing:.04em;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.14);color:var(--on-stage);margin-bottom:22px}
 .heropill i{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px color-mix(in srgb,var(--gold) 25%,transparent)}
-.hero h1{color:var(--on-stage);font-size:clamp(2.7rem,6.4vw,5.2rem)} .hero h1 em{font-style:normal;color:var(--gold)}
+.hero h1{color:var(--on-stage);font-size:clamp(3rem,7.4vw,6.4rem);line-height:.98} .hero h1 em{font-style:normal;color:var(--gold)}
 .hero p.lead{font-size:clamp(16px,1.6vw,19px);color:var(--on-stage-2);max-width:46ch;margin-top:20px}
-.hero .row{margin-top:30px}
+.hero .row{margin-top:44px}
 .hero .btn.ghost{color:var(--on-stage);border-color:rgba(255,255,255,.3)}
 .heroproof{display:flex;align-items:center;gap:12px;margin-top:28px;color:var(--on-stage-2);font-size:13.5px;flex-wrap:wrap}
 .stackav{display:flex}
@@ -513,20 +513,14 @@ details.more .renttable{margin-top:8px}
   <section class="hero"><div class="wrap">
     <div class="herogrid">
       <div class="herocopy">
-        <span class="heropill"><i></i>Chogathon 2026 · Built on Monad</span>
         <h1>The city where <em>Chogs</em> own the land.</h1>
-        <p class="lead">Roll around Chog Street, buy Bricks where you land, and collect rent every time another Chog lands there. Everything you build lives inside your NFT.</p>
         <div class="row">
           <button class="btn gold lg" data-city="practice">Play free now</button>
           <a class="btn ghost lg" href="#how">How it works</a>
         </div>
-        <div class="heroproof"><span class="stackav" id="heroAvatars"></span><span>1,969 Chogs can play · 6 real Monad apps · nothing is ever minted</span></div>
       </div>
       <div class="herostage" aria-hidden="true">
         <div class="cardwall" id="heroCards"></div>
-        <div class="floatcard fc1"><span class="band" style="background:var(--d-brown)"></span><span class="fcbody"><span class="eyebrow">Title deed</span><b>nad.fun Lane</b><span class="tiny">Rent 120 · Cottage</span></span><img id="heroLogo" alt=""></div>
-        <div class="floatcard fc2"><i class="avatar" id="heroRentAv"></i><span><span class="tiny">#1462 landed on your street</span><b class="up num">RENT +1,540</b></span></div>
-        <div class="floatcard fc3"><span class="tiny">Season ends in</span><b class="num">2d 14h</b></div>
       </div>
     </div>
   </div></section>
@@ -1205,8 +1199,6 @@ function renderLanding() {
   const streets = PROPS.filter(x => !x.brand).slice(0, 15), card = (a, k) => { const st = streets[k % streets.length], g = ((a.id * 37) % 900 + 40) * 10, nw = 20000 + ((a.id * 53) % 400) * 120;
     return `<div class="ccard"><i class="cimg" style="background-image:url(${a.img})"></i><div class="cbody"><div class="row between"><b>${esc(a.name.replace(/^CHOG /, ""))}</b><span class="pill purple">${a.tier}</span></div><div class="cstreet"><i style="background:${D[st.d].c}"></i>${st.name}</div><div class="row between"><span class="num">${fmt(nw)}</span><span class="num up">+${fmt(g)}</span></div></div></div>`; };
   $("#heroCards").innerHTML = [0, 1, 2].map(col => { const set = CHOG_ART.filter((_, i) => i % 3 === col).map((a, k) => card(a, k * 3 + col)).join(""); return `<div class="ccol c${col}"><div class="ctrack">${set}${set}</div></div>`; }).join("");
-  $("#heroAvatars").innerHTML = CHOG_ART.slice(0, 5).map(a => `<i class="avatar" style="background-image:url(${a.img})"></i>`).join("");
-  $("#heroLogo").src = LOGOS.nadfun; $("#heroRentAv").style.backgroundImage = `url(${(CHOG_ART.find(a => a.id === 1462) || CHOG_ART[1]).img})`;
 }
 
 // ---------- the board (used by the hero and the Map) ----------

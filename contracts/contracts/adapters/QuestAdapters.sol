@@ -6,10 +6,10 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// Real Monad mainnet integrations for Tier-A dapp quests. Every adapter is called only by the game, with the
-/// owner's MON. $CHOG bought for the Chog goes straight into the game as the Chog's cash. Any other asset
-/// (USDC, LST shares) is held here against the Chog's tokenId: it belongs to the NFT, travels with a sale,
-/// and the current holder can withdraw it after a 7-day lock.
+/// Real Monad mainnet integrations for Tier-A dapp quests, plus the $CHOG buyback. Every quest adapter is called only by
+/// the game, with the owner's MON. USDC bought for the Chog goes straight into the game as the Chog's cash (the game money).
+/// Any other asset ($CHOG, LST shares) is held here against the Chog's tokenId: it belongs to the NFT, travels with a
+/// sale, and the current holder can withdraw it after a 7-day lock.
 /// Addresses verified on-chain and in fork tests (see contracts/README.md).
 
 interface INadDexRouter {
@@ -24,6 +24,7 @@ interface ISwapRouter02 {
     function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 }
 
+interface IWMON { function withdraw(uint256) external; }
 interface ILstErc4626Native { function deposit(uint256 assets, address receiver) external payable returns (uint256); } // shMON, aprMON
 interface ILstKintsu { function deposit(uint96 minShares, address receiver) external payable returns (uint96); } // sMON
 
@@ -69,21 +70,23 @@ abstract contract QuestAdapterBase is ReentrancyGuard {
     function _minOut(bytes calldata data) internal pure returns (uint256 m) { if (data.length >= 32) m = abi.decode(data, (uint256)); }
 }
 
-/// nad.fun Lane / Chog Alley: buy $CHOG with MON on nad.fun's DEX router. The $CHOG lands in the game as cash.
+/// nad.fun Lane / Chog Alley: buy $CHOG with MON on nad.fun's DEX router. The $CHOG is held for the Chog.
 contract NadFunChogAdapter is QuestAdapterBase {
     INadDexRouter public immutable router;
     address public immutable chog;
     constructor(address game_, IERC721 chogs_, INadDexRouter router_, address chog_) QuestAdapterBase(game_, chogs_) { router = router_; chog = chog_; }
 
-    function run(uint256, address, bytes calldata data) external payable onlyGame nonReentrant returns (uint256 out) {
-        uint256 b0 = IERC20(chog).balanceOf(game);
-        router.buy{value: msg.value}(INadDexRouter.BuyParams(_minOut(data), chog, game, block.timestamp));
-        out = IERC20(chog).balanceOf(game) - b0;
-        if (out < _minOut(data)) revert Slippage();
+    function run(uint256 id, address, bytes calldata data) external payable onlyGame nonReentrant returns (uint256) {
+        uint256 b0 = IERC20(chog).balanceOf(address(this));
+        router.buy{value: msg.value}(INadDexRouter.BuyParams(_minOut(data), chog, address(this), block.timestamp));
+        uint256 got = IERC20(chog).balanceOf(address(this)) - b0;
+        if (got == 0 || got < _minOut(data)) revert Slippage();
+        _hold(id, chog, got);
+        return 0;
     }
 }
 
-/// Uniswap Boardwalk: swap MON → USDC on Uniswap v3 (WMON/USDC 0.3%). USDC is held for the Chog.
+/// Uniswap Boardwalk: swap MON → USDC on Uniswap v3 (WMON/USDC 0.3%). The USDC lands in the Chog's cash.
 contract UniswapUsdcAdapter is QuestAdapterBase {
     ISwapRouter02 public immutable router;
     address public immutable wmon;
@@ -93,13 +96,11 @@ contract UniswapUsdcAdapter is QuestAdapterBase {
         router = router_; wmon = wmon_; usdc = usdc_; fee = fee_;
     }
 
-    function run(uint256 id, address, bytes calldata data) external payable onlyGame nonReentrant returns (uint256) {
-        uint256 b0 = IERC20(usdc).balanceOf(address(this));
-        router.exactInputSingle{value: msg.value}(ISwapRouter02.ExactInputSingleParams(wmon, usdc, fee, address(this), msg.value, _minOut(data), 0));
-        uint256 got = IERC20(usdc).balanceOf(address(this)) - b0;
-        if (got < _minOut(data)) revert Slippage();
-        _hold(id, usdc, got);
-        return 0;
+    function run(uint256, address, bytes calldata data) external payable onlyGame nonReentrant returns (uint256 got) {
+        uint256 b0 = IERC20(usdc).balanceOf(game);
+        router.exactInputSingle{value: msg.value}(ISwapRouter02.ExactInputSingleParams(wmon, usdc, fee, game, msg.value, _minOut(data), 0));
+        got = IERC20(usdc).balanceOf(game) - b0;
+        if (got == 0 || got < _minOut(data)) revert Slippage();
     }
 }
 
@@ -120,4 +121,35 @@ contract LstAdapter is QuestAdapterBase {
         _hold(id, lst, got);
         return 0;
     }
+}
+
+/// $CHOG buyback: the game's fee pot (USDC) → WMON on Uniswap v3 → MON → $CHOG on nad.fun, sent to the burn address.
+/// Only the game can call it, and only with USDC the game approved for that one call.
+contract ChogBuybackAdapter is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+    address public immutable game;
+    ISwapRouter02 public immutable uni;
+    INadDexRouter public immutable nad;
+    address public immutable usdc;
+    address public immutable wmon;
+    address public immutable chog;
+    uint24 public immutable fee;
+    error OnlyGame();
+
+    constructor(address game_, ISwapRouter02 uni_, INadDexRouter nad_, address usdc_, address wmon_, address chog_, uint24 fee_) {
+        game = game_; uni = uni_; nad = nad_; usdc = usdc_; wmon = wmon_; chog = chog_; fee = fee_;
+    }
+
+    function swapToChog(uint256 cashIn, uint256 minChog, address to) external nonReentrant returns (uint256 out) {
+        if (msg.sender != game) revert OnlyGame();
+        IERC20(usdc).safeTransferFrom(game, address(this), cashIn);
+        IERC20(usdc).forceApprove(address(uni), cashIn);
+        uint256 w = uni.exactInputSingle(ISwapRouter02.ExactInputSingleParams(usdc, wmon, fee, address(this), cashIn, 0, 0));
+        IWMON(wmon).withdraw(w);
+        uint256 d0 = IERC20(chog).balanceOf(to);
+        nad.buy{value: w}(INadDexRouter.BuyParams(minChog, chog, to, block.timestamp));
+        out = IERC20(chog).balanceOf(to) - d0;
+    }
+
+    receive() external payable {}
 }

@@ -1,23 +1,25 @@
 "use strict";
 /* ============ The Chog of Wall Street: rules engine (shared by Practice and the on-chain UI) ============ */
 const $ = (s, r = document) => r.querySelector(s);
-const fmt = n => Math.round(n).toLocaleString("en-US");
+// Money is counted in game units of $0.001 (the contract holds USDC). fmt shows dollars; fmtN shows plain counts ($CHOG, Bricks).
+const fmt = n => { const v = Math.round(n) / 1000; return (v < 0 ? "−" : "") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+const fmtN = n => Math.round(n).toLocaleString("en-US");
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const DAY = 1440, HOUR = 60;
 const SUPPLY = 1969;
 
 // ---------- economy constants (mirror docs/PLAN.md) ----------
 const K = {
-  minDeposit: 10000, rollEvery: 30, rollCap: 8, extraRoll: 100,
+  startDeposit: 20000, topUpCap: 20000, idle: 2 * DAY, rollEvery: 30, rollCap: 8, extraRollChog: 100, guardChog: 500, hypeChog: 300,
   buyFee: 0.03, buyBurn: 0.01, sellSpread: 0.05, rentHolders: 0.9,
   propTaxDay: 0.005, taxPrepayMax: 3 * DAY, capShare: 0.4, capFree: 10,
   fairStartMax: 50000, goPct: 0.01, goCap: 500, loungeWin: 0.25,
   bail: 500, gasTaxPct: 0.05, gasTaxCap: 1000, mevTax: 750,
-  heistBase: 55, heistSteal: 0.10, heistFine: 500, heistMinUnclaimed: 500, guardCost: 500,
+  heistBase: 55, heistSteal: 0.10, heistFine: 500, heistMinUnclaimed: 500,
   exitBase: 20, exitFloor: 10, queue: 2 * DAY, dailyCapPct: 0.02, prestigeDay: 1, prestigeCap: 50,
   hypeStep: 0.10, hypeMax: 1.5, hypeDur: 4 * HOUR, hypeBurn: 0.10,
   inflowCommons: 0.8, inflowSleep: 0.1, inflowSeason: 0.1, seasonLen: 7 * DAY,
-  monToChog: 15, // ≈ mainnet rate (1 MON ≈ 14.9 $CHOG via nad.fun, Oct 2026)
+  monUsd: 20, chogPerUnit: 0.75, // ≈ mainnet prices, Oct 2026: 1 MON ≈ $0.02, $1 ≈ 750 $CHOG
 };
 const LEVEL_X = [0, 10, 40, 120, 300, 700];      // reserve ÷ base price thresholds
 const LEVEL_MULT = [1, 2, 4, 7, 11, 16];
@@ -37,12 +39,12 @@ const D = {
   station: { c: "var(--d-station)", n: "Station", p0: 180, rent: 200 },
   util: { c: "var(--d-util)", n: "Utility", p0: 150, rent: 0 },
 };
-// q: [tier, kind, text]   kind: swap (MON→$CHOG into the Chog), stake (MON→LST), deposit (USDC→vault), visit (proof-of-visit receipt)
+// q: [tier, kind, text]   kind: chog (MON→$CHOG held by the Chog), stake (MON→LST held by the Chog), usdc (MON→USDC into the Chog's cash)
 const SQ = [
   { t: "go", name: "GENESIS", sub: "Collect 1% of your Bricks" },
-  { t: "prop", d: "brown", name: "nad.fun Lane", dapp: "nad.fun", brand: "nadfun", q: ["A", "swap", "Buy $CHOG on nad.fun, straight into your Chog"], fair: true },
+  { t: "prop", d: "brown", name: "nad.fun Lane", dapp: "nad.fun", brand: "nadfun", q: ["A", "chog", "Buy $CHOG on nad.fun, held by your Chog"], fair: true },
   { t: "chest", name: "Commons Chest" },
-  { t: "prop", d: "brown", name: "Chog Alley", dapp: "nad.fun", brand: "nadfun", q: ["A", "swap", "Buy $CHOG on nad.fun, straight into your Chog"], fair: true },
+  { t: "prop", d: "brown", name: "Chog Alley", dapp: "nad.fun", brand: "nadfun", q: ["A", "chog", "Buy $CHOG on nad.fun, held by your Chog"], fair: true },
   { t: "tax", name: "Gas Tax", sub: "5% of cash" },
   { t: "prop", d: "station", name: "FastLane Station", dapp: "FastLane shMON", brand: "fastlane", q: ["A", "stake", "Stake MON → shMON, held by your Chog"] },
   { t: "prop", d: "lblue", name: "Penny Stock Row" },
@@ -76,8 +78,8 @@ const SQ = [
   { t: "prop", d: "green", name: "Interest Park" },
   { t: "prop", d: "station", name: "Kintsu Station", dapp: "Kintsu sMON", brand: "kintsu", q: ["A", "stake", "Stake MON → sMON, held by your Chog"] },
   { t: "chance", name: "Market News" },
-  { t: "prop", d: "dblue", name: "Uniswap Boardwalk", dapp: "Uniswap", brand: "uniswap", q: ["A", "usdc", "Swap MON → USDC on Uniswap, held by your Chog"] },
-  { t: "tax", name: "MEV Tax", sub: "Pay 750" },
+  { t: "prop", d: "dblue", name: "Uniswap Boardwalk", dapp: "Uniswap", brand: "uniswap", q: ["A", "usdc", "Swap MON → USDC on Uniswap, straight into your Chog's balance"] },
+  { t: "tax", name: "MEV Tax", sub: "Pay $0.75" },
   { t: "prop", d: "dblue", name: "Chog Exchange Tower" },
 ];
 SQ.forEach((s, i) => { s.i = i; if (s.t === "prop") { s.p0 = D[s.d].p0; s.base = D[s.d].rent; s.supply = 0; s.reserve = 0; s.h = {}; } });
@@ -85,20 +87,20 @@ const PROPS = SQ.filter(s => s.t === "prop");
 
 const ENTROPY = [ // "Market News" squares (Chance)
   ["Bull run. Advance to Chog Exchange Tower.", c => moveTo(c, 39, true)],
-  ["Front-run by a bot. Pay 300 to the Nad Lounge.", c => payTo(c, 300, "lounge")],
+  ["Front-run by a bot. Pay $0.30 to the Nad Lounge.", c => payTo(c, 300, "lounge")],
   ["Lucky streak. +1 free roll.", c => { c.rolls++; }],
-  ["Margin called. Pay 5% of cash (max 800) to the Nad Lounge.", c => payTo(c, Math.min(800, c.cash * 0.05), "lounge")],
-  ["Vault payday. Collect 300 from the Commons.", c => fromCommons(c, 300)],
+  ["Margin called. Pay 5% of cash (max $0.80) to the Nad Lounge.", c => payTo(c, Math.min(800, c.cash * 0.05), "lounge")],
+  ["Vault payday. Collect $0.30 from the Commons.", c => fromCommons(c, 300)],
   ["Rugged. Go straight to Rug Jail.", c => toJail(c)],
   ["Order filled. Advance to the next Station.", c => { const st = [5, 15, 25, 35].find(x => x > c.pos) ?? 5; moveTo(c, st, true); }],
-  ["Airdrop season. Collect 200 from the Commons.", c => fromCommons(c, 200)],
+  ["Airdrop season. Collect $0.20 from the Commons.", c => fromCommons(c, 200)],
 ];
 const CHEST = [ // Commons Chest (community cards)
-  ["Prosperity. Collect 1% of the Commons (max 1,000).", c => fromCommons(c, Math.min(1000, G.commons * 0.01))],
+  ["Prosperity. Collect 1% of the Commons (max $1.00).", c => fromCommons(c, Math.min(1000, G.commons * 0.01))],
   ["Advance to GENESIS.", c => moveTo(c, 0, true)],
   ["Get out of Rug Jail free. Keep this card.", c => { c.jailCard = true; }],
-  ["LP fees. Collect 150 from the Commons.", c => fromCommons(c, 150)],
-  ["Vet bill for your Chog's horns. Pay 100 to the Nad Lounge.", c => payTo(c, 100, "lounge")],
+  ["LP fees. Collect $0.15 from the Commons.", c => fromCommons(c, 150)],
+  ["Vet bill for your Chog's horns. Pay $0.10 to the Nad Lounge.", c => payTo(c, 100, "lounge")],
   ["Your Chog went viral. +1 free roll.", c => { c.rolls++; }],
 ];
 
@@ -107,7 +109,7 @@ const G = {
   t: 0, commons: 60000, lounge: 4000, season: 0, sleep: 0, burned: 0, inflow: 0, outflow: 0,
   seasonNo: 1, seasonStartT: 0, bellEnd: null, lastBuyer: null, golden: null, cashedToday: 0, cashDay: 0,
   me: null, chogs: [], feed: [], plan: "balanced", busy: false, speed: 1, tab: "chog", sheet: null,
-  wallet: { chog: 100000, mon: 1000, usdc: 50 }, mode: "practice",
+  wallet: { usdc: 100000, chog: 50000, mon: 1000 }, mode: "practice", buyback: 0, chogBurned: 0,
   activity: [], inbox: [], lastSeen: 0, page: "desk", auctions: [],
 };
 let seed = 7;
@@ -119,7 +121,7 @@ function mkChog(a, bot) {
     id: a.id, name: a.name.replace(/^CHOG /, ""), full: a.name, img: a.img, tier: a.tier, eyes: a.eyes, head: a.head, body: a.body, mouth: a.mouth,
     bot, pos: 0, cash: 0, rolls: K.rollCap, rollAcc: 0, plan: ["safe", "balanced", "degen"][ri(3)], unclaimed: 0, taxUntil: 0,
     lastCash: 0, woke: 0, stamps: new Set(), qday: {}, pos_: {}, jar: 0, hypeMult: 1, hypeUntil: 0, guards: 0, jail: 0, jailCard: false,
-    rollsSeason: 0, warden: 0, seasonAppraisal: 0, queue: [], mort: {}, auc: {}, immuneUntil: 0, act: 0.25 + rnd() * 0.6, mood: "Chill", lastIncome: 0, prevIncome: 0, income: 0,
+    rollsSeason: 0, warden: 0, seasonAppraisal: 0, queue: [], mort: {}, auc: {}, lastRoll: 0, topSeason: 0, topped: 0, immuneUntil: 0, act: 0.25 + rnd() * 0.6, mood: "Chill", lastIncome: 0, prevIncome: 0, income: 0,
   };
 }
 const traitLine = c => [c.eyes, c.head, c.body, c.mouth].filter(Boolean).join(" · ");
@@ -149,7 +151,15 @@ const line = (k, sq) => BOT_LINES[k][ri(BOT_LINES[k].length)].replace("{sq}", sq
 
 // ---------- money plumbing (zero-sum: every move is between buckets) ----------
 function toCommons(x) { if (x <= 0) return; G.commons += x * K.inflowCommons; G.sleep += x * K.inflowSleep; G.season += x * K.inflowSeason; }
-function burn(x) { G.burned += x; }
+// Fees that used to be burned now fill the buyback pot; the Bank spends it on $CHOG and burns that.
+function burn(x) { G.buyback += x; }
+function runBuyback() { if (G.buyback < 1) return; G.burned += G.buyback; G.chogBurned += G.buyback * K.chogPerUnit; G.buyback = 0; }
+// The 48-hour rule: a Chog that hasn't rolled in 48 hours earns nothing until it rolls again.
+const earningUntil = c => Math.min(c.taxUntil, (c.lastRoll || 0) + K.idle);
+const idle = c => G.t > (c.lastRoll || 0) + K.idle;
+// Everyone opens with the same $20; top-ups (and USDC from app squares) are capped at $20 per Chog per season.
+function topUpRoom(c) { if (c.topSeason !== G.seasonNo) { c.topSeason = G.seasonNo; c.topped = 0; } return Math.max(0, K.topUpCap - c.topped); }
+function addTopUp(c, x) { topUpRoom(c); c.topped += x; c.cash += x; G.inflow += x; }
 function payTo(c, amt, where) {
   amt = Math.min(amt, c.cash); if (amt <= 0) return 0; c.cash -= amt;
   if (where === "lounge") G.lounge += amt; else if (where === "commons") toCommons(amt); else if (where === "burn") burn(amt);
@@ -254,6 +264,7 @@ function payRent(c, p, dice) {
     const h = byId(+id); let share = holdersPart * n / p.supply;
     if (hot) { const extra = Math.min(share, G.commons); G.commons -= extra; share += extra; }
     if (h.mort?.[p.i]) { G.commons += share; continue; } // mortgaged: the Bank keeps this street's rent
+    if (idle(h)) { toCommons(share); if (h === G.me && c !== G.me && share > 0) act("idle", `${c.name} landed on ${p.name}, but you haven't rolled in 48 hours. ${fmt(share)} went to the Commons`, -share); continue; }
     if (G.t <= h.taxUntil) { h.unclaimed += share; h.income += share; } else toCommons(share); // unpaid Property Tax: rent goes to the Commons
     if (h === G.me && c !== G.me && share > 0) {
       if (G.t <= h.taxUntil) act("rent", `${c.name} landed on ${p.name} and paid you rent`, share);
@@ -297,8 +308,8 @@ function claim(c) {
   const want = base * (claimMult(c) - 1);
   const bonus = Math.max(0, Math.min(want, G.commons * 0.1)); // bonuses only from Commons surplus
   G.commons -= bonus;
-  let hype = 0;
-  if (hypeActive(c) > 1) { hype = Math.min(base * (hypeActive(c) - 1), c.jar); c.jar -= hype; }
+  let hype = 0; // hype boost, also from the Commons surplus, within the same 10% limit
+  if (hypeActive(c) > 1) { hype = Math.max(0, Math.min(base * (hypeActive(c) - 1), G.commons * 0.1 - bonus, G.commons)); G.commons -= hype; }
   c.unclaimed = 0; c.cash += base + bonus + hype;
   c.prevIncome = c.lastIncome; c.lastIncome = base;
   return base + bonus + hype;
@@ -365,8 +376,8 @@ function refill(c) {
 // ---------- bots ----------
 function botTurn(c) {
   if (c.rolls <= 0) return;
-  c.rolls--; c.rollsSeason++;
-  if (c.cash < 800) { const top = 6000 + ri(8000); c.cash += top; G.inflow += top; c.broke = false; }
+  c.rolls--; c.rollsSeason++; c.lastRoll = G.t;
+  if (c.cash < 800) { const top = Math.min(5000, topUpRoom(c)); if (top > 0) { addTopUp(c, top); c.broke = false; } }
   const d1 = 1 + ri(6), d2 = 1 + ri(6);
   if (c.jail > 0) { if (d1 === d2 || c.jail === 1 || c.jailCard) { c.jail = 0; c.jailCard = false; } else { c.jail--; return; } }
   step(c, d1 + d2);
@@ -388,13 +399,16 @@ function botCashOut(c) {
   G.commons += tax * 0.5; burn(tax * 0.25); G.season += tax * 0.25; G.cashedToday += amt; G.outflow += amt - tax; c.lastCash = G.t;
   log(`${c.name} cashed out ${fmt(amt)}: paid ${fmt(tax)} exit tax, Prestige reset to 0.`, "bad");
 }
+// Hype is paid in $CHOG (never USDC): 10% burned, 90% tipped to the target's owner. The target's rent claims get
+// ×1.1 for 4 hours (max ×1.5), with the extra paid from the Commons surplus. Bots hype with their own $CHOG.
 function hype(from, to, amt, isBot) {
-  amt = Math.min(amt, from.cash); if (amt < 50) return false;
-  if (from === to) return false;
-  from.cash -= amt; const b = amt * K.hypeBurn; burn(b); to.jar += amt - b;
+  if (from === to || amt < 10) return false;
+  if (from === G.me) { if (G.wallet.chog < amt) return false; G.wallet.chog -= amt; }
+  const b = amt * K.hypeBurn; G.chogBurned += b;
+  if (to === G.me) G.wallet.chog += amt - b;
   to.hypeMult = Math.min(K.hypeMax, (G.t < to.hypeUntil ? to.hypeMult : 1) + K.hypeStep); to.hypeUntil = G.t + K.hypeDur;
-  if (to === G.me) { log(`${from.name} hyped you with ${fmt(amt)} $CHOG. Claims ×${to.hypeMult.toFixed(2)} for 4h.`, "me"); act("hype", `${from.name} hyped you. Your claims are boosted ×${to.hypeMult.toFixed(2)} for 4 hours`, amt - b); }
-  else if (!isBot) log(`You hyped ${to.name} with ${fmt(amt)} $CHOG (${fmt(b)} burned).`, "me");
+  if (to === G.me) { log(`${from.name} hyped you with ${fmtN(amt)} $CHOG. Claims ×${to.hypeMult.toFixed(2)} for 4h.`, "me"); act("hype", `${from.name} hyped you: ${fmtN(amt - b)} $CHOG tipped to you, and your claims are boosted ×${to.hypeMult.toFixed(2)} for 4 hours`); }
+  else if (!isBot) log(`You hyped ${to.name} with ${fmtN(amt)} $CHOG (${fmtN(b)} burned).`, "me");
   return true;
 }
 function heist(r, t) {
@@ -425,10 +439,11 @@ function advance(mins) {
     if (inBell() && G.t >= G.bellEnd) endSeason();
   }
   G.tick = 0;
+  runBuyback();
 }
 // Season-end wealth tax: the bottom quarter of active Chogs (5+ rolls, awake 3+ days) pays 5% of its cash into the pot, which then pays the top.
 function wealthTax() {
-  const eligible = G.chogs.filter(c => c.rollsSeason >= 5 && G.t - c.woke >= 3 * DAY && !c.bankrupt);
+  const eligible = G.chogs.filter(c => (c.rollsSeason >= 5 || idle(c)) && G.t - c.woke >= 3 * DAY && !c.bankrupt); // sitting still doesn't dodge it
   const ranked = [...eligible].sort((a, b) => appraisal(a) - appraisal(b));
   const bottom = ranked.slice(0, Math.floor(eligible.length / 4));
   let total = 0;

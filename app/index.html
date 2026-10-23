@@ -247,6 +247,7 @@ body[data-mode="mainnet"] .citybadge{background:var(--gold-soft);color:var(--gol
 .thread .t{font-weight:700;font-size:14px} .thread .s{font-size:13px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .unread{width:9px;height:9px;border-radius:50%;background:var(--purple)}
 .timer{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1.1}
+.timer.warn{color:var(--gold)}
 .citytoday{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 @media (max-width:520px){.citytoday{grid-template-columns:1fr}}
 
@@ -514,7 +515,7 @@ details.more .renttable{margin-top:8px}
   <section class="band a" id="how"><div class="wrap">
     <div class="sechead"><div class="eyebrow">How it works</div><h2>Four moves. That's the whole game.</h2><p>You never wait for a turn. Play a few rolls whenever you like, and your Chog keeps earning while you're away.</p></div>
     <div class="steps">
-      <div class="card step"><div class="n">1</div><h3>Open an account</h3><p class="muted">Deposit $CHOG into your Chog. That's its cash for the city.</p></div>
+      <div class="card step"><div class="n">1</div><h3>Open an account</h3><p class="muted">Deposit $20 of USDC into your Chog. Everyone starts with the same $20.</p></div>
       <div class="card step"><div class="n">2</div><h3>Roll</h3><p class="muted">Your Chog moves. Your buying plan buys Bricks (shares) of the street it lands on.</p></div>
       <div class="card step"><div class="n">3</div><h3>Collect rent</h3><p class="muted">Every Chog that lands on your street pays rent to its Brick holders. Claim it from your Desk.</p></div>
       <div class="card step"><div class="n">4</div><h3>Stay or sell</h3><p class="muted">Bricks never leave the Chog. Cashing out costs 10 to 20%. Selling the whole Chog keeps everything.</p></div>
@@ -530,9 +531,9 @@ details.more .renttable{margin-top:8px}
     <div class="sechead" style="margin:0"><div class="eyebrow" style="color:inherit;opacity:.7">Why your Chog gets more valuable</div><h2>The land belongs to the NFT, not to your wallet.</h2>
       <p>Bricks, stamps and Prestige are recorded against your Chog's token ID. They can't be withdrawn or sent anywhere. Sell the Chog and the buyer gets the whole empire. That's what makes every Chog worth more than its floor.</p></div>
     <div class="stack">
-      <div class="card"><h3>Nothing is minted</h3><p class="muted">Every coin you earn was paid by another Chog or a fan. The game never prints money.</p></div>
+      <div class="card"><h3>Nothing is minted</h3><p class="muted">Every dollar you earn was paid by another Chog. The game never prints money, and part of every fee buys $CHOG and burns it.</p></div>
       <div class="card"><h3>Leaving costs, staying pays</h3><p class="muted">Cash-outs are taxed 10 to 20% and the tax goes to the players who stay. Every day you stay adds 1% Prestige.</p></div>
-      <div class="card"><h3>Fair for newcomers</h3><p class="muted">One Chog can own at most 40% of a street, and the cheapest streets are reserved for small Chogs.</p></div>
+      <div class="card"><h3>Fair for everyone</h3><p class="muted">Everyone starts with $20, one Chog can own at most 40% of a street, and streets stop paying Chogs that haven't rolled in 48 hours.</p></div>
     </div>
   </div></section>
 
@@ -540,8 +541,8 @@ details.more .renttable{margin-top:8px}
     <div class="sechead"><div class="eyebrow">Three cities</div><h2>Same board. Pick your stakes.</h2></div>
     <div class="cities">
       <button class="city" data-city="practice"><span class="row between"><h3>Practice City</h3><span class="pill ok">No wallet</span></span><span class="what">Play money and 14 bot Chogs that keep playing. Fast-forward time to see rent, Prestige and seasons play out.</span><span class="btn primary">Play Practice</span></button>
-      <button class="city" data-city="testnet"><span class="row between"><h3>Testnet City</h3><span class="pill purple">Monad testnet</span></span><span class="what">The real contracts on Monad testnet. Mint a free test Chog and free test $CHOG. Every move is a real transaction.</span><span class="btn">Enter Testnet</span></button>
-      <button class="city" data-city="mainnet"><span class="row between"><h3>Mainnet City</h3><span class="pill warn">Coming soon</span></span><span class="what">Your real Chog Genesis NFT and real $CHOG. The six app squares do real things on Monad.</span><span class="btn" disabled>Not open yet</span></button>
+      <button class="city" data-city="testnet"><span class="row between"><h3>Testnet City</h3><span class="pill purple">Monad testnet</span></span><span class="what">The real contracts on Monad testnet. Mint a free test Chog, test USDC and test $CHOG. Every move is a real transaction.</span><span class="btn">Enter Testnet</span></button>
+      <button class="city" data-city="mainnet"><span class="row between"><h3>Mainnet City</h3><span class="pill warn">Coming soon</span></span><span class="what">Your real Chog Genesis NFT, real USDC, and $CHOG for power-ups. The six app squares do real things on Monad.</span><span class="btn" disabled>Not open yet</span></button>
     </div>
   </div></section>
 
@@ -582,23 +583,25 @@ const LOGOS={"nadfun": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCA
 "use strict";
 /* ============ The Chog of Wall Street: rules engine (shared by Practice and the on-chain UI) ============ */
 const $ = (s, r = document) => r.querySelector(s);
-const fmt = n => Math.round(n).toLocaleString("en-US");
+// Money is counted in game units of $0.001 (the contract holds USDC). fmt shows dollars; fmtN shows plain counts ($CHOG, Bricks).
+const fmt = n => { const v = Math.round(n) / 1000; return (v < 0 ? "−" : "") + "$" + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+const fmtN = n => Math.round(n).toLocaleString("en-US");
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const DAY = 1440, HOUR = 60;
 const SUPPLY = 1969;
 
 // ---------- economy constants (mirror docs/PLAN.md) ----------
 const K = {
-  minDeposit: 10000, rollEvery: 30, rollCap: 8, extraRoll: 100,
+  startDeposit: 20000, topUpCap: 20000, idle: 2 * DAY, rollEvery: 30, rollCap: 8, extraRollChog: 100, guardChog: 500, hypeChog: 300,
   buyFee: 0.03, buyBurn: 0.01, sellSpread: 0.05, rentHolders: 0.9,
   propTaxDay: 0.005, taxPrepayMax: 3 * DAY, capShare: 0.4, capFree: 10,
   fairStartMax: 50000, goPct: 0.01, goCap: 500, loungeWin: 0.25,
   bail: 500, gasTaxPct: 0.05, gasTaxCap: 1000, mevTax: 750,
-  heistBase: 55, heistSteal: 0.10, heistFine: 500, heistMinUnclaimed: 500, guardCost: 500,
+  heistBase: 55, heistSteal: 0.10, heistFine: 500, heistMinUnclaimed: 500,
   exitBase: 20, exitFloor: 10, queue: 2 * DAY, dailyCapPct: 0.02, prestigeDay: 1, prestigeCap: 50,
   hypeStep: 0.10, hypeMax: 1.5, hypeDur: 4 * HOUR, hypeBurn: 0.10,
   inflowCommons: 0.8, inflowSleep: 0.1, inflowSeason: 0.1, seasonLen: 7 * DAY,
-  monToChog: 15, // ≈ mainnet rate (1 MON ≈ 14.9 $CHOG via nad.fun, Oct 2026)
+  monUsd: 20, chogPerUnit: 0.75, // ≈ mainnet prices, Oct 2026: 1 MON ≈ $0.02, $1 ≈ 750 $CHOG
 };
 const LEVEL_X = [0, 10, 40, 120, 300, 700];      // reserve ÷ base price thresholds
 const LEVEL_MULT = [1, 2, 4, 7, 11, 16];
@@ -618,12 +621,12 @@ const D = {
   station: { c: "var(--d-station)", n: "Station", p0: 180, rent: 200 },
   util: { c: "var(--d-util)", n: "Utility", p0: 150, rent: 0 },
 };
-// q: [tier, kind, text]   kind: swap (MON→$CHOG into the Chog), stake (MON→LST), deposit (USDC→vault), visit (proof-of-visit receipt)
+// q: [tier, kind, text]   kind: chog (MON→$CHOG held by the Chog), stake (MON→LST held by the Chog), usdc (MON→USDC into the Chog's cash)
 const SQ = [
   { t: "go", name: "GENESIS", sub: "Collect 1% of your Bricks" },
-  { t: "prop", d: "brown", name: "nad.fun Lane", dapp: "nad.fun", brand: "nadfun", q: ["A", "swap", "Buy $CHOG on nad.fun, straight into your Chog"], fair: true },
+  { t: "prop", d: "brown", name: "nad.fun Lane", dapp: "nad.fun", brand: "nadfun", q: ["A", "chog", "Buy $CHOG on nad.fun, held by your Chog"], fair: true },
   { t: "chest", name: "Commons Chest" },
-  { t: "prop", d: "brown", name: "Chog Alley", dapp: "nad.fun", brand: "nadfun", q: ["A", "swap", "Buy $CHOG on nad.fun, straight into your Chog"], fair: true },
+  { t: "prop", d: "brown", name: "Chog Alley", dapp: "nad.fun", brand: "nadfun", q: ["A", "chog", "Buy $CHOG on nad.fun, held by your Chog"], fair: true },
   { t: "tax", name: "Gas Tax", sub: "5% of cash" },
   { t: "prop", d: "station", name: "FastLane Station", dapp: "FastLane shMON", brand: "fastlane", q: ["A", "stake", "Stake MON → shMON, held by your Chog"] },
   { t: "prop", d: "lblue", name: "Penny Stock Row" },
@@ -657,8 +660,8 @@ const SQ = [
   { t: "prop", d: "green", name: "Interest Park" },
   { t: "prop", d: "station", name: "Kintsu Station", dapp: "Kintsu sMON", brand: "kintsu", q: ["A", "stake", "Stake MON → sMON, held by your Chog"] },
   { t: "chance", name: "Market News" },
-  { t: "prop", d: "dblue", name: "Uniswap Boardwalk", dapp: "Uniswap", brand: "uniswap", q: ["A", "usdc", "Swap MON → USDC on Uniswap, held by your Chog"] },
-  { t: "tax", name: "MEV Tax", sub: "Pay 750" },
+  { t: "prop", d: "dblue", name: "Uniswap Boardwalk", dapp: "Uniswap", brand: "uniswap", q: ["A", "usdc", "Swap MON → USDC on Uniswap, straight into your Chog's balance"] },
+  { t: "tax", name: "MEV Tax", sub: "Pay $0.75" },
   { t: "prop", d: "dblue", name: "Chog Exchange Tower" },
 ];
 SQ.forEach((s, i) => { s.i = i; if (s.t === "prop") { s.p0 = D[s.d].p0; s.base = D[s.d].rent; s.supply = 0; s.reserve = 0; s.h = {}; } });
@@ -666,20 +669,20 @@ const PROPS = SQ.filter(s => s.t === "prop");
 
 const ENTROPY = [ // "Market News" squares (Chance)
   ["Bull run. Advance to Chog Exchange Tower.", c => moveTo(c, 39, true)],
-  ["Front-run by a bot. Pay 300 to the Nad Lounge.", c => payTo(c, 300, "lounge")],
+  ["Front-run by a bot. Pay $0.30 to the Nad Lounge.", c => payTo(c, 300, "lounge")],
   ["Lucky streak. +1 free roll.", c => { c.rolls++; }],
-  ["Margin called. Pay 5% of cash (max 800) to the Nad Lounge.", c => payTo(c, Math.min(800, c.cash * 0.05), "lounge")],
-  ["Vault payday. Collect 300 from the Commons.", c => fromCommons(c, 300)],
+  ["Margin called. Pay 5% of cash (max $0.80) to the Nad Lounge.", c => payTo(c, Math.min(800, c.cash * 0.05), "lounge")],
+  ["Vault payday. Collect $0.30 from the Commons.", c => fromCommons(c, 300)],
   ["Rugged. Go straight to Rug Jail.", c => toJail(c)],
   ["Order filled. Advance to the next Station.", c => { const st = [5, 15, 25, 35].find(x => x > c.pos) ?? 5; moveTo(c, st, true); }],
-  ["Airdrop season. Collect 200 from the Commons.", c => fromCommons(c, 200)],
+  ["Airdrop season. Collect $0.20 from the Commons.", c => fromCommons(c, 200)],
 ];
 const CHEST = [ // Commons Chest (community cards)
-  ["Prosperity. Collect 1% of the Commons (max 1,000).", c => fromCommons(c, Math.min(1000, G.commons * 0.01))],
+  ["Prosperity. Collect 1% of the Commons (max $1.00).", c => fromCommons(c, Math.min(1000, G.commons * 0.01))],
   ["Advance to GENESIS.", c => moveTo(c, 0, true)],
   ["Get out of Rug Jail free. Keep this card.", c => { c.jailCard = true; }],
-  ["LP fees. Collect 150 from the Commons.", c => fromCommons(c, 150)],
-  ["Vet bill for your Chog's horns. Pay 100 to the Nad Lounge.", c => payTo(c, 100, "lounge")],
+  ["LP fees. Collect $0.15 from the Commons.", c => fromCommons(c, 150)],
+  ["Vet bill for your Chog's horns. Pay $0.10 to the Nad Lounge.", c => payTo(c, 100, "lounge")],
   ["Your Chog went viral. +1 free roll.", c => { c.rolls++; }],
 ];
 
@@ -688,7 +691,7 @@ const G = {
   t: 0, commons: 60000, lounge: 4000, season: 0, sleep: 0, burned: 0, inflow: 0, outflow: 0,
   seasonNo: 1, seasonStartT: 0, bellEnd: null, lastBuyer: null, golden: null, cashedToday: 0, cashDay: 0,
   me: null, chogs: [], feed: [], plan: "balanced", busy: false, speed: 1, tab: "chog", sheet: null,
-  wallet: { chog: 100000, mon: 1000, usdc: 50 }, mode: "practice",
+  wallet: { usdc: 100000, chog: 50000, mon: 1000 }, mode: "practice", buyback: 0, chogBurned: 0,
   activity: [], inbox: [], lastSeen: 0, page: "desk", auctions: [],
 };
 let seed = 7;
@@ -700,7 +703,7 @@ function mkChog(a, bot) {
     id: a.id, name: a.name.replace(/^CHOG /, ""), full: a.name, img: a.img, tier: a.tier, eyes: a.eyes, head: a.head, body: a.body, mouth: a.mouth,
     bot, pos: 0, cash: 0, rolls: K.rollCap, rollAcc: 0, plan: ["safe", "balanced", "degen"][ri(3)], unclaimed: 0, taxUntil: 0,
     lastCash: 0, woke: 0, stamps: new Set(), qday: {}, pos_: {}, jar: 0, hypeMult: 1, hypeUntil: 0, guards: 0, jail: 0, jailCard: false,
-    rollsSeason: 0, warden: 0, seasonAppraisal: 0, queue: [], mort: {}, auc: {}, immuneUntil: 0, act: 0.25 + rnd() * 0.6, mood: "Chill", lastIncome: 0, prevIncome: 0, income: 0,
+    rollsSeason: 0, warden: 0, seasonAppraisal: 0, queue: [], mort: {}, auc: {}, lastRoll: 0, topSeason: 0, topped: 0, immuneUntil: 0, act: 0.25 + rnd() * 0.6, mood: "Chill", lastIncome: 0, prevIncome: 0, income: 0,
   };
 }
 const traitLine = c => [c.eyes, c.head, c.body, c.mouth].filter(Boolean).join(" · ");
@@ -730,7 +733,15 @@ const line = (k, sq) => BOT_LINES[k][ri(BOT_LINES[k].length)].replace("{sq}", sq
 
 // ---------- money plumbing (zero-sum: every move is between buckets) ----------
 function toCommons(x) { if (x <= 0) return; G.commons += x * K.inflowCommons; G.sleep += x * K.inflowSleep; G.season += x * K.inflowSeason; }
-function burn(x) { G.burned += x; }
+// Fees that used to be burned now fill the buyback pot; the Bank spends it on $CHOG and burns that.
+function burn(x) { G.buyback += x; }
+function runBuyback() { if (G.buyback < 1) return; G.burned += G.buyback; G.chogBurned += G.buyback * K.chogPerUnit; G.buyback = 0; }
+// The 48-hour rule: a Chog that hasn't rolled in 48 hours earns nothing until it rolls again.
+const earningUntil = c => Math.min(c.taxUntil, (c.lastRoll || 0) + K.idle);
+const idle = c => G.t > (c.lastRoll || 0) + K.idle;
+// Everyone opens with the same $20; top-ups (and USDC from app squares) are capped at $20 per Chog per season.
+function topUpRoom(c) { if (c.topSeason !== G.seasonNo) { c.topSeason = G.seasonNo; c.topped = 0; } return Math.max(0, K.topUpCap - c.topped); }
+function addTopUp(c, x) { topUpRoom(c); c.topped += x; c.cash += x; G.inflow += x; }
 function payTo(c, amt, where) {
   amt = Math.min(amt, c.cash); if (amt <= 0) return 0; c.cash -= amt;
   if (where === "lounge") G.lounge += amt; else if (where === "commons") toCommons(amt); else if (where === "burn") burn(amt);
@@ -835,6 +846,7 @@ function payRent(c, p, dice) {
     const h = byId(+id); let share = holdersPart * n / p.supply;
     if (hot) { const extra = Math.min(share, G.commons); G.commons -= extra; share += extra; }
     if (h.mort?.[p.i]) { G.commons += share; continue; } // mortgaged: the Bank keeps this street's rent
+    if (idle(h)) { toCommons(share); if (h === G.me && c !== G.me && share > 0) act("idle", `${c.name} landed on ${p.name}, but you haven't rolled in 48 hours. ${fmt(share)} went to the Commons`, -share); continue; }
     if (G.t <= h.taxUntil) { h.unclaimed += share; h.income += share; } else toCommons(share); // unpaid Property Tax: rent goes to the Commons
     if (h === G.me && c !== G.me && share > 0) {
       if (G.t <= h.taxUntil) act("rent", `${c.name} landed on ${p.name} and paid you rent`, share);
@@ -878,8 +890,8 @@ function claim(c) {
   const want = base * (claimMult(c) - 1);
   const bonus = Math.max(0, Math.min(want, G.commons * 0.1)); // bonuses only from Commons surplus
   G.commons -= bonus;
-  let hype = 0;
-  if (hypeActive(c) > 1) { hype = Math.min(base * (hypeActive(c) - 1), c.jar); c.jar -= hype; }
+  let hype = 0; // hype boost, also from the Commons surplus, within the same 10% limit
+  if (hypeActive(c) > 1) { hype = Math.max(0, Math.min(base * (hypeActive(c) - 1), G.commons * 0.1 - bonus, G.commons)); G.commons -= hype; }
   c.unclaimed = 0; c.cash += base + bonus + hype;
   c.prevIncome = c.lastIncome; c.lastIncome = base;
   return base + bonus + hype;
@@ -946,8 +958,8 @@ function refill(c) {
 // ---------- bots ----------
 function botTurn(c) {
   if (c.rolls <= 0) return;
-  c.rolls--; c.rollsSeason++;
-  if (c.cash < 800) { const top = 6000 + ri(8000); c.cash += top; G.inflow += top; c.broke = false; }
+  c.rolls--; c.rollsSeason++; c.lastRoll = G.t;
+  if (c.cash < 800) { const top = Math.min(5000, topUpRoom(c)); if (top > 0) { addTopUp(c, top); c.broke = false; } }
   const d1 = 1 + ri(6), d2 = 1 + ri(6);
   if (c.jail > 0) { if (d1 === d2 || c.jail === 1 || c.jailCard) { c.jail = 0; c.jailCard = false; } else { c.jail--; return; } }
   step(c, d1 + d2);
@@ -969,13 +981,16 @@ function botCashOut(c) {
   G.commons += tax * 0.5; burn(tax * 0.25); G.season += tax * 0.25; G.cashedToday += amt; G.outflow += amt - tax; c.lastCash = G.t;
   log(`${c.name} cashed out ${fmt(amt)}: paid ${fmt(tax)} exit tax, Prestige reset to 0.`, "bad");
 }
+// Hype is paid in $CHOG (never USDC): 10% burned, 90% tipped to the target's owner. The target's rent claims get
+// ×1.1 for 4 hours (max ×1.5), with the extra paid from the Commons surplus. Bots hype with their own $CHOG.
 function hype(from, to, amt, isBot) {
-  amt = Math.min(amt, from.cash); if (amt < 50) return false;
-  if (from === to) return false;
-  from.cash -= amt; const b = amt * K.hypeBurn; burn(b); to.jar += amt - b;
+  if (from === to || amt < 10) return false;
+  if (from === G.me) { if (G.wallet.chog < amt) return false; G.wallet.chog -= amt; }
+  const b = amt * K.hypeBurn; G.chogBurned += b;
+  if (to === G.me) G.wallet.chog += amt - b;
   to.hypeMult = Math.min(K.hypeMax, (G.t < to.hypeUntil ? to.hypeMult : 1) + K.hypeStep); to.hypeUntil = G.t + K.hypeDur;
-  if (to === G.me) { log(`${from.name} hyped you with ${fmt(amt)} $CHOG. Claims ×${to.hypeMult.toFixed(2)} for 4h.`, "me"); act("hype", `${from.name} hyped you. Your claims are boosted ×${to.hypeMult.toFixed(2)} for 4 hours`, amt - b); }
-  else if (!isBot) log(`You hyped ${to.name} with ${fmt(amt)} $CHOG (${fmt(b)} burned).`, "me");
+  if (to === G.me) { log(`${from.name} hyped you with ${fmtN(amt)} $CHOG. Claims ×${to.hypeMult.toFixed(2)} for 4h.`, "me"); act("hype", `${from.name} hyped you: ${fmtN(amt - b)} $CHOG tipped to you, and your claims are boosted ×${to.hypeMult.toFixed(2)} for 4 hours`); }
+  else if (!isBot) log(`You hyped ${to.name} with ${fmtN(amt)} $CHOG (${fmtN(b)} burned).`, "me");
   return true;
 }
 function heist(r, t) {
@@ -1006,10 +1021,11 @@ function advance(mins) {
     if (inBell() && G.t >= G.bellEnd) endSeason();
   }
   G.tick = 0;
+  runBuyback();
 }
 // Season-end wealth tax: the bottom quarter of active Chogs (5+ rolls, awake 3+ days) pays 5% of its cash into the pot, which then pays the top.
 function wealthTax() {
-  const eligible = G.chogs.filter(c => c.rollsSeason >= 5 && G.t - c.woke >= 3 * DAY && !c.bankrupt);
+  const eligible = G.chogs.filter(c => (c.rollsSeason >= 5 || idle(c)) && G.t - c.woke >= 3 * DAY && !c.bankrupt); // sitting still doesn't dodge it
   const ranked = [...eligible].sort((a, b) => appraisal(a) - appraisal(b));
   const bottom = ranked.slice(0, Math.floor(eligible.length / 4));
   let total = 0;
@@ -1045,7 +1061,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const onChain = () => !!window.Chain?.on();
-const WIRED = { nadfun: { name: "nad.fun", what: "Buy $CHOG with MON, straight into your Chog's cash." }, fastlane: { name: "FastLane", what: "Stake MON into shMON. The shMON is held by your Chog." }, apriori: { name: "aPriori", what: "Stake MON into aprMON. Held by your Chog." }, kintsu: { name: "Kintsu", what: "Stake MON into sMON. Held by your Chog." }, uniswap: { name: "Uniswap", what: "Swap MON into USDC on Uniswap v3. Held by your Chog." } };
+const WIRED = { nadfun: { name: "nad.fun", what: "Buy $CHOG with MON. The $CHOG is held by your Chog." }, fastlane: { name: "FastLane", what: "Stake MON into shMON. The shMON is held by your Chog." }, apriori: { name: "aPriori", what: "Stake MON into aprMON. Held by your Chog." }, kintsu: { name: "Kintsu", what: "Stake MON into sMON. Held by your Chog." }, uniswap: { name: "Uniswap", what: "Swap MON into USDC, straight into your Chog's balance." } };
 
 // ---------- logs, toasts, time ----------
 function log(text, cls = "") { G.feed.unshift({ t: G.t, text, cls }); G.feed.length = Math.min(G.feed.length, 80); }
@@ -1086,14 +1102,17 @@ function room(name) {
 // ---------- landing ----------
 function renderLanding() {
   $("#appCards").innerHTML = Object.entries(WIRED).map(([k, w]) => `<div class="card appc"><img src="${LOGOS[k]}" alt=""><div><h3>${w.name}</h3><p class="muted small">${w.what}</p><p class="tiny">${SQ.filter(s => s.brand === k).map(s => s.name).join(" · ")}</p></div></div>`).join("");
-  const tick = ["CHOG #1462 bought 6 Bricks on Penny Stock Row", "Rent paid on Leverage Pit <b>+1,540</b>", "Nad Lounge jackpot <b>+2,310</b>", "Heist foiled on Lender's Court", "Prestige +1% · day 12", "Cash-out tax <b class=dn>-19%</b> paid to the stayers", "Closing Bell: last buyer wins 10% of the pot", "1 MON → 14.9 $CHOG on nad.fun"];
+  const tick = ["CHOG #1462 bought 6 Bricks on Penny Stock Row", "Rent paid on Leverage Pit <b>+$1.54</b>", "Nad Lounge jackpot <b>+$2.31</b>", "Heist foiled on Lender's Court", "Prestige +1% · day 12", "Cash-out tax <b class=dn>-19%</b> paid to the stayers", "Closing Bell: last buyer wins 10% of the pot", "Fees bought back and burned 14,077 $CHOG", "Everyone starts with $20"];
   $("#ticker").innerHTML = [...tick, ...tick].map(t => `<span>${t}</span>`).join("");
   const faq = [
     ["Do I have to wait for my turn?", "No. There are no turns. You get one roll every 30 minutes (store up to 8) and play whenever you like. Everyone shares one city."],
     ["When does the game start and end?", "The city never resets, so your Bricks and Prestige keep their value. Seasons last 7 days. A timer on your Desk counts down; in the last 24 hours the Closing Bell rings and the last Brick buyer wins 10% of the season pot. At the end of a season the richest Chogs share the pot, and the poorest active Chogs pay a small 5% wealth tax on their cash into it."],
     ["What if I go bankrupt?", "If you can't pay rent, your Bricks are sold to cover it. If you run out completely, your Chog sits out until next season, unless you top it up from the Bank."],
     ["What happens while I'm away?", "Your Bricks keep earning rent as long as Property Tax is paid (prepay up to 3 days, or turn on autopay). Rolls pile up to 8. Your Desk shows everything that happened while you were gone, plus messages from other Chogs."],
-    ["Can someone who plays all day take over?", "Not easily. Rolls refill one every 30 minutes, extra rolls cost $CHOG and are capped per day, one Chog can own at most 40% of a street, and Property Tax grows with what you hold."],
+    ["How much do I need to play?", "$20 of USDC, the same for everyone. You can top up to $20 more each season. Practice City is free and needs no wallet."],
+    ["What is $CHOG for?", "The game money is USDC, so prices don't swing. $CHOG is the power-up token: extra rolls, guards and hype are paid in $CHOG and burned, and the game's fees buy $CHOG back and burn it too."],
+    ["What if I stop playing?", "Your streets keep earning for 48 hours after your last roll. After that they stop paying you until you roll again. You never lose your Bricks."],
+    ["Can someone who plays all day take over?", "Not easily. Everyone starts with the same $20, rolls refill one every 30 minutes, extra rolls cost $CHOG, one Chog can own at most 40% of a street, and Property Tax grows with what you hold."],
     ["Why can't I just withdraw everything?", "You can, but it costs 10 to 20% (paid to the players who stay), waits 48 hours, and resets your Prestige. Bricks can't be withdrawn at all. Selling the whole Chog is usually the better exit."],
     ["Do I need a Chog NFT?", "Not for Practice City. Testnet gives you a free test Chog. Mainnet needs a real Chog Genesis NFT."],
   ];
@@ -1173,12 +1192,10 @@ function renderOnboard() {
     <div class="cols"><div class="stack"><h1 style="font-size:clamp(2rem,4.5vw,3.2rem)">Pick your Chog</h1><p class="muted">Practice uses real Chog Genesis art with play money. 14 other Chogs are already playing.</p>
       <div class="pick">${G.chogs.map(x => `<button data-pickchog="${x.id}" aria-pressed="${x.id === pick}"><span class="im" style="background-image:url(${x.img})"></span><b>${x.full}</b><small>${x.tier}</small></button>`).join("")}</div></div>
     <div class="card stack" style="position:sticky;top:96px"><div class="row"><i class="avatar" style="width:64px;height:64px;background-image:url(${c.img})"></i><div><h3>${c.full}</h3><span class="pill">${c.tier}</span></div></div>
-      <dl class="kv"><dt>Waiting for this Chog (Sleeping Dividend)</dt><dd>${fmt(each)}</dd><dt>Your deposit</dt><dd id="depV">20,000</dd><dt>Starting cash</dt><dd id="startV">${fmt(20000 + each)}</dd></dl>
-      <input type="range" id="dep" min="10000" max="60000" step="5000" value="20000" aria-label="Deposit">
+      <dl class="kv"><dt>Opening deposit (same for everyone)</dt><dd>${fmt(K.startDeposit)}</dd><dt>Waiting for this Chog (Sleeping Dividend)</dt><dd>${fmt(each)}</dd><dt>Starting cash</dt><dd>${fmt(K.startDeposit + each)}</dd></dl>
       <button class="btn primary lg" id="openAcct">Open account for ${c.name}</button>
-      <p class="tiny">Play money. You can top up later from the Bank.</p></div></div>`;
-  $("#dep").oninput = e => { $("#depV").textContent = fmt(+e.target.value); $("#startV").textContent = fmt(+e.target.value + each); };
-  $("#openAcct").onclick = () => openPracticeAccount(+$("#dep").value);
+      <p class="tiny">Play money in USDC. You can top up to ${fmt(K.topUpCap)} more each season from your Portfolio.</p></div></div>`;
+  $("#openAcct").onclick = () => openPracticeAccount(K.startDeposit);
 }
 function openPracticeAccount(dep) {
   const pick = byId(U.pick);
@@ -1186,8 +1203,8 @@ function openPracticeAccount(dep) {
   G.commons += pick.cash + pick.unclaimed + pick.jar;
   const fresh = mkChog(CHOG_ART.find(a => a.id === pick.id), false);
   G.chogs[G.chogs.indexOf(pick)] = fresh; G.me = fresh;
-  const div = G.sleep / SUPPLY; G.sleep -= div; G.wallet.chog -= dep; G.inflow += dep;
-  Object.assign(fresh, { cash: dep + div, woke: G.t, lastCash: G.t, taxUntil: G.t + DAY, immuneUntil: G.t + DAY, seasonAppraisal: 0, plan: G.plan, autoTax: true });
+  const div = G.sleep / SUPPLY; G.sleep -= div; G.wallet.usdc -= dep; G.inflow += dep;
+  Object.assign(fresh, { cash: dep + div, woke: G.t, lastCash: G.t, lastRoll: G.t, taxUntil: G.t + DAY, immuneUntil: G.t + DAY, seasonAppraisal: 0, plan: G.plan, autoTax: true });
   fresh.seasonAppraisal = appraisal(fresh); G.lastSeen = G.t;
   act("welcome", `Account opened. You deposited ${fmt(dep)} and claimed a ${fmt(div)} Sleeping Chog Dividend`, dep + div);
   sendDM(G.chogs.find(x => x.bot), fresh, "gm, new neighbour. The Lending Quarter is where the money is.");
@@ -1226,6 +1243,9 @@ function todos() {
   if (c.queue.some(q => q.ready)) out.push(["Cash-out ready to collect", "portfolio"]);
   if (brickValue(c) > 0 && !c.autoTax && c.taxUntil - G.t < 12 * HOUR) out.push([G.t > c.taxUntil ? "Property Tax unpaid: Bricks earn nothing" : `Property Tax runs out in ${dur(c.taxUntil - G.t)}`, "portfolio"]);
   if (c.jail) out.push(["You're in Rug Jail: roll doubles or pay bail", "map"]);
+  const idleLeft = (c.lastRoll || 0) + K.idle - G.t;
+  if (idleLeft <= 0) out.push(["Your streets stopped paying: roll to switch rent back on", "map"]);
+  else if (idleLeft < 12 * HOUR) out.push([`Roll within ${dur(idleLeft)} to keep earning rent`, "map"]);
   if (c.rolls > 0 && c.bankrupt !== G.seasonNo) out.push([`${c.rolls} roll${c.rolls > 1 ? "s" : ""} ready`, "map"]);
   return out;
 }
@@ -1266,6 +1286,7 @@ function renderLeaders() {
 }function renderDesk() {
   const c = G.me, pr = prestige(c), th = threads(), unread = G.inbox.filter(m => m.to === c.id && !m.read).length;
   const left = seasonEnd() - G.t, bell = G.bellEnd !== null, rank = ranking().indexOf(c) + 1, hot = SQ[hotIndex()];
+  const idleLeft = (c.lastRoll || 0) + K.idle - G.t, taxLeft = c.taxUntil - G.t, earnLeft = Math.min(idleLeft, taxLeft);
   $("#room-desk").innerHTML = `
   <div class="pagehead"><div><div class="eyebrow">Season ${G.seasonNo} · ${clockStr(G.t)}</div><h1>Your desk, ${esc(c.name)}</h1></div>
     ${G.mode === "practice" ? `<div class="row"><span class="tiny">Practice clock</span><button class="btn sm" id="ff2">+2 hours</button><button class="btn sm" id="ffd">+1 day</button></div>` : ""}</div>
@@ -1273,7 +1294,7 @@ function renderLeaders() {
     <div class="card" id="deskChog">
       <div class="deskhero"><i class="avatar" style="background-image:url(${c.img})"></i><div class="stack" style="gap:6px">
         <div class="row" style="gap:6px"><span class="pill purple">${c.tier}</span><span class="pill">${c.mood}</span>${c.jail ? '<span class="pill bad">In Rug Jail</span>' : ""}${c.bankrupt === G.seasonNo ? '<span class="pill bad">Bankrupt</span>' : ""}</div>
-        <div class="eyebrow">What this Chog is worth</div><div class="big" id="deskWorth">${fmt(appraisal(c))} <span class="small muted">$CHOG</span></div>
+        <div class="eyebrow">What this Chog is worth</div><div class="big" id="deskWorth">${fmt(appraisal(c))}</div>
         <div class="tiny">Prestige +${pr}% · ${c.stamps.size} stamps · <button class="linkbtn" data-room="leaders">#${rank} of ${G.chogs.length} in the city</button></div></div></div>
       <div class="stats"><div class="stat"><span>Cash</span><b>${fmt(c.cash)}</b></div><div class="stat"><span>Unclaimed rent</span><b>${fmt(c.unclaimed)}</b></div><div class="stat"><span>Bricks</span><b>${fmt(brickValue(c))}</b></div><div class="stat"><span>This season</span><b class="${seasonGain(c) > 0 ? "up" : seasonGain(c) < 0 ? "down" : ""}">${seasonGain(c) >= 0 ? "+" : "−"}${fmt(Math.abs(seasonGain(c)))}</b></div></div>
     </div>
@@ -1281,6 +1302,8 @@ function renderLeaders() {
       <div class="row between"><h3>Your move</h3><span class="tiny">1 roll every 30 min</span></div>
       <div class="pips" aria-label="${c.rolls} rolls ready">${Array.from({ length: K.rollCap + (c.tier !== "Common" ? 1 : 0) }, (_, k) => `<i class="${k < c.rolls ? "on" : ""}"></i>`).join("")}</div>
       <button class="btn gold lg" id="deskRoll" ${c.bankrupt === G.seasonNo ? "disabled" : ""}>${c.rolls ? `Roll now · ${c.rolls} ready` : "Roll · extra roll 100 $CHOG"}</button>
+      <div class="row between"><span class="tiny">Your streets earn for</span><span class="timer ${earnLeft < 12 * HOUR ? "warn" : ""}" id="earnTimer">${earnLeft > 0 ? dur(earnLeft) : "stopped"}</span></div>
+      <p class="tiny" style="margin-top:-6px">${earnLeft > 0 ? (idleLeft < taxLeft ? "Roll at least once every 48 hours to keep earning." : "Property Tax runs out first. Prepay it in your Portfolio.") : (idleLeft <= 0 ? "You haven't rolled in 48 hours. Roll once to switch rent back on." : "Property Tax is unpaid. Pay it in your Portfolio.")}</p>
       <div class="row between"><span class="tiny">Season ${bell ? "ends (Closing Bell) in" : "ends in"}</span><span class="timer" style="color:${bell ? "var(--gold)" : "inherit"}">${dur(left)}</span></div>
     </div>
   </div>
@@ -1308,7 +1331,7 @@ function renderLeaders() {
       <div class="rail">
         <div class="card hudme" id="hudMe"></div>
         <div class="card dock stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
-          <button class="rollbtn" id="roll">ROLL</button><button class="btn danger" id="bail" hidden>Pay 500 bail</button>
+          <button class="rollbtn" id="roll">ROLL</button><button class="btn danger" id="bail" hidden>Pay $0.50 bail</button>
           <div class="row between"><span class="tiny">Rolls ready</span><span class="pips" id="mapPips"></span></div>
           <div><div class="tiny" style="margin-bottom:6px">Buying plan: what your Chog buys where it lands</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
           <p class="result" id="lastev">Press ROLL. Your Chog moves, and your plan buys Bricks where it lands.</p></div>
@@ -1335,7 +1358,7 @@ function paintSwitch() {
   const sw = $("#viewSwitch"); if (!sw) return; sw.setAttribute("aria-checked", String(U.angled));
   sw.querySelector('[data-v="flat"]').className = U.angled ? "" : "on"; sw.querySelector('[data-v="3d"]').className = U.angled ? "on" : "";
 }function squareText(s) {
-  return { go: "Pass it to collect 1% of your Bricks' value (max 500) from the Commons.", chest: "Draw a Commons Chest card: payouts, moves and a get-out-of-jail card.", chance: "Draw a Market News card: payouts, fees, moves.", tax: s.name === "Gas Tax" ? "Pay 5% of your cash (max 1,000) into the Nad Lounge pot." : "Pay 750 into the Nad Lounge pot.", jail: "Just visiting, unless you were sent here. To get out: roll doubles (3 tries), pay 500, or use a card.", lounge: `Land here to win 25% of the Nad Lounge pot (now ${fmt(G.lounge)}).`, gojail: "Go straight to Rug Jail without passing GENESIS.", heist: "Pick a Chog and try to rob 10% of its unclaimed rent." }[s.t] || "";
+  return { go: "Pass it to collect 1% of your Bricks' value (max $0.50) from the Commons.", chest: "Draw a Commons Chest card: payouts, moves and a get-out-of-jail card.", chance: "Draw a Market News card: payouts, fees, moves.", tax: s.name === "Gas Tax" ? "Pay 5% of your cash (max $1.00) into the Nad Lounge pot." : "Pay $0.75 into the Nad Lounge pot.", jail: "Just visiting, unless you were sent here. To get out: roll doubles (3 tries), pay $0.50, or use a card.", lounge: `Land here to win 25% of the Nad Lounge pot (now ${fmt(G.lounge)}).`, gojail: "Go straight to Rug Jail without passing GENESIS.", heist: "Pick a Chog and try to rob 10% of its unclaimed rent." }[s.t] || "";
 }
 function holdRow(label, count, value, body, open, cls = "") {
   return `<details class="hold" ${open ? "open" : ""}><summary><span>${label}${count != null ? ` <span class="tiny">${count}</span>` : ""}</span><span class="num ${cls}">${value}</span><svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg></summary><div class="holdbody">${body}</div></details>`;
@@ -1353,14 +1376,13 @@ function renderPortfolio() {
   <div class="pagehead"><div><div class="eyebrow">Inside ${esc(c.full || c.name)}</div><h1>Portfolio</h1></div></div>
   <div class="cols">
     <div class="stack">
-      <div class="card balcard" id="bankSheet"><div class="tiny">Account balance</div><div class="big">${fmt(c.cash)} <span class="small muted">$CHOG</span></div>
+      <div class="card balcard" id="bankSheet"><div class="tiny">Account balance · USDC</div><div class="big">${fmt(c.cash)}</div>
         <div class="row" style="gap:16px;margin-top:6px"><span class="small muted">Net worth <b class="num" style="color:var(--ink)">${fmt(appraisal(c))}</b></span><span class="small muted">This season <b class="num ${g > 0 ? "up" : g < 0 ? "down" : ""}">${g >= 0 ? "+" : "−"}${fmt(Math.abs(g))}</b></span></div>
-        <div class="row" style="margin-top:14px"><button class="btn primary" id="claimBtn" ${c.unclaimed < 1 ? "disabled" : ""}>Claim ${fmt(c.unclaimed)} rent</button><button class="btn" id="topup">Top up 5,000</button></div></div>
+        <div class="row" style="margin-top:14px"><button class="btn primary" id="claimBtn" ${c.unclaimed < 1 ? "disabled" : ""}>Claim ${fmt(c.unclaimed)} rent</button><button class="btn" id="topup" ${topUpRoom(c) <= 0 ? "disabled" : ""}>Top up ${fmt(Math.min(5000, topUpRoom(c)))}</button></div></div>
       <div class="card"><h3>What you own</h3><div class="holds">
         ${holdRow("Streets", mine.length, fmt(brickValue(c)), mine.length ? mine.map(p => streetLine(c, p)).join("") : `<p class="empty">No Bricks yet. Roll on the Map and your plan buys them.</p>`, true)}
         ${holdRow("Unclaimed rent", null, fmt(c.unclaimed), `<p class="small muted">Rent other Chogs paid to your Bricks. Claim it into your balance. Until you do, a HEIST can steal 10% of it.</p>`)}
         ${onChain() ? `<div class="holdchain">${Chain.positionsHtml()}</div>` : holdRow("App positions", pos.length, fmt(positionsValue(c)), pos.length ? pos.map(([k, v]) => `<div class="row between small"><span>${esc(k)}</span><span class="num">${fmt(v)}</span></div>`).join("") : `<p class="empty">None yet. App squares on the Map put real positions inside your Chog.</p>`)}
-        ${holdRow("Hype jar", null, fmt(c.jar), `<p class="small muted">$CHOG other Chogs sent you. It tops up your rent claims while a hype is active.</p>`)}
         ${dbt ? holdRow("Mortgages", Object.keys(c.mort).length, "−" + fmt(dbt), Object.entries(c.mort).map(([i, v]) => `<div class="row between small"><span>${SQ[i].name}</span><span class="num down">−${fmt(v)}</span></div>`).join("") + `<button class="btn sm" data-room="bank">Repay in the Bank</button>`, false, "down") : ""}
         <div class="holdtotal"><span>Net worth</span><b class="num">${fmt(appraisal(c))}</b></div></div></div>
     </div>
@@ -1368,7 +1390,7 @@ function renderPortfolio() {
       <div class="card stack" id="bankTax"><div class="row between"><h3>Property Tax</h3><span class="pill ${paid ? "ok" : "bad"}">${paid ? `Paid ${dur(c.taxUntil - G.t)} ahead` : "Unpaid"}</span></div>
         <p class="small muted">0.5% of your Bricks' value a day (${fmt(brickValue(c) * K.propTaxDay)} today). Unpaid streets earn nothing until you pay.</p>
         <div class="row"><button class="btn sm" data-tax="1">Prepay 1 day</button><button class="btn sm" data-tax="3">Prepay 3 days</button>${onChain() ? "" : `<label class="row small" for="autoTax"><input type="checkbox" id="autoTax" ${c.autoTax ? "checked" : ""}> Autopay</label>`}</div></div>
-      <div class="card stack" id="bankGuards"><div class="row between"><h3>Guards</h3><span class="num">${c.guards} / 4</span></div><p class="small muted">Each guard costs 500 and cuts heist odds against you by 5%.</p><div><button class="btn sm" id="guard" ${c.guards >= 4 ? "disabled" : ""}>Hire a guard · 500</button></div></div>
+      <div class="card stack" id="bankGuards"><div class="row between"><h3>Guards</h3><span class="num">${c.guards} / 4</span></div><p class="small muted">Each guard cuts heist odds against you by 5%. Paid in $CHOG, which is burned.</p><div><button class="btn sm" id="guard" ${c.guards >= 4 ? "disabled" : ""}>Hire a guard · ${K.guardChog} $CHOG</button></div></div>
       <div class="card stack" id="bankOut"><h3>Cash out</h3>
         ${dbt ? `<p class="small muted">Pay off your mortgages in the Bank before cashing out.</p>` : `<label class="small" for="coAmt">Amount <b class="num" id="coV">${fmt(amt)}</b> <span class="tiny">(max today ${fmt(maxOut)})</span></label>
         <input type="range" id="coAmt" min="0" max="${maxOut}" step="10" value="${Math.floor(amt)}">
@@ -1376,7 +1398,7 @@ function renderPortfolio() {
         <div><button class="btn danger" id="coGo" ${amt < 100 ? "disabled" : ""}>Request cash-out</button></div>
         <p class="tiny">Selling the whole Chog usually beats this: a buyer gets everything inside, worth ${fmt(appraisal(c))}.</p>`}</div>
       ${c.queue.length ? `<div class="card stack"><h3>Cash-out queue</h3>${c.queue.map(q => `<div class="row between"><span class="num">${fmt(q.net)}</span><span class="tiny">${q.ready ? "ready" : "ready in " + dur(q.at - G.t)}</span></div>`).join("")}${c.queue.some(q => q.ready) ? `<div><button class="btn gold" id="coClaim">Collect to wallet</button></div>` : ""}</div>` : ""}
-      <div class="card stack"><h3>${onChain() ? "Your wallet" : "Practice wallet"}</h3>${onChain() ? Chain.walletHtml() : `<dl class="kv"><dt>$CHOG</dt><dd>${fmt(G.wallet.chog)}</dd><dt>MON</dt><dd>${(+G.wallet.mon).toFixed(1)}</dd></dl>`}</div>
+      <div class="card stack"><h3>${onChain() ? "Your wallet" : "Practice wallet"}</h3>${onChain() ? Chain.walletHtml() : `<dl class="kv"><dt>USDC</dt><dd>${fmt(G.wallet.usdc)}</dd><dt>$CHOG (power-ups)</dt><dd>${fmtN(G.wallet.chog)}</dd><dt>MON (app squares)</dt><dd>${(+G.wallet.mon).toFixed(1)}</dd></dl><p class="tiny">Top-ups left this season: ${fmt(topUpRoom(c))}.</p>`}</div>
     </div>
   </div>`;
   $("#claimBtn").onclick = doClaim; $("#topup").onclick = doTopUp; $("#guard").onclick = doGuard;
@@ -1387,17 +1409,18 @@ function renderPortfolio() {
   const cc = $("#coClaim"); if (cc) cc.onclick = doCollect;
 }
 function practiceLedger() {
-  const held = G.chogs.reduce((a, c) => a + c.cash + c.unclaimed + c.jar + positionsValue(c) + c.queue.reduce((x, q) => x + q.net, 0), 0) + PROPS.reduce((a, p) => a + p.reserve, 0) + G.commons + G.lounge + G.season + G.sleep;
+  const held = G.chogs.reduce((a, c) => a + c.cash + c.unclaimed + c.jar + positionsValue(c) + c.queue.reduce((x, q) => x + q.net, 0), 0) + PROPS.reduce((a, p) => a + p.reserve, 0) + G.commons + G.lounge + G.season + G.sleep + G.buyback;
   const owed = G.inflow - G.outflow - G.burned, ok = Math.abs(held - owed) < 1;
-  return `<dl class="kv"><dt>Everything held in the city</dt><dd>${fmt(held)}</dd><dt>Paid in − paid out − burned</dt><dd>${fmt(owed)}</dd><dt>Zero-sum check</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill bad">mismatch</span>'}</dd></dl>`;
+  return `<dl class="kv"><dt>Everything held in the city</dt><dd>${fmt(held)}</dd><dt>Paid in − paid out − buybacks</dt><dd>${fmt(owed)}</dd><dt>Zero-sum check</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill bad">mismatch</span>'}</dd></dl>`;
 }
 function renderBank() {
   const c = G.me, mine = PROPS.filter(p => myBricks(c, p)), dbt = debt(c), room_ = loanRoom();
   const myAuc = G.auctions.filter(a => a.seller === c.id);
   $("#room-bank").innerHTML = `
   <div class="pagehead"><div><div class="eyebrow">The house</div><h1>Bank of Chog Street</h1></div></div>
-  <p class="muted" style="margin:-8px 0 20px;max-width:62ch">Every coin in the Bank came from players. Nothing is minted. It lends against your streets and runs the auction house.</p>
-  <div class="treasury"><div class="stat"><span>Commons (treasury)</span><b>${fmt(G.commons)}</b></div><div class="stat"><span>Nad Lounge pot</span><b>${fmt(G.lounge)}</b></div><div class="stat"><span>Season pot</span><b>${fmt(G.season)}</b></div><div class="stat"><span>Burned for good</span><b>${fmt(G.burned)}</b></div></div>
+  <p class="muted" style="margin:-8px 0 20px;max-width:62ch">Every dollar in the Bank came from players. Nothing is minted. It lends against your streets, runs the auction house, and spends part of every fee buying $CHOG and burning it.</p>
+  <div class="treasury"><div class="stat"><span>Commons (treasury)</span><b>${fmt(G.commons)}</b></div><div class="stat"><span>Nad Lounge pot</span><b>${fmt(G.lounge)}</b></div><div class="stat"><span>Season pot</span><b>${fmt(G.season)}</b></div><div class="stat"><span>Buyback pot</span><b>${fmt(G.buyback)}</b></div><div class="stat"><span>Spent buying $CHOG</span><b>${fmt(G.burned)}</b></div><div class="stat"><span>$CHOG burned</span><b>${fmtN(G.chogBurned)}</b></div></div>
+  ${onChain() && G.buyback > 0 ? `<div class="row" style="margin-top:12px"><button class="btn gold sm" data-buyback>Buy back and burn ${fmt(G.buyback)} of $CHOG</button><span class="tiny">Anyone can run this. It swaps the pot to $CHOG and burns it.</span></div>` : `<p class="tiny" style="margin-top:10px">${onChain() ? "The pot buys back $CHOG whenever anyone runs the buyback." : "In Practice the pot buys back $CHOG automatically every few minutes."}</p>`}
   <div class="cols" style="margin-top:18px">
     <div class="card stack" id="mortDesk"><div class="row between"><h3>Mortgage desk</h3>${dbt ? `<span class="pill bad">You owe ${fmt(dbt)}</span>` : ""}</div>
       <p class="small muted">Borrow half a street's value. While it's mortgaged, that street's rent goes to the Bank and you can't sell those Bricks or cash out. Pay back the loan + 10% to lift it.</p>
@@ -1413,14 +1436,15 @@ function renderBank() {
   const host = $("#room-rules"); host.dataset.built = 1;
   const rows = SQ.map((s, i) => `<tr><td class="num">${i}</td><td>${s.name}</td><td>${s.t === "prop" ? (s.brand ? `${D[s.d].n} · <b>${WIRED[s.brand].name}</b>` : D[s.d].n) : "Special"}</td><td>${s.t === "prop" ? (s.q ? s.q[2] : `Rent ${s.d === "util" ? "dice × 20 × level" : fmt(s.base) + " × level"}`) : squareText(s)}</td></tr>`).join("");
   host.innerHTML = `<div class="pagehead"><div><div class="eyebrow">Docs</div><h1>Rules</h1></div><div class="row"><button class="btn primary sm" data-help="tour">Replay the tour</button><button class="btn sm" data-help="reset">Show tips again</button></div></div>
-  <div class="docs"><nav><a href="#r-quick">Quick start</a><a href="#r-bricks">Bricks and rent</a><a href="#r-value">Your Chog's value</a><a href="#r-time">Seasons and the timer</a><a href="#r-away">Away and always-on</a><a href="#r-cards">Cards, jail, heists</a><a href="#r-bank">The Bank</a><a href="#r-out">Cashing out</a><a href="#r-board">Every square</a><a href="#r-glossary">Glossary</a></nav>
+  <div class="docs"><nav><a href="#r-quick">Quick start</a><a href="#r-bricks">Bricks and rent</a><a href="#r-value">Your Chog's value</a><a href="#r-time">Seasons and the timer</a><a href="#r-away">Away and always-on</a><a href="#r-cards">Cards, jail, heists</a><a href="#r-money">USDC and $CHOG</a><a href="#r-bank">The Bank</a><a href="#r-out">Cashing out</a><a href="#r-board">Every square</a><a href="#r-glossary">Glossary</a></nav>
   <div>
-  <section id="r-quick"><h2>Quick start</h2><ol><li>Open an account: deposit $CHOG into your Chog.</li><li>On the Map, press ROLL. Your Chog moves and your buying plan buys Bricks where it lands.</li><li>Other Chogs land on your streets and pay you rent. Claim it in the Bank.</li><li>Keep Property Tax paid so your Bricks keep earning. Check your Desk for what happened while you were away.</li></ol></section>
-  <section id="r-bricks"><h2>Bricks and rent</h2><p>A Brick is a share of one street. Every Brick bought raises the next price. Rent grows with how much money sits in the street: empty lot ×1, cottage ×2, shop ×4, tower ×7, skyscraper ×11, neon landmark ×16. 90% of each rent goes to the Brick holders, 10% to the Commons. One Chog can hold at most 40% of a street. The two Launch District streets are reserved for Chogs worth less than 50,000.</p></section>
+  <section id="r-quick"><h2>Quick start</h2><ol><li>Open an account: deposit $20 of USDC into your Chog. Everyone starts with the same $20.</li><li>On the Map, press ROLL. Your Chog moves and your buying plan buys Bricks where it lands.</li><li>Other Chogs land on your streets and pay you rent. Claim it in your Portfolio.</li><li>Keep Property Tax paid so your Bricks keep earning. Check your Desk for what happened while you were away.</li></ol></section>
+  <section id="r-bricks"><h2>Bricks and rent</h2><p>A Brick is a share of one street. Every Brick bought raises the next price. Rent grows with how much money sits in the street: empty lot ×1, cottage ×2, shop ×4, tower ×7, skyscraper ×11, neon landmark ×16. 90% of each rent goes to the Brick holders, 10% to the Commons. One Chog can hold at most 40% of a street. The two Launch District streets are reserved for Chogs worth less than $50.</p></section>
   <section id="r-value"><h2>Your Chog's value</h2><p>Cash, Bricks, unclaimed rent and dapp positions all live inside the NFT. Bricks can't be withdrawn or sent to another Chog. Sell the Chog and the buyer gets everything. Prestige grows 1% a day while you don't cash out (up to 50%) and boosts your rent claims.</p></section>
   <section id="r-time"><h2>Seasons and the timer</h2><p>The city never resets. Seasons last 7 days and the countdown is on your Desk. In the last 24 hours the Closing Bell rings: every Brick buy adds a minute, and the last buyer when it hits zero wins 10% of the season pot. Then the pot is shared: 40% to the 10 richest Chogs, 30% to every active Chog, 15% to the best defenders, 5% to the #1 Chog. Before that, the bottom quarter of active Chogs pay 5% of their cash into the pot. If you go bankrupt (no cash and no Bricks to sell), you sit out until next season, unless you top up.</p></section>
-  <section id="r-away"><h2>Away and always-on players</h2><p><b>Away:</b> rolls pile up to 8, Property Tax can be prepaid for 3 days (or autopaid), your Bricks keep earning, and your Desk shows what happened. <b>Always-on:</b> rolls refill only every 30 minutes, extra rolls cost 100 $CHOG, one Chog can't own more than 40% of a street, and Property Tax grows with your holdings.</p></section>
-  <section id="r-cards"><h2>Cards, jail, heists</h2><p>Market News (3 squares) and Commons Chest (2 squares) draw a card: a payout from the Commons, a fee into the Nad Lounge, a move, or a free roll. Got Rugged sends you to Rug Jail: roll doubles, pay 500, or use a card. On HEIST you can try to rob 10% of another Chog's unclaimed rent. Fail and you pay them 500 and go to jail.</p></section>
+  <section id="r-away"><h2>Away and always-on players</h2><p><b>Away:</b> rolls pile up to 8, Property Tax can be prepaid for 3 days (or autopaid), and your Desk shows what happened. Your streets keep earning for 48 hours after your last roll. After that they stop paying you until you roll again (the rent goes to the Commons). You never lose your Bricks. <b>Always-on:</b> rolls refill only every 30 minutes, extra rolls cost 100 $CHOG, one Chog can't own more than 40% of a street, and Property Tax grows with your holdings.</p></section>
+  <section id="r-money"><h2>USDC and $CHOG</h2><p>The game money is USDC, so a dollar stays a dollar. Everyone opens with the same $20 and can top up to $20 more per season (USDC bought on the Uniswap square counts too). $CHOG is the power-up token: extra rolls (100), guards (500) and hype are paid in $CHOG and burned. Part of every fee goes into the Bank's buyback pot, which buys $CHOG on nad.fun and burns it.</p></section>
+  <section id="r-cards"><h2>Cards, jail, heists</h2><p>Market News (3 squares) and Commons Chest (2 squares) draw a card: a payout from the Commons, a fee into the Nad Lounge, a move, or a free roll. Got Rugged sends you to Rug Jail: roll doubles, pay $0.50, or use a card. On HEIST you can try to rob 10% of another Chog's unclaimed rent. Fail and you pay them $0.50 and go to jail.</p></section>
   <section id="r-bank"><h2>The Bank</h2><p>The Bank belongs to the city, not to any player. It holds the Commons, the Nad Lounge pot and the season pot, and every coin in it came from players.</p><p><b>Mortgage:</b> borrow half of a street's value. Until you pay back the loan plus 10%, that street's rent goes to the Bank, its Bricks can't be sold, and you can't cash out. The Bank lends at most 20% of the Commons.</p><p><b>Auction:</b> offer some of your Bricks on a street to other Chogs for 2 hours. The best bid at or above the bank price wins. If nobody bids that high, you keep your Bricks.</p><p>Buy, Sell, Mortgage and Auction are on every street's card. You can only buy where your Chog is standing.</p></section><section id="r-out"><h2>Cashing out</h2><p>Cash-outs are taxed 20%, down to 10% after loyal weeks. They wait 48 hours, are capped city-wide at 2% of all game cash per day, and reset Prestige to zero. After a Chog is sold, the new owner can't cash out for 72 hours.</p></section>
   <section id="r-board"><h2>Every square</h2><div class="tablewrap"><table><thead><tr><th>#</th><th>Square</th><th>District</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div></section>
   <section id="r-glossary"><h2>Glossary</h2><p><b>Appraisal:</b> everything inside a Chog. <b>Commons:</b> the shared treasury, funded by fees and taxes. <b>Nad Lounge:</b> the jackpot corner. <b>Sleeping Chog Dividend:</b> every Chog, even asleep, collects a share of Commons income; waking claims it. <b>Patron Stamp:</b> earned by using a real Monad app on its square, +1% claim weight forever.</p></section>
@@ -1435,7 +1459,7 @@ function openTile(i, landed) {
   const s = SQ[i], c = G.me;
   if (U.deed?.i !== i) { U.deedTab = null; U.qty = null; }
   U.deed = { i, landed };
-  if (s.t !== "prop") return modal(`<div class="plainhead"><div class="sqglyph">${GLYPH[s.t] || "★"}</div><h3 style="font-size:24px;margin-top:8px">${s.name}</h3></div><div class="body"><p class="muted">${squareText(s)}</p><button class="btn primary" data-close>OK</button></div>`);
+  if (s.t !== "prop") { modal(`<div class="plainhead"><div class="sqglyph">${GLYPH[s.t] || "★"}</div><h3 style="font-size:24px;margin-top:8px">${s.name}</h3></div><div class="body"><p class="muted">${squareText(s)}</p><button class="btn primary" data-close>OK</button></div>`); return window.Guide?.on("tile", { i, landed }); }
   const p = s, n = myBricks(c, p), l = level(p), here = c.pos === i, owners = Object.entries(p.h).sort((a, b) => b[1] - a[1]);
   const today = c.qday[i] === Math.floor(G.t / DAY), done = c.stamps.has(i), chainQuest = onChain() ? Chain.questHtml(p, here) : null;
   const tab = U.deedTab || (here ? "buy" : n ? "sell" : "buy");
@@ -1446,7 +1470,7 @@ function openTile(i, landed) {
     <div class="seg deedtabs" role="tablist">${["buy", "sell", "mortgage", "auction"].map(t => `<button data-deedtab="${t}" aria-pressed="${t === tab}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("")}</div>
     <div class="deedpanel">${deedPanel(tab, p, n, here)}</div>
     ${owners.length ? `<div><div class="tiny" style="margin-bottom:6px">${owners.length} owner${owners.length > 1 ? "s" : ""} · tap one for their profile</div><div class="ownerrow">${owners.slice(0, 7).map(([id, k]) => { const o = byId(+id); return o ? `<button class="ownerchip ${o === c ? "me" : ""}" data-profile="${o.id}"><i class="avatar" style="background-image:url(${o.img})"></i><span>${Math.round(k / p.supply * 100)}%</span></button>` : ""; }).join("")}</div></div>` : `<p class="tiny">Nobody owns this street yet.</p>`}
-    ${p.q ? (chainQuest ?? `<div class="questbox"><div class="row between"><span class="small">${p.q[2]}</span></div>${here ? `<div><button class="btn sm primary" data-quest="${i}" ${today && done ? "disabled" : ""}>${p.q[1] === "swap" ? "Swap 50 MON" : "Use 20 MON"} · practice</button></div>` : `<span class="tiny">Land here to use ${p.dapp}. First time: a Patron Stamp.</span>`}</div>`) : ""}
+    ${p.q ? (chainQuest ?? `<div class="questbox"><div class="row between"><span class="small">${p.q[2]}</span></div>${here ? `<div><button class="btn sm primary" data-quest="${i}" ${today && done ? "disabled" : ""}>${p.q[1] === "stake" ? "Stake" : "Swap"} 20 MON · practice</button></div>` : `<span class="tiny">Land here to use ${p.dapp}. First time: a Patron Stamp.</span>`}</div>`) : ""}
     <details class="more"><summary>Rent by level</summary><table class="renttable">${LEVEL_NAME.map((nm, k) => `<tr class="${k === l ? "cur" : ""}"><td>${nm}</td><td>${p.d === "util" ? "dice × " + 20 * LEVEL_MULT[k] : fmt(p.base * LEVEL_MULT[k])}</td></tr>`).join("")}</table></details>
   </div>`);
   window.Guide?.on("tile", { i, landed });
@@ -1507,8 +1531,8 @@ function toggleMeMenu(show) {
   if (open) renderMeMenu(); m.hidden = !open; $("#meChip").setAttribute("aria-expanded", String(open));
 }function openHeist() {
   const me = G.me, opts = G.chogs.filter(t => t !== me && t.unclaimed >= K.heistMinUnclaimed && G.t >= t.immuneUntil).sort((a, b) => b.unclaimed - a.unclaimed).slice(0, 6);
-  modal(`<div class="deedhead" style="background:var(--red)"><div class="eyebrow">Heist</div><h3>Pick a target</h3></div><div class="body"><p class="small muted">Win: take 10% of their unclaimed rent. Lose: pay them 500 and go to Rug Jail. Cash and Bricks are never at risk.</p>
-    ${opts.length ? opts.map(t => { const ch = clamp(K.heistBase + (isLaser(me) ? 5 : 0) + (isHeistHat(me) ? 5 : 0) - TIER_DEF[t.tier] - t.guards * 5 - (isVisor(t) ? 5 : 0), 10, 80); return `<button class="thread" data-heist="${t.id}"><i class="avatar" style="background-image:url(${t.img})"></i><span><span class="t">${esc(t.name)}</span><span class="s" style="display:block">${fmt(t.unclaimed)} unclaimed · ${t.guards} guards</span></span><span class="pill ${ch >= 50 ? "ok" : "warn"}">${ch}%</span></button>`; }).join("") : `<p class="empty">Nobody has 500+ unclaimed rent right now.</p>`}
+  modal(`<div class="deedhead" style="background:var(--red)"><div class="eyebrow">Heist</div><h3>Pick a target</h3></div><div class="body"><p class="small muted">Win: take 10% of their unclaimed rent. Lose: pay them $0.50 and go to Rug Jail. Cash and Bricks are never at risk.</p>
+    ${opts.length ? opts.map(t => { const ch = clamp(K.heistBase + (isLaser(me) ? 5 : 0) + (isHeistHat(me) ? 5 : 0) - TIER_DEF[t.tier] - t.guards * 5 - (isVisor(t) ? 5 : 0), 10, 80); return `<button class="thread" data-heist="${t.id}"><i class="avatar" style="background-image:url(${t.img})"></i><span><span class="t">${esc(t.name)}</span><span class="s" style="display:block">${fmt(t.unclaimed)} unclaimed · ${t.guards} guards</span></span><span class="pill ${ch >= 50 ? "ok" : "warn"}">${ch}%</span></button>`; }).join("") : `<p class="empty">Nobody has $0.50+ unclaimed rent right now.</p>`}
     <button class="btn ghost" data-close>Walk away</button></div>`);
   window.Guide?.on("heistOpen");
 }
@@ -1531,8 +1555,8 @@ async function rollMe() {
   const c = G.me; if (!c || G.busy) return;
   if (c.bankrupt === G.seasonNo) { toast("Bankrupt: top up in your Portfolio to play again, or wait for next season."); return room("portfolio"); }
   closeSheet();
-  if (c.rolls <= 0) { if (c.cash < K.extraRoll) return toast("No rolls left and not enough cash for an extra roll."); payTo(c, K.extraRoll / 2, "burn"); payTo(c, K.extraRoll / 2, "lounge"); c.rolls++; }
-  G.busy = true; c.rolls--; c.rollsSeason++; c.plan = G.plan; c.broke = false; render();
+  if (c.rolls <= 0) { if (G.wallet.chog < K.extraRollChog) return toast(`No rolls left. An extra roll costs ${K.extraRollChog} $CHOG.`); G.wallet.chog -= K.extraRollChog; G.chogBurned += K.extraRollChog; c.rolls++; }
+  G.busy = true; c.rolls--; c.rollsSeason++; c.lastRoll = G.t; c.plan = G.plan; c.broke = false; render();
   const d1 = 1 + ri(6), d2 = 1 + ri(6);
   await showDice(d1, d2);
   if (c.jail > 0) {
@@ -1554,9 +1578,9 @@ async function rollMe() {
   if (r.card) openCard(r.deck, r.card); else if (SQ[c.pos].t === "prop") openTile(c.pos, true); else if (r.heist) openHeist(); else if (r.note) toast(esc(r.note.replace(c.name + " ", "You ")));
 }
 function doClaim() { if (onChain()) return Chain.claim(); const g = claim(G.me); toast(`+${fmt(g)} claimed into your Chog.`); render(); window.Guide?.on("claimed"); }
-function doTopUp() { if (onChain()) return Chain.topUp(5000); if (G.wallet.chog < 5000) return toast("Practice wallet is empty."); G.wallet.chog -= 5000; G.me.cash += 5000; G.inflow += 5000; G.me.broke = false; if (G.me.bankrupt) { G.me.bankrupt = 0; toast("Topped up. You're back in the game."); } render(); }
+function doTopUp() { if (onChain()) return Chain.topUp(5000); const a = Math.min(5000, topUpRoom(G.me)); if (a <= 0) return toast(`You've topped up the ${fmt(K.topUpCap)} limit for this season.`); if (G.wallet.usdc < a) return toast("Practice wallet is empty."); G.wallet.usdc -= a; addTopUp(G.me, a); G.me.broke = false; if (G.me.bankrupt) { G.me.bankrupt = 0; toast("Topped up. You're back in the game."); } render(); }
 function doTax(days) { if (onChain()) return Chain.tax(days); const r = prepayTax(G.me, days); if (r === -1) toast("Not enough cash in your Chog."); else { render(); window.Guide?.on("tax"); } }
-function doGuard() { if (onChain()) return Chain.guard(); const c = G.me; if (c.cash < K.guardCost) return toast("Not enough cash."); payTo(c, 250, "burn"); payTo(c, 250, "commons"); c.guards++; render(); }
+function doGuard() { if (onChain()) return Chain.guard(); const c = G.me; if (G.wallet.chog < K.guardChog) return toast(`A guard costs ${K.guardChog} $CHOG.`); G.wallet.chog -= K.guardChog; G.chogBurned += K.guardChog; c.guards++; render(); }
 function payBail() { if (onChain()) return Chain.bail(); const c = G.me; if (!c.jail) return; if (c.cash < K.bail) return toast("Not enough cash for bail."); payTo(c, K.bail / 2, "burn"); payTo(c, K.bail / 2, "lounge"); c.jail = 0; render(); }
 function doCashOut(amt) {
   if (onChain()) return Chain.cashOut(amt);
@@ -1567,12 +1591,14 @@ function doCashOut(amt) {
   c.queue.push({ amt, net: amt - tax, at: G.t + K.queue, ready: false }); U.coAmt = 0;
   toast(`Cash-out queued. ${fmt(amt - tax)} arrives in 48 hours. Prestige reset to 0.`); render(); window.Guide?.on("cashout");
 }
-function doCollect() { if (onChain()) return Chain.claimCashOut(); const c = G.me; let tot = 0; c.queue = c.queue.filter(q => { if (q.ready) { tot += q.net; return false; } return true; }); G.wallet.chog += tot; G.outflow += tot; toast(`${fmt(tot)} $CHOG sent to your wallet.`); render(); }
+function doCollect() { if (onChain()) return Chain.claimCashOut(); const c = G.me; let tot = 0; c.queue = c.queue.filter(q => { if (q.ready) { tot += q.net; return false; } return true; }); G.wallet.usdc += tot; G.outflow += tot; toast(`${fmt(tot)} sent to your wallet.`); render(); }
 function doQuest(i) {
   if (onChain()) return Chain.quest(i);
   const c = G.me, s = SQ[i], kind = s.q[1], day = Math.floor(G.t / DAY);
-  if (kind === "swap") { if (G.wallet.mon < 50) return toast("Your practice wallet is out of MON."); G.wallet.mon -= 50; const got = 50 * K.monToChog * (0.97 + rnd() * 0.04); c.cash += got; G.inflow += got; toast(`Swapped 50 MON → ${fmt(got)} $CHOG on nad.fun, into your Chog.`); }
-  else { if (G.wallet.mon < 20) return toast("Your practice wallet is out of MON."); G.wallet.mon -= 20; c.pos_[s.dapp] = (c.pos_[s.dapp] || 0) + 20 * K.monToChog; G.inflow += 20 * K.monToChog; toast(`${s.dapp}: done. The position is held by your Chog.`); }
+  if (G.wallet.mon < 20) return toast("Your practice wallet is out of MON.");
+  const val = 20 * K.monUsd * (0.97 + rnd() * 0.04); // 20 MON in game units
+  if (kind === "usdc") { if (val > topUpRoom(c)) return toast("That would pass this season's top-up limit."); G.wallet.mon -= 20; addTopUp(c, val); toast(`Swapped 20 MON → ${fmt(val)} of USDC on Uniswap, into your Chog's balance.`); }
+  else { G.wallet.mon -= 20; c.pos_[s.dapp] = (c.pos_[s.dapp] || 0) + val; G.inflow += val; toast(kind === "chog" ? `Bought ${fmtN(val * K.chogPerUnit)} $CHOG on nad.fun. It's held by your Chog.` : `${s.dapp}: staked 20 MON. The position is held by your Chog.`); }
   const first = !c.stamps.has(i); c.stamps.add(i); (c.stampAt = c.stampAt || {})[i] = c.stampAt?.[i] ?? G.t;
   if (c.qday[i] !== day) { c.qday[i] = day; c.rolls++; }
   if (first) toast(`New Patron Stamp: ${s.dapp}. +1% claim weight and +1 free roll.`);
@@ -1588,6 +1614,7 @@ document.addEventListener("click", e => {
   const pc = t.closest("[data-pickchog]"); if (pc) { U.pick = +pc.dataset.pickchog; return renderOnboard(); }
   if (t.closest("#meChip")) return toggleMeMenu();
   if (!t.closest("#meMenu")) toggleMeMenu(false);
+  if (t.closest("[data-buyback]")) return Chain.buyback();
   const pf = t.closest("[data-profile]"); if (pf) return openProfile(+pf.dataset.profile);
   const r = t.closest("[data-room]"); if (r) { closeSheet(); toggleMeMenu(false); return room(r.dataset.room); }
   const dt = t.closest("[data-deedtab]"); if (dt) { U.deedTab = dt.dataset.deedtab; U.qty = null; return openTile(U.deed.i, U.deed.landed); }
@@ -1601,7 +1628,7 @@ document.addEventListener("click", e => {
   const sl = t.closest("[data-sell]"); if (sl) { if (onChain()) return Chain.sell(+sl.dataset.sell); const p = SQ[+sl.dataset.sell], k = +($(".stepper2 .num")?.textContent || 1), got = sellBricks(G.me, p, k); if (got) toast(`Sold ${k} Brick${k > 1 ? "s" : ""} for ${fmt(got)}.`); U.qty = null; openTile(p.i, U.deed?.landed); return render(); }
   const h = t.closest("[data-heist]"); if (h) { if (onChain()) return Chain.heist(+h.dataset.heist); const res = heist(G.me, byId(+h.dataset.heist)); closeSheet(); toast(res.win ? `Heist worked: +${fmt(res.amt)}.` : `Caught. You paid ${fmt(res.amt)} and went to Rug Jail.`); return render(); }
   const dm = t.closest("[data-dm],[data-thread]"); if (dm) return openThread(+(dm.dataset.dm || dm.dataset.thread));
-  const hy = t.closest("[data-hype]"); if (hy) { if (onChain()) return Chain.hype(+hy.dataset.hype, 300); if (hype(G.me, byId(+hy.dataset.hype), 300)) { toast("Hyped with 300 $CHOG (30 burned)."); render(); window.Guide?.on("hyped"); } else toast("Not enough cash."); return; }
+  const hy = t.closest("[data-hype]"); if (hy) { if (onChain()) return Chain.hype(+hy.dataset.hype, 300); if (hype(G.me, byId(+hy.dataset.hype), K.hypeChog)) { toast(`Hyped with ${K.hypeChog} $CHOG: ${K.hypeChog / 10} burned, ${K.hypeChog * 0.9} tipped to their owner.`); render(); window.Guide?.on("hyped"); } else toast(`Hype costs ${K.hypeChog} $CHOG.`); return; }
   const td = t.closest("[data-todo]"); if (td) { const a = td.dataset.todo; if (a === "claim") return doClaim(); return room(a); }
 });
 document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("#scrim").hidden) closeSheet(); toggleMeMenu(false); });
@@ -1620,7 +1647,7 @@ function startPractice(toRules) {
 function initWorld() {
   G.chogs = CHOG_ART.map(a => mkChog(a, true));
   G.sleep = SUPPLY * 2400; G.inflow = G.commons + G.lounge + G.sleep;
-  G.chogs.forEach(c => { const dep = 12000 + ri(30000); c.cash = dep; G.inflow += dep; c.woke = -2 * DAY; c.lastCash = -2 * DAY - ri(5) * DAY; c.taxUntil = DAY; c.guards = ri(3); });
+  G.chogs.forEach(c => { c.cash = K.startDeposit; G.inflow += K.startDeposit; c.woke = -2 * DAY; c.lastRoll = -2 * DAY; c.lastCash = -2 * DAY - ri(5) * DAY; c.taxUntil = DAY; c.guards = ri(3); });
   G.t = 0; G.seasonStartT = 0; advance(2 * DAY);
   G.chogs.forEach(c => c.seasonAppraisal = appraisal(c));
 }
@@ -1794,13 +1821,13 @@ window.Guide = (() => {
     if (tour) return; // no tips on top of the tour
     if (ev === "rolled") {
       complete("roll");
-      if (d?.jail) hint("jail", { only: "map", title: "Rug Jail", sel: "#bail", text: "Roll doubles to walk out (3 tries), or pay 500 bail. Your Bricks still earn rent while you're inside." });
+      if (d?.jail) hint("jail", { only: "map", title: "Rug Jail", sel: "#bail", text: "Roll doubles to walk out (3 tries), or pay $0.50 bail. Your Bricks still earn rent while you're inside." });
       const sq = d?.sq;
-      if (sq?.t === "go") hint("go", { only: "map", title: "GENESIS dividend", sel: "#lastev", text: "Passing GENESIS pays 1% of your Bricks' value (max 500) from the Commons. Own nothing, earn nothing." });
+      if (sq?.t === "go") hint("go", { only: "map", title: "GENESIS dividend", sel: "#lastev", text: "Passing GENESIS pays 1% of your Bricks' value (max $0.50) from the Commons. Own nothing, earn nothing." });
       if (sq?.t === "tax") hint("tax-sq", { only: "map", title: sq.name, sel: "#lastev", text: "Tax squares pay into the Nad Lounge pot. Land on the Nad Lounge corner to win 25% of it." });
     }
     if (ev === "tile" && d?.landed && SQ[d.i].brand) hint("quest-card", { title: "A real Monad app", sel: "#modal .questbox", text: "This square is wired to a real app. In Practice it's simulated. On Testnet and Mainnet the position is bought for real and held by your Chog, not your wallet." });
-    if (ev === "heistOpen") hint("heist", { title: "Heist", sel: "#modal", text: "Pick a target. The % is your chance. Win: take 10% of their unclaimed rent. Lose: pay them 500 and go to Rug Jail. Cash and Bricks are never at risk." });
+    if (ev === "heistOpen") hint("heist", { title: "Heist", sel: "#modal", text: "Pick a target. The % is your chance. Win: take 10% of their unclaimed rent. Lose: pay them $0.50 and go to Rug Jail. Cash and Bricks are never at risk." });
     if (ev === "room" && d === "portfolio") hint("bank-out", { only: "portfolio", title: "Leaving costs money", sel: ["#coAmt", "#bankOut"], text: "Drag the slider to see the tax (20%, falling to 10% the longer you stay), the 48-hour wait, and the Prestige you'd lose. Selling the whole Chog usually beats stripping it." });
     if (ev === "render" && G.me) stateHints();
   }
@@ -1838,10 +1865,10 @@ window.Chain = (() => {
     testnet: {
       key: "testnet", label: "Testnet City", name: "Monad Testnet", chainId: 10143, hex: "0x279f",
       rpc: "https://testnet-rpc.monad.xyz", explorer: "https://testnet.monadvision.com",
-      game: "0x09741a1CBaBc28c7034cF6F941B571CA3601f30d", chog: "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF", nft: "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
+      game: "0x4f4e8a4FCA7784D7531Cd01Fef7963d24e82c141", usdc: "0x2496958B8816F2FD88E888a05aA7d34A7D46Ed12", chog: "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF", nft: "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
       mocks: true,
-      squares: { 1: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for nad.fun)" }, 3: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for nad.fun)" }, 5: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for FastLane shMON)" }, 25: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for aPriori aprMON)" }, 35: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for Kintsu sMON)" }, 37: { kind: "mock", label: "Swap MON → test $CHOG (stand-in for Uniswap)" } },
-      adapters: { mock: "0x4204fef653DA46ba85cEDD47F4e9F10E4341d4f3" }, mockRate: 2500,
+      squares: { 1: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for nad.fun)" }, 3: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for nad.fun)" }, 5: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for FastLane shMON)" }, 25: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for aPriori aprMON)" }, 35: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for Kintsu sMON)" }, 37: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for Uniswap)" } },
+      adapters: { mock: "0x66331182082DA6D816B096572d60DeFE64C42d8d" },
       questMon: "0.5",
     },
     mainnet: {
@@ -1851,12 +1878,12 @@ window.Chain = (() => {
       chog: "0x350035555E10d9AfAF1566AaebfCeD5BA6C27777", nft: "0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763",
       mocks: false,
       squares: {
-        1: { kind: "nad", label: "Buy real $CHOG on nad.fun, into your Chog" },
-        3: { kind: "nad", label: "Buy real $CHOG on nad.fun, into your Chog" },
+        1: { kind: "nad", sym: "$CHOG", label: "Buy real $CHOG on nad.fun, held by your Chog" },
+        3: { kind: "nad", sym: "$CHOG", label: "Buy real $CHOG on nad.fun, held by your Chog" },
         5: { kind: "lst", lst: "0x1B68626dCa36c7fE922fD2d55E4f631d962dE19c", sym: "shMON", label: "Stake MON → shMON (FastLane), held by your Chog" },
         25: { kind: "lst", lst: "0x0c65A0BC65a5D819235B71F554D210D3F80E0852", sym: "aprMON", label: "Stake MON → aprMON (aPriori), held by your Chog" },
         35: { kind: "lst", lst: "0xA3227C5969757783154C60bF0bC1944180ed81B9", sym: "sMON", label: "Stake MON → sMON (Kintsu), held by your Chog", noPreview: true },
-        37: { kind: "uni", sym: "USDC", label: "Swap MON → USDC on Uniswap v3, held by your Chog" },
+        37: { kind: "uni", sym: "USDC", label: "Swap MON → USDC on Uniswap v3, straight into your Chog's cash" },
       },
       adapters: {}, // filled from deployment
       lens: "0x7e78A8DE94f21804F7a17F4E8BF9EC2c872187ea", quoter: "0x661e93cca42afacb172121ef892830ca3b70f08d",
@@ -1868,7 +1895,7 @@ window.Chain = (() => {
   const MAINNET_DEPLOYMENT = null;
 
   const GAME_ABI = [
-    "function chogs(uint256) view returns (address owner,uint64 movedAt,uint64 woke,uint64 lastCash,uint64 taxUntil,uint64 checkpoint,uint64 rollTs,uint64 immuneUntil,uint64 hypeUntil,uint64 heistUntil,uint64 pendingBlock,uint32 rollsSeason,uint32 seasonNo,uint16 hypeBps,uint8 pos,uint8 rolls,uint8 jail,uint8 plan,uint8 planCommitted,uint8 doubles,uint8 guards,uint8 tier,bool jailCard,bool awake,uint256 cash,uint256 unclaimed,uint256 jar,uint256 sleepDebt,uint256 stamps,uint256 warden)",
+    "function chogs(uint256) view returns (address owner,uint64 movedAt,uint64 woke,uint64 lastCash,uint64 taxUntil,uint64 checkpoint,uint64 rollTs,uint64 immuneUntil,uint64 hypeUntil,uint64 heistUntil,uint64 pendingBlock,uint64 lastRoll,uint32 rollsSeason,uint32 seasonNo,uint16 hypeBps,uint8 pos,uint8 rolls,uint8 jail,uint8 plan,uint8 planCommitted,uint8 doubles,uint8 guards,uint8 tier,bool jailCard,bool awake,uint256 cash,uint256 unclaimed,uint256 jar,uint256 sleepDebt,uint256 stamps,uint256 warden)",
     "function props(uint256) view returns (uint128 p0,uint128 baseRent,uint64 supply,uint256 reserve,uint256 acc)",
     "function bricks(uint256,uint256) view returns (uint64)",
     "function awakeCount() view returns (uint256)", "function awakeList(uint256,uint256) view returns (uint256[])",
@@ -1877,6 +1904,7 @@ window.Chain = (() => {
     "function commons() view returns (uint256)", "function lounge() view returns (uint256)", "function seasonPot() view returns (uint256)", "function burned() view returns (uint256)",
     "function seasonNo() view returns (uint256)", "function seasonStart() view returns (uint256)", "function bellEnd() view returns (uint256)", "function accounted() view returns (uint256)",
     "function cashOuts(uint256) view returns (address to,uint128 net,uint64 readyAt)", "function adapterOf(uint256) view returns (address)",
+    "function buybackPot() view returns (uint256)", "function chogBurned() view returns (uint256)", "function seasonTopUp(uint256) view returns (uint256)", "function topUpSeason(uint256) view returns (uint256)", "function buyback(uint256)",
     "function wake(uint256,uint256)", "function topUp(uint256,uint256)", "function setPlan(uint256,uint8)", "function roll(uint256)", "function settle(uint256)", "function buyExtraRoll(uint256)",
     "function claim(uint256)", "function prepayTax(uint256,uint256)", "function payBail(uint256)", "function hireGuard(uint256)", "function hype(uint256,uint256)", "function heist(uint256,uint256)",
     "function sellBricks(uint256,uint256,uint64,uint256)", "function quest(uint256,bytes) payable", "function requestCashOut(uint256,uint256)", "function claimCashOut(uint256)", "function sync(uint256)",
@@ -1889,13 +1917,13 @@ window.Chain = (() => {
   const ADAPTER = ["function held(uint256,address) view returns (uint256)", "function unlockAt(uint256) view returns (uint64)", "function withdraw(uint256,address)"];
   const ERR = {
     NotOwner: "That Chog isn't owned by the connected wallet.", NotAwake: "Wake this Chog first.", Pending: "A roll is already in flight. Land it first.",
-    NoRolls: "Out of rolls. Buy an extra roll or wait 30 minutes.", NotHere: "Stand on that square to do its quest.", Cap: "That's over a cap (deposit cap or today's city-wide cash-out cap).",
+    NoRolls: "Out of rolls. Buy an extra roll or wait 30 minutes.", NotHere: "Stand on that square to do its quest.", Cap: "That's over a limit: $20 of top-ups per season, the deposit cap, or today's city-wide cash-out cap.",
     Funds: "Not enough cash inside your Chog.", Locked: "Locked for now (48h cash-out queue, 72h after a sale, or 7-day position lock).", Bad: "The game rejected that action in the current state.",
   };
-  const CARD_TEXT = ["Airdrop: collect 200 from the Commons.", "Front-run by MEV: pay 300 to the Nad Lounge.", "Lucky Pyth roll: +1 free roll.", "Rugged: straight to Rug Jail.", "Advance to GENESIS.", "LP fees: collect 150 from the Commons.", "Vet bill: pay 100 to the Nad Lounge.", "Get out of Rug Jail free."];
+  const CARD_TEXT = ["Airdrop: collect $0.20 from the Commons.", "Front-run by MEV: pay $0.30 to the Nad Lounge.", "Lucky Pyth roll: +1 free roll.", "Rugged: straight to Rug Jail.", "Advance to GENESIS.", "LP fees: collect $0.15 from the Commons.", "Vet bill: pay $0.10 to the Nad Lounge.", "Get out of Rug Jail free."];
 
-  let net = null, rp = null, bp = null, signer = null, me = null, myId = null, game = null, gameR = null, chogT = null, nft = null;
-  let busy = false, timer = null, extra = { positions: [], walletChog: 0, walletMon: 0, accounted: 0, held: 0, maxDeposit: Infinity, mine: [] };
+  let net = null, rp = null, bp = null, signer = null, me = null, myId = null, game = null, gameR = null, chogT = null, usdcT = null, nft = null;
+  let busy = false, timer = null, extra = { positions: [], walletChog: 0, walletUsdc: 0, walletMon: 0, accounted: 0, held: 0, maxDeposit: Infinity, mine: [] };
 
   const on = () => !!net && !!myId;
   const sleepMs = ms => new Promise(r => setTimeout(r, ms));
@@ -1917,8 +1945,11 @@ window.Chain = (() => {
     return out;
   }
   const cacheKey = () => `cows.mine.${net.key}.${me?.toLowerCase()}`;
-  const fe = x => Number(ethers.formatEther(x));
-  const W = n => ethers.parseEther(String(n));
+  // The game money is USDC (6 decimals); the app counts it in game units of $0.001. $CHOG and MON have 18 decimals.
+  const fe = x => Number(x) / 1e3; // USDC base units → game units
+  const W = n => BigInt(Math.round(Number(n) * 1e3)); // game units → USDC base units
+  const fe18 = x => Number(ethers.formatEther(x));
+  const W18 = n => ethers.parseEther(String(n));
   const artOf = id => {
     const emb = CHOG_ART.find(a => a.id === id); if (emb) return emb.img;
     const row = CHOG_TABLE.find(r => r[0] === id); return row ? `${GATEWAYS[0]}${CID}/${row[2]}.webp` : "";
@@ -1952,7 +1983,7 @@ window.Chain = (() => {
     G.mode = key;
     rp = new ethers.JsonRpcProvider(net.rpc, net.chainId, { staticNetwork: true, batchMaxCount: 1 });
     if (net.game) gameR = new ethers.Contract(net.game, GAME_ABI, rp);
-    chogT = new ethers.Contract(net.chog, ERC20, rp); nft = new ethers.Contract(net.nft, ERC721, rp);
+    chogT = new ethers.Contract(net.chog, ERC20, rp); usdcT = new ethers.Contract(net.usdc, ERC20, rp); nft = new ethers.Contract(net.nft, ERC721, rp);
     document.body.dataset.mode = key;
     renderConnect();
   }
@@ -1973,7 +2004,6 @@ window.Chain = (() => {
       ${live && window.ethereum ? (me ? myChogsHtml() : `<div><button class="btn primary lg" data-chain="connect">Connect wallet</button></div>`) : ""}
       ${extraHtml}
       <p class="tiny">${net.key === "mainnet" ? "Unaudited hackathon contracts. Deposits are capped and cash-outs are taxed 10 to 20% with a 48-hour wait. Only play with what you can afford to lose." : "Testnet only. Nothing here has real value. You need a little testnet MON for gas (faucet.monad.xyz)."}</p></div>`;
-    const sl = $("#cDep"); if (sl) sl.oninput = () => { $("#cDepV").textContent = fmt(+sl.value); };
   }
 
   async function connect() {
@@ -2000,8 +2030,9 @@ window.Chain = (() => {
     bp = new ethers.BrowserProvider(window.ethereum);
   }
   async function loadWallet() {
-    const c = await rc(() => chogT.balanceOf(me)), m = await rc(() => rp.getBalance(me)), md = await rc(() => gameR.maxDeposit());
-    extra.walletChog = fe(c); extra.walletMon = fe(m); extra.maxDeposit = md > W(1e12) ? Infinity : fe(md);
+    const c = await rc(() => chogT.balanceOf(me)), u = await rc(() => usdcT.balanceOf(me)), m = await rc(() => rp.getBalance(me)), md = await rc(() => gameR.maxDeposit());
+    extra.walletChog = fe18(c); extra.walletUsdc = fe(u); extra.walletMon = fe18(m); extra.maxDeposit = md > W(1e12) ? Infinity : fe(md);
+    G.wallet = { usdc: extra.walletUsdc, chog: extra.walletChog, mon: extra.walletMon };
   }
 
   // ---------- finding the player's Chogs ----------
@@ -2040,15 +2071,15 @@ window.Chain = (() => {
     const scanning = extra.scan !== "done";
     const list = extra.mine.map(id => { const r = rowOf(id); return `<button data-pick="${id}" aria-pressed="${extra.pick === id}"><span class="im" style="background-image:url(${artOf(id)})"></span><b>${r[1]}</b><small>${r[3]}${extra.awake?.[id] ? " · awake" : ""}</small></button>`; }).join("");
     const pick = extra.pick, awake = pick && extra.awake?.[pick];
-    const maxDep = Math.floor(Math.min(extra.walletChog, extra.maxDeposit)), dep = Math.max(10000, Math.min(20000, maxDep));
-    return `<div class="card"><dl class="kv"><dt>Wallet</dt><dd>${me.slice(0, 6)}…${me.slice(-4)}</dd><dt>$CHOG in wallet</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON for gas${net.key === "mainnet" ? " and app squares" : ""}</dt><dd>${extra.walletMon.toFixed(3)}</dd>${extra.maxDeposit < Infinity ? `<dt>Deposit cap per Chog</dt><dd>${fmt(extra.maxDeposit)}</dd>` : ""}</dl>
-      ${net.mocks ? `<div class="row" style="margin-top:12px"><button class="btn sm" data-chain="faucetChog">Get 100,000 test $CHOG</button><button class="btn sm" data-chain="mintChog">Mint a free test Chog</button></div>` : `<p class="tiny" style="margin-top:10px">Need $CHOG? Land on a nad.fun square in the game, or wake with any amount from 10,000.</p>`}</div>
+    const dep = K.startDeposit, short = extra.walletUsdc < dep;
+    return `<div class="card"><dl class="kv"><dt>Wallet</dt><dd>${me.slice(0, 6)}…${me.slice(-4)}</dd><dt>USDC in wallet</dt><dd>${fmt(extra.walletUsdc)}</dd><dt>$CHOG in wallet (power-ups)</dt><dd>${fmtN(extra.walletChog)}</dd><dt>MON for gas${net.key === "mainnet" ? " and app squares" : ""}</dt><dd>${extra.walletMon.toFixed(3)}</dd>${extra.maxDeposit < Infinity ? `<dt>Deposit cap per Chog</dt><dd>${fmt(extra.maxDeposit)}</dd>` : ""}</dl>
+      ${net.mocks ? `<div class="row" style="margin-top:12px"><button class="btn sm" data-chain="faucetUsdc">Get 100 test USDC</button><button class="btn sm" data-chain="faucetChog">Get 10,000 test $CHOG</button><button class="btn sm" data-chain="mintChog">Mint a free test Chog</button></div>` : `<p class="tiny" style="margin-top:10px">Need $CHOG? Land on a nad.fun square in the game, or wake with any amount from 10,000.</p>`}</div>
       <div class="row between"><h3>Your Chogs</h3><span class="tiny" id="scanN">${scanning ? `checking ${extra.scan || 0} / 1,969…` : `${extra.mine.length} found`}</span></div>
       <div class="row"><label class="tiny" for="cId">Know your Chog's token ID?</label><input id="cId" class="qamt" type="number" min="1" max="1969" placeholder="e.g. 561"><button class="btn sm" data-chain="useId">Use it</button>${scanning ? "" : `<button class="btn sm ghost" data-chain="rescan">Scan again</button>`}</div>
       ${list ? `<div class="pick">${list}</div>` : scanning ? "" : `<p class="muted small">This wallet holds no ${net.mocks ? "test Chog yet. Mint one above." : "Chog Genesis NFT. Try Testnet City instead."}</p>`}
       ${pick ? `<div class="card stack"><h3>${awake ? "Open the account" : `Open an account for ${rowOf(pick)[1]}`}</h3>
         ${awake ? `<p class="muted small">This Chog already has an account.</p><button class="btn primary lg" data-chain="enterCity">Enter as ${rowOf(pick)[1]}</button>`
-          : `<label class="tiny" for="cDep">Deposit (min 10,000 $CHOG)</label><input type="range" id="cDep" min="10000" max="${Math.max(10000, maxDep)}" step="1000" value="${dep}"><div class="row between"><b class="num" id="cDepV">${fmt(dep)}</b><button class="btn primary" data-chain="wake" ${maxDep < 10000 ? "disabled" : ""}>Approve and open account</button></div>${maxDep < 10000 ? `<p class="tiny">You need at least 10,000 $CHOG in this wallet.</p>` : ""}`}</div>` : ""}`;
+          : `<dl class="kv"><dt>Opening deposit (same for everyone)</dt><dd>${fmt(dep)} USDC</dd></dl><div><button class="btn primary" data-chain="wake" ${short ? "disabled" : ""}>Approve and open account</button></div>${short ? `<p class="tiny">You need ${fmt(dep)} of ${net.mocks ? "test " : ""}USDC in this wallet.</p>` : ""}`}</div>` : ""}`;
   }
 
   // ---------- reading the city ----------
@@ -2061,14 +2092,14 @@ window.Chain = (() => {
     const rolls = await pmap(ids, id => rc(() => gameR.rollsOf(id)));
     const pend = await pmap(ids, id => rc(() => gameR.pendingRent(id)));
     const propsR = await pmap(PROPS, p => rc(() => gameR.props(p.i)));
-    const potFns = [() => gameR.commons(), () => gameR.lounge(), () => gameR.seasonPot(), () => gameR.burned(), () => gameR.seasonNo(), () => gameR.seasonStart(), () => gameR.bellEnd(), () => gameR.accounted(), () => chogT.balanceOf(net.game), () => gameR.sleepingDividend(0)];
+    const potFns = [() => gameR.commons(), () => gameR.lounge(), () => gameR.seasonPot(), () => gameR.burned(), () => gameR.seasonNo(), () => gameR.seasonStart(), () => gameR.bellEnd(), () => gameR.accounted(), () => usdcT.balanceOf(net.game), () => gameR.sleepingDividend(0), () => gameR.buybackPot(), () => gameR.chogBurned()];
     const pots = await pmap(potFns, f => rc(f), 4);
     const pairs = PROPS.filter((p, k) => Number(propsR[k].supply) > 0).flatMap(p => ids.map(id => [p.i, id]));
     const brick = await pmap(pairs, ([sq, id]) => rc(() => gameR.bricks(sq, id)).then(b => [sq, id, Number(b)]));
     G.t = Math.floor(now / 60);
     G.commons = fe(pots[0]); G.lounge = fe(pots[1]); G.season = fe(pots[2]); G.burned = fe(pots[3]); G.seasonNo = Number(pots[4]);
     G.seasonStartT = Number(pots[5]) / 60; G.bellEnd = Number(pots[6]) ? Number(pots[6]) / 60 : null; extra.accounted = fe(pots[7]); extra.held = fe(pots[8]);
-    G.sleep = fe(pots[9]) * SUPPLY;
+    G.sleep = fe(pots[9]) * SUPPLY; G.buyback = fe(pots[10]); G.chogBurned = fe18(pots[11]);
     PROPS.forEach((p, k) => { p.supply = Number(propsR[k].supply); p.reserve = fe(propsR[k].reserve); p.h = {}; });
     brick.forEach(([sq, id, b]) => { if (b) SQ[sq].h[id] = b; });
     const prev = new Map(G.chogs.map(c => [c.id, c]));
@@ -2079,7 +2110,7 @@ window.Chain = (() => {
         ...old, id, name: r[1].replace(/^CHOG /, ""), full: r[1], img: artOf(id), tier: r[3] || "Common", eyes: r[4], head: r[5], body: r[6], mouth: r[7],
         bot: id !== myId, pos: Number(s.pos), cash: fe(s.cash), unclaimed: fe(s.unclaimed) + fe(pend[k]), jar: fe(s.jar), rolls: Number(rolls[k]),
         hypeMult: Number(s.hypeBps) / 10000 || 1, hypeUntil: Number(s.hypeUntil) / 60, guards: Number(s.guards), jail: Number(s.jail), jailCard: s.jailCard,
-        lastCash: Number(s.lastCash) / 60, woke: Number(s.woke) / 60, taxUntil: Number(s.taxUntil) / 60, immuneUntil: Number(s.immuneUntil) / 60, heistUntil: Number(s.heistUntil),
+        lastCash: Number(s.lastCash) / 60, woke: Number(s.woke) / 60, lastRoll: Number(s.lastRoll) / 60, taxUntil: Number(s.taxUntil) / 60, immuneUntil: Number(s.immuneUntil) / 60, heistUntil: Number(s.heistUntil),
         stamps: st, qday: old.qday || {}, pos_: {}, warden: Number(s.warden), rollsSeason: Number(s.rollsSeason), plan: ["safe", "balanced", "degen"][Number(s.plan)] || "balanced",
         pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, seasonAppraisal: old.seasonAppraisal ?? null, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
       };
@@ -2122,27 +2153,29 @@ window.Chain = (() => {
   async function loadPositions() {
     extra.positions = [];
     for (const [sq, s] of Object.entries(net.squares)) {
-      if (!s.lst && s.kind !== "uni") continue;
+      if (!s.lst && s.kind !== "nad") continue; // USDC from Uniswap goes straight into cash
       const a = net.adapters[sq]; if (!a) continue;
-      const ad = new ethers.Contract(a, ADAPTER, rp); const asset = s.lst || net.usdc;
+      const asset = s.lst || net.chog;
+      if (extra.positions.some(p => p.adapter === a && p.asset === asset)) continue; // both nad.fun squares share one adapter
+      const ad = new ethers.Contract(a, ADAPTER, rp);
       const h = await rc(() => ad.held(myId, asset)), u = await rc(() => ad.unlockAt(myId));
-      if (h > 0n) extra.positions.push({ sq: +sq, sym: s.sym, asset, adapter: a, amount: s.kind === "uni" ? Number(h) / 1e6 : fe(h), unlock: Number(u) });
+      if (h > 0n) extra.positions.push({ sq: +sq, sym: s.sym, asset, adapter: a, amount: fe18(h), unlock: Number(u) });
     }
   }
 
   // ---------- actions ----------
-  async function ensureAllowance(amountWei) {
-    const t = new ethers.Contract(net.chog, ERC20, signer);
+  async function ensureAllowance(amountWei, which = "usdc") {
+    const t = new ethers.Contract(which === "usdc" ? net.usdc : net.chog, ERC20, signer);
     if ((await t.allowance(me, net.game)) >= amountWei) return true;
-    return !!(await tx("Approve $CHOG", () => t.approve(net.game, ethers.MaxUint256)));
+    return !!(await tx(which === "usdc" ? "Approve USDC" : "Approve $CHOG", () => t.approve(net.game, ethers.MaxUint256)));
   }
   async function wake() {
-    const amt = W($("#cDep").value);
+    const amt = W(K.startDeposit);
     if (!(await ensureAllowance(amt))) return;
     if (await tx("Wake your Chog", () => game.wake(extra.pick, amt))) { extra.awake[extra.pick] = true; enterCity(); }
   }
   async function enterCity() {
-    myId = extra.pick; G.wallet = { chog: extra.walletChog, mon: extra.walletMon, usdc: 0 };
+    myId = extra.pick; G.wallet = { usdc: extra.walletUsdc, chog: extra.walletChog, mon: extra.walletMon };
     say("Loading the city…");
     let old = null; try { old = JSON.parse(localStorage.getItem(snapKey()) || "null"); } catch (_) { /* storage blocked */ }
     await refresh(); awaySummary(old);
@@ -2157,7 +2190,7 @@ window.Chain = (() => {
       const onchainPlan = ["safe", "balanced", "degen"].indexOf(c.plan), want = ["safe", "balanced", "degen"].indexOf(G.plan);
       if (onchainPlan !== want && !(await tx(`Set plan to ${G.plan}`, () => game.setPlan(myId, want)))) return;
       if (!c.pendingBlock) {
-        if (c.rolls === 0 && !(await tx("Buy an extra roll (100 $CHOG)", () => game.buyExtraRoll(myId)))) return;
+        if (c.rolls === 0 && (!(await ensureAllowance(W18(K.extraRollChog), "chog")) || !(await tx(`Buy an extra roll (${K.extraRollChog} $CHOG, burned)`, () => game.buyExtraRoll(myId))))) return;
         if (!(await tx("Commit roll", () => game.roll(myId)))) return;
       }
       const from = c.pos;
@@ -2191,12 +2224,23 @@ window.Chain = (() => {
   const claim = async () => after(await tx("Claim rent", () => game.claim(myId)), "claimed");
   const tax = async days => after(await tx(`Prepay ${days} day${days > 1 ? "s" : ""} of Property Tax`, () => game.prepayTax(myId, days * 86400)), "tax");
   const bail = async () => after(await tx("Pay bail", () => game.payBail(myId)), "bail");
-  const guard = async () => after(await tx("Hire a guard", () => game.hireGuard(myId)), "guard");
+  const guard = async () => (await ensureAllowance(W18(K.guardChog), "chog")) && after(await tx(`Hire a guard (${K.guardChog} $CHOG, burned)`, () => game.hireGuard(myId)), "guard");
   const sell = async sq => after(await tx("Sell 1 Brick", () => game.sellBricks(myId, sq, 1, 0)), "sell");
   const claimCashOut = async () => after(await tx("Claim cash-out", () => game.claimCashOut(myId)), "cashoutClaimed");
   async function cashOut(amount) { return after(await tx("Request cash-out", () => game.requestCashOut(myId, W(Math.floor(amount)))), "cashout"); }
   async function topUp(amount) { const a = W(amount); if (!(await ensureAllowance(a))) return; return after(await tx("Top up your Chog", () => game.topUp(myId, a)), "topup"); }
-  async function hype(target, amount) { const a = W(amount); if (!(await ensureAllowance(a))) return; return after(await tx("Hype", () => game.hype(target, a)), "hyped"); }
+  async function hype(target, amount) { const a = W18(amount); if (!(await ensureAllowance(a, "chog"))) return; return after(await tx(`Hype with ${amount} $CHOG`, () => game.hype(target, a)), "hyped"); }
+  // Anyone can run the buyback: the pot's USDC buys $CHOG and burns it. minOut is quoted on mainnet (95%).
+  async function buyback() {
+    let minOut = 0n;
+    if (!net.mocks) try {
+      const q = new ethers.Contract(net.quoter, ["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountOut,uint160,uint32,uint256)"], rp);
+      const [w] = await q.quoteExactInputSingle.staticCall({ tokenIn: net.usdc, tokenOut: net.wmon, amountIn: W(G.buyback), fee: 3000, sqrtPriceLimitX96: 0 });
+      const lens = new ethers.Contract(net.lens, ["function getAmountOut(address,uint256,bool) view returns (address,uint256)"], rp);
+      const [, out] = await lens.getAmountOut(net.chog, w, true); minOut = (out * 95n) / 100n;
+    } catch (e) { return say("Couldn't get a quote: " + niceError(e)); }
+    return after(await tx("Buy back and burn $CHOG", () => game.buyback(minOut)), "buyback");
+  }
   async function heist(target) {
     const r = await tx("Heist", () => game.heist(myId, target)); if (!r) return;
     for (const l of r.logs) { try { const p = game.interface.parseLog(l); if (p?.name === "Heist") say(p.args.success ? `Heist worked: +${fmt(fe(p.args.amount))}` : `Caught! You paid ${fmt(fe(p.args.amount))} and went to Rug Jail.`); } catch (_) { /* skip */ } }
@@ -2207,7 +2251,7 @@ window.Chain = (() => {
   // ---------- dapp quests ----------
   async function minOutFor(sq, value) {
     const s = net.squares[sq];
-    if (s.kind === "mock") return (value * BigInt(net.mockRate) * 95n) / 100n;
+    if (s.kind === "mock") return 0n;
     if (s.kind === "nad") { const lens = new ethers.Contract(net.lens, ["function getAmountOut(address,uint256,bool) view returns (address,uint256)"], rp); const [, out] = await lens.getAmountOut(net.chog, value, true); return (out * 97n) / 100n; }
     if (s.kind === "uni") {
       const q = new ethers.Contract(net.quoter, ["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountOut,uint160,uint32,uint256)"], rp);
@@ -2218,7 +2262,7 @@ window.Chain = (() => {
   }
   async function quest(sq) {
     const s = net.squares[sq]; if (!s) return;
-    const amt = $("#qAmt")?.value || net.questMon; const value = W(amt);
+    const amt = $("#qAmt")?.value || net.questMon; const value = W18(amt);
     let minOut;
     try { minOut = await minOutFor(sq, value); } catch (e) { return say("Couldn't get a quote: " + niceError(e)); }
     const data = ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [minOut]);
@@ -2229,22 +2273,22 @@ window.Chain = (() => {
     const s = net.squares[p.i]; if (!s) return null;
     return `<div class="questbox"><div class="row between"><b>${p.dapp}</b><span class="pill ok">${net.mocks ? "On-chain (test stand-in)" : "Real, on Monad"}</span></div>
       <p class="small">${s.label}.</p>
-      <p class="tiny">First time: a permanent Patron Stamp (+1% claim weight). Once a day: +1 free roll.${s.kind === "lst" || s.kind === "uni" ? " The position is held by this Chog and its holder can withdraw it after 7 days." : ""}</p>
+      <p class="tiny">First time: a permanent Patron Stamp (+1% claim weight). Once a day: +1 free roll.${s.kind === "lst" || s.kind === "nad" ? " The position is held by this Chog and its holder can withdraw it after 7 days." : s.kind === "uni" || s.kind === "mock" ? " The USDC counts toward your $20-a-season top-up limit." : ""}</p>
       ${here ? `<div class="row"><label class="tiny" for="qAmt">MON</label><input id="qAmt" class="qamt" type="number" min="0.01" step="0.01" value="${net.questMon}"><button class="btn primary sm" data-chainquest="${p.i}">Do it on-chain</button></div>` : `<p class="tiny">Land here to use it.</p>`}</div>`;
   }
   function positionsHtml() {
     const now = Date.now() / 1000;
     return `<div class="card"><h3>App positions held by your Chog</h3>
       ${extra.positions.length ? `<div class="stack" style="margin-top:10px">${extra.positions.map((p, i) => `<div class="row between"><span><b>${p.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${p.sym}</b><br><span class="tiny">${SQ[p.sq].name} · ${now >= p.unlock ? "unlocked" : "unlocks " + new Date(p.unlock * 1000).toLocaleString()}</span></span>${now >= p.unlock ? `<button class="btn sm" data-chainwd="${i}">Withdraw</button>` : `<span class="pill warn">locked</span>`}</div>`).join("")}</div>`
-        : `<p class="muted small" style="margin-top:6px">None yet. The station squares and Uniswap Boardwalk put real positions inside your Chog.</p>`}
+        : `<p class="muted small" style="margin-top:6px">None yet. The station squares and the nad.fun squares put real positions inside your Chog.</p>`}
       <p class="tiny" style="margin-top:10px">Positions belong to the NFT. If you sell the Chog, the buyer can withdraw them.</p></div>`;
   }
   function walletHtml() {
-    return `<dl class="kv"><dt>$CHOG in your wallet</dt><dd>${fmt(extra.walletChog)}</dd><dt>MON</dt><dd>${extra.walletMon.toFixed(3)}</dd><dt>Game contract</dt><dd><a href="${net.explorer}/address/${net.game}" target="_blank" rel="noopener">${net.game.slice(0, 8)}…</a></dd></dl>`;
+    return `<dl class="kv"><dt>USDC in your wallet</dt><dd>${fmt(extra.walletUsdc)}</dd><dt>$CHOG (power-ups)</dt><dd>${fmtN(extra.walletChog)}</dd><dt>MON</dt><dd>${extra.walletMon.toFixed(3)}</dd><dt>Game contract</dt><dd><a href="${net.explorer}/address/${net.game}" target="_blank" rel="noopener">${net.game.slice(0, 8)}…</a></dd></dl>`;
   }
   function ledgerHtml() {
     const ok = Math.abs(extra.held - extra.accounted) < 1e-6;
-    return `<dl class="kv"><dt>$CHOG held by the game</dt><dd>${fmt(extra.held)}</dd><dt>Owed to players and pots</dt><dd>${fmt(extra.accounted)}</dd><dt>Zero-sum check</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill bad">mismatch</span>'}</dd></dl>`;
+    return `<dl class="kv"><dt>USDC held by the game</dt><dd>${fmt(extra.held)}</dd><dt>Owed to players and pots</dt><dd>${fmt(extra.accounted)}</dd><dt>Zero-sum check</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill bad">mismatch</span>'}</dd></dl>`;
   }
   // Chog-to-Chog messages need their own contract (ChogMail), which isn't deployed yet.
   function dm() { toast("On-chain messages between Chogs are coming soon. They work in Practice City today."); }
@@ -2263,7 +2307,8 @@ window.Chain = (() => {
     if (a === "topup5k") return topUp(5000);
     if (a === "useId") return useId(+$("#cId").value);
     if (a === "rescan") return scanMyChogs(true);
-    if (a === "faucetChog") { const t = new ethers.Contract(net.chog, ERC20, signer); if (await tx("Mint 100,000 test $CHOG", () => t.mint(me, W(100000)))) { await loadWallet(); renderConnect(); } return; }
+    if (a === "faucetChog") { const t = new ethers.Contract(net.chog, ERC20, signer); if (await tx("Mint 10,000 test $CHOG", () => t.mint(me, W18(10000)))) { await loadWallet(); renderConnect(); } return; }
+    if (a === "faucetUsdc") { const t = new ethers.Contract(net.usdc, ERC20, signer); if (await tx("Mint 100 test USDC", () => t.mint(me, 100_000_000n))) { await loadWallet(); renderConnect(); } return; }
     if (a === "mintChog") {
       const n = new ethers.Contract(net.nft, ERC721, signer); let id = 0;
       for (let k = 0; k < 30; k++) { const c = 6 + Math.floor(Math.random() * 1960); try { await nft.ownerOf(c); } catch (_) { id = c; break; } }
@@ -2271,7 +2316,7 @@ window.Chain = (() => {
     }
   });
 
-  return { on, enter, dm, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
+  return { on, enter, dm, buyback, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
 })();
 </script>
 </body></html>

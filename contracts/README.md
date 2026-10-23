@@ -1,39 +1,60 @@
 # The Chog of Wall Street: contracts
 
-`contracts/ChogOfWallStreet.sol` is the on-chain core of [the plan](../docs/PLAN.md). Every balance is keyed by Chog tokenId. $CHOG is the only currency, and nothing is minted.
+`contracts/ChogOfWallStreet.sol` is the on-chain core. Every balance is keyed by Chog tokenId.
+
+- **USDC (`CASH`) is the game money.** Amounts are USDC base units, and constants use `U = 1e3` (one game unit is $0.001).
+- **$CHOG (`CHOG`) is the utility token.** The game never holds it: it's burned (or tipped) straight from the player's wallet.
+- **Nothing is minted.**
 
 | Feature | Function(s) |
 |---|---|
-| Wake a Chog: deposit plus the Sleeping Chog Dividend | `wake` |
-| Roll with a committed plan; anyone can land it (keeper tip 5 $CHOG) | `roll`, `settle`, `setPlan`, `buyExtraRoll` |
+| Wake a Chog: exactly $20 (`START_DEPOSIT`) plus the Sleeping Chog Dividend | `wake` |
+| Top-ups: at most $20 per Chog per season (`TOPUP_CAP`), counting USDC from app squares | `topUp`, `seasonTopUp` |
+| Roll with a committed plan; anyone can land it (keeper tip $0.005) | `roll`, `settle`, `setPlan` |
+| Extra rolls (100 $CHOG) and guards (500 $CHOG), burned from the wallet | `buyExtraRoll`, `hireGuard` |
+| Hype in $CHOG: 10% burned, 90% to the Chog's owner; claim boost paid by the Commons | `hype`, `claim` |
 | Bricks on linear curves: 40% per-Chog cap, Fair Start streets, sell anywhere (5% spread) | `_planBuy`, `sellBricks` |
 | Rent: 90% to holders through an accumulator, 10% to the Commons, Hot Street paid by the Commons | `_payRent`, `claim` |
-| Property Tax: 0.5% a day; rent earned while it's unpaid goes to the Commons | `prepayTax`, `_checkpoint` |
-| Claim bonuses: Prestige + stamps + tier, paid from the Commons surplus only; hype from the jar | `claim`, `bonusPct` |
+| Earning stops when Property Tax is unpaid **or 48 h after the last roll** (`IDLE`); that rent goes to the Commons | `_checkpoint`, `earningUntil` |
+| Claim bonuses: Prestige + stamps + tier + hype, from the Commons surplus only (max 10% of it per claim) | `claim`, `bonusPct` |
 | Cash-out: 10–20% tax, 48 h queue, city-wide cap of 2% a day, Prestige reset, 72 h Moving Day | `requestCashOut`, `claimCashOut`, `sync` |
-| Hype (10% burned), Heist (unclaimed rent only), guards, bail | `hype`, `heist`, `hireGuard`, `payBail` |
+| $CHOG buyback: fees fill `buybackPot`; anyone swaps it to $CHOG and burns it, with a slippage floor | `buyback`, `setBuybackAdapter` |
+| Heist (unclaimed rent only), bail | `heist`, `payBail` |
 | Dapp quests: Tier A adapter (atomic), Tier B signed receipt | `quest`, `questReceipt` |
 | Closing Bell: the last Brick buyer wins 10% of the season pot | `_tickSeason` |
-| Invariant: `CHOG.balanceOf(game) == accounted()` | `accounted` |
+| Invariant: `CASH.balanceOf(game) == accounted()` | `accounted` |
+
+**Adapters** live in `contracts/adapters/QuestAdapters.sol`:
+
+| Adapter | What it does |
+|---|---|
+| `NadFunChogAdapter` | Buys $CHOG on nad.fun and holds it for the Chog |
+| `LstAdapter` | Stakes into shMON, aprMON or sMON and holds the shares for the Chog |
+| `UniswapUsdcAdapter` | Swaps MON into USDC straight into the Chog's cash |
+| `ChogBuybackAdapter` | Swaps USDC → WMON (Uniswap v3) → $CHOG (nad.fun) and sends it to the burn address |
+
+Positions held for a Chog can be withdrawn by its current holder after 7 days.
 
 **The admin can only:**
-- whitelist quest adapters;
-- set the receipt signer;
+- whitelist quest adapters and the buyback adapter;
+- set the receipt signer and a deposit cap;
 - seed the tier table once (then freeze it).
 
-It can never move funds.
+It can never move funds. `buyback` checks that the burn address actually received at least `minChog` $CHOG, and that the adapter took no more than the pot.
 
 ## Run
 ```bash
 npm install
-npx hardhat test        # 10 tests incl. the zero-sum invariant over hundreds of rolls
-npx hardhat run scripts/deploy.js --network monadTestnet   # DEPLOYER_KEY=0x... ; mocks if CHOG_NFT/CHOG_TOKEN unset
+npx hardhat test                                   # 13 tests: zero-sum over hundreds of rolls, the 48-hour rule, deposit caps, $CHOG utilities, buyback
+FORK=1 npx hardhat test test/mainnet.fork.test.js  # 9 tests against real USDC, $CHOG, Chog Genesis, nad.fun, Uniswap, shMON, aprMON, sMON
+DEPLOYER_KEY=0x... REUSE=1 npx hardhat run scripts/deploy.js --network monadTestnet
+FORK=1 npx hardhat run scripts/deploy-mainnet.js   # mainnet dry run on a fork
 ```
 
-## Known MVP limits
+## Known limits
 - **Dice randomness** is commit → a future blockhash. Before mainnet, mix in a Pyth Entropy epoch seed.
 - **Heist randomness** uses the previous blockhash. It's low stakes, but the caller can time it.
-- **Season leaderboard payouts** (top 10, Wardens, Golden Chog) aren't on-chain yet. They'll ship as a Merkle distributor; until then the pot rolls over.
-- **The district set bonus** (7-day hold) is in the sim only.
-- **Real dapp adapters** need verified Monad addresses. Only a mock swap adapter is included.
+- **Season leaderboard payouts** (top 10, Wardens, Golden Chog), the season-end wealth tax and bankruptcy are in Practice only. On-chain they need a Merkle distributor or keeper; until then the season pot rolls over.
+- **Mortgages and auctions** are in Practice only.
+- **The buyback adapter is trusted** to route the swap. The game checks the result (`minChog` reached at the burn address), and the admin sets the adapter.
 - **Not audited.**

@@ -1,5 +1,11 @@
 # The Chog of Wall Street: the plan
 
+> **Update, 23 Oct 2026:** some of this plan has changed since it was written. Where it disagrees, `HANDOFF.md` §3 wins.
+> - The game money is now **USDC**, not $CHOG. $CHOG is the power-up token: extra rolls, guards and hype are paid in it and burned, and fees buy $CHOG back and burn it.
+> - Everyone opens with **$20**, with top-ups capped at $20 per season.
+> - Streets stop paying a Chog that hasn't rolled in **48 hours**.
+> - The city is called **Chog Street**.
+
 **Status:** Built: the Practice City UI plus contracts with tests (v3, zero-budget) · **Captured:** 2026-10-22 (working title: Chogopoly) · **Supersedes:** 009 Chog City v3, an earlier draft whose best parts are folded in
 **Target:** Chogathon 2026 · **Judging:** Novelty 30% · Fun 20% · Retention 20% · Clarity 15% · Execution 15% · plus a $CHOG bonus · **Gate:** the NFT must be essential
 **Research inputs:** [Chog Raid](research/01-chog-raid.md) · [Fomopoly](research/02-fomopoly.md) · [Daemon](research/03-daemon.md) · [Hoodopoly](research/04-hoodopoly.md) (unreachable) · [Stonkboard](research/05-stonkboard.md) · [Vault Street](research/06-vault-street.md) · [Upland](research/07-upland.md) · [$MONO teardown](research/00-mono-monopoly-land.md)

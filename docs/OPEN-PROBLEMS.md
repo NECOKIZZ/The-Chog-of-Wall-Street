@@ -1,6 +1,15 @@
 # The Chog of Wall Street: open problems
 
-Status: 22 Oct 2026. Nothing below is fixed yet. The team agreed to **get the UI right first**, then come back to these.
+Status: 23 Oct 2026.
+
+| Section | Status |
+|---|---|
+| 0. UI first | Done: the redesign is live and approved |
+| 1. Camping | Done: the 48-hour rule is in the contract and in Practice |
+| 2. The 47-hour loophole | Done: two leaderboards, and prizes follow "This season" |
+| 3. Deposits | Done: everyone opens with $20; top-ups are capped at $20 per season |
+| 4. Older open items | Still open (see `HANDOFF.md` §4) |
+| 5. Stablecoin | Done: USDC is the game money, and $CHOG is the utility token with a buyback-and-burn |
 
 ---
 
@@ -8,10 +17,10 @@ Status: 22 Oct 2026. Nothing below is fixed yet. The team agreed to **get the UI
 
 The new UI (landing, Desk, Map, Bank, Rules) is live, but the team isn't happy with it. Before any rule change, decide what "right" looks like:
 
-- [ ] Which screens feel wrong, and why (cluttered, confusing, ugly, too much reading)?
-- [ ] References for the look we want (sites, games, screenshots)
-- [ ] What a new player must understand in their first 10 seconds
-- [ ] What can be cut entirely
+- [x] Which screens feel wrong, and why (cluttered, confusing, ugly, too much reading)?
+- [x] References for the look we want (sites, games, screenshots)
+- [x] What a new player must understand in their first 10 seconds
+- [x] What can be cut entirely
 
 Every rule change below adds something to the screen (a timer, a second leaderboard, a cap). Settle the UI first so those additions have a place to go.
 
@@ -48,9 +57,9 @@ Its only costs are Property Tax (0.5% of its Bricks' value per day), missing the
 **Rejected:** auto-rolling when the roll meter is full. It takes decisions away from players and punishes real absences. The meter also fills in 4 hours today, which is far too fast.
 
 **To build:**
-- [ ] Practice: the rule, the Desk timer and the warnings
-- [ ] Contract: `lastRoll` per Chog, with rent routed to the Commons in the rent checkpoint when `now > lastRoll + 48h`
-- [ ] Wealth tax: count Chogs whose rent is off as active
+- [x] Practice: the rule, the Desk timer ("Your streets earn for …") and to-do warnings under 12 h and when stopped
+- [x] Contract: `lastRoll` per Chog and `earningUntil(id)`; the rent checkpoint sends rent to the Commons after `lastRoll + 48h` (unit-tested)
+- [x] Wealth tax: Chogs whose rent is off count as active (Practice; on-chain wealth tax is still pending)
 
 ---
 
@@ -76,7 +85,7 @@ Its only costs are Property Tax (0.5% of its Bricks' value per day), missing the
 - **This season** shows growth since the season started. Active players top it, and **it's the one that pays prizes.**
 
 **To build:**
-- [ ] A Desk toggle between Richest and This season, where This season ranks `appraisal − seasonAppraisal`
+- [x] A Leaders page with This season and Richest tabs (This season ranks `appraisal − seasonAppraisal`). On-chain, growth reads 0 until the contract stores start-of-season values
 
 ---
 
@@ -100,8 +109,8 @@ Prices are from Oct 2026 (1 MON ≈ 14.9 $CHOG, 1 MON ≈ $0.02). Re-check them 
 3. **Keep it as it is.** Easiest to run, but whales can buy the top spots.
 
 **To decide:**
-- [ ] Which option, and the numbers
-- [ ] Contract: replace or extend `maxDeposit` with a per-Chog `deposited` total (lifetime or per season)
+- [x] Which option, and the numbers: **everyone starts equal**. $20 opening deposit, $20 of top-ups per season (USDC from app squares counts)
+- [x] Contract: `START_DEPOSIT`, `TOPUP_CAP`, `seasonTopUp` per Chog (unit-tested); `maxDeposit` stays as a cash cap for the guarded launch
 
 ---
 
@@ -155,15 +164,15 @@ Prices are from Oct 2026 (1 MON ≈ 14.9 $CHOG, 1 MON ≈ $0.02). Re-check them 
 - **USDC:** the fallback. Already verified on Monad mainnet (`0x754704Bc059F8C67012fEd69BC8A327a5aafb603`) with a working Uniswap MON pool.
 
 **To decide:**
-- [ ] Stablecoin: yes or no, and AUSD or USDC
-- [ ] Keep the "fees buy and burn $CHOG" design, or send fees to the Commons instead
-- [ ] New number scale (minimum deposit, Brick prices, rent), set together with the deposit decision in section 3
+- [x] Stablecoin: yes, **USDC** (verified on Monad). $CHOG keeps its utility
+- [x] Keep the "fees buy and burn $CHOG" design: yes. Plus extra rolls (100 $CHOG), guards (500 $CHOG) and hype (10% burned, 90% tipped to the owner) are paid in $CHOG
+- [x] New number scale: one game unit = $0.001, so the old numbers carry over (a 60-unit rent is $0.06)
 
 **To build** (after the UI):
-- [ ] Contract: a decimals-aware token unit, rescaled constants, and a `burnSink` that queues fees and swaps them to $CHOG
-- [ ] Adapters: the nad.fun square buys $CHOG as a held position; the Uniswap square may become MON→stablecoin or be replaced
-- [ ] App: show dollars everywhere, and the Practice numbers rescaled
-- [ ] Re-run the unit, fork and zero-sum tests
+- [x] Contract: `CASH` (USDC) and `CHOG`, the unit `U = 1e3`, a `buybackPot` and `buyback(minChog)`
+- [x] Adapters: nad.fun holds $CHOG for the Chog; Uniswap swaps MON→USDC into cash; `ChogBuybackAdapter` does USDC→WMON→$CHOG→burn (fork-tested: $0.02 burned ~14 $CHOG)
+- [x] App: dollars everywhere, $CHOG for power-ups, the Bank shows the pot and the burn, with a buyback button on-chain
+- [x] Re-run the unit, fork and zero-sum tests: 13 unit and 9 fork tests pass; testnet redeployed
 
 ---
 

@@ -17,16 +17,38 @@ contract MockChogNFT is ERC721 {
     function mint(address to, uint256 id) external { _mint(to, id); }
 }
 
-/// @notice Tier-A quest adapter stand-in for a Kuru / Uniswap MON -> $CHOG swap at a fixed rate.
-///         A real adapter calls the router and forwards the output to the game.
+/// @notice Test stand-in for USDC (6 decimals). Anyone can mint on testnet.
+contract MockUSDC is ERC20 {
+    constructor() ERC20("USD Coin (test)", "USDC") {}
+    function decimals() public pure override returns (uint8) { return 6; }
+    function mint(address to, uint256 a) external { _mint(to, a); }
+}
+
+/// @notice Tier-A quest adapter stand-in: MON -> test USDC at a fixed rate, delivered to the game as the Chog's cash.
 contract MockSwapAdapter {
-    IERC20 public immutable chog;
+    IERC20 public immutable usdc;
     address public immutable game;
-    uint256 public immutable rate; // $CHOG per MON (18 decimals each)
-    constructor(IERC20 chog_, address game_, uint256 rate_) { chog = chog_; game = game_; rate = rate_; }
+    uint256 public immutable rate; // USDC base units per 1 MON
+    constructor(IERC20 usdc_, address game_, uint256 rate_) { usdc = usdc_; game = game_; rate = rate_; }
     function run(uint256, address, bytes calldata) external payable returns (uint256 out) {
         require(msg.sender == game, "only game");
         out = msg.value * rate / 1e18;
-        chog.transfer(game, out);
+        usdc.transfer(game, out);
+    }
+}
+
+/// @notice Buyback stand-in: takes the game's USDC and burns freshly minted test $CHOG at a fixed rate.
+contract MockBuyback {
+    IERC20 public immutable usdc;
+    MockCHOG public immutable chog;
+    address public immutable game;
+    uint256 public immutable rate; // $CHOG wei per USDC base unit
+    constructor(IERC20 usdc_, MockCHOG chog_, address game_, uint256 rate_) { usdc = usdc_; chog = chog_; game = game_; rate = rate_; }
+    function swapToChog(uint256 cashIn, uint256 minChog, address to) external returns (uint256 out) {
+        require(msg.sender == game, "only game");
+        usdc.transferFrom(game, address(this), cashIn);
+        out = cashIn * rate;
+        require(out >= minChog, "slippage");
+        chog.mint(to, out);
     }
 }

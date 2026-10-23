@@ -2,18 +2,20 @@
   "network": "monadTestnet",
   "chainId": 10143,
   "deployer": "0x6D55dF0ca3E3DbDcBb2eE0edc54633aE313dac3d",
-  "deployedAt": "2026-10-22T16:41:34.494Z",
+  "deployedAt": "2026-10-23T01:22:39.160Z",
+  "mocks": true,
+  "cashToken": "0x2496958B8816F2FD88E888a05aA7d34A7D46Ed12",
   "chogToken": "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF",
   "chogNft": "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
   "questSigner": "0x6D55dF0ca3E3DbDcBb2eE0edc54633aE313dac3d",
-  "mocks": true,
-  "game": "0x09741a1CBaBc28c7034cF6F941B571CA3601f30d",
-  "swapAdapter": "0x4204fef653DA46ba85cEDD47F4e9F10E4341d4f3",
+  "game": "0x4f4e8a4FCA7784D7531Cd01Fef7963d24e82c141",
+  "swapAdapter": "0x66331182082DA6D816B096572d60DeFE64C42d8d",
+  "buybackAdapter": "0x8323e6957edd756138f020B84deAC4fE5eE69549",
   "smoke": {
     "woke": true,
-    "pos": 4,
-    "cash": "19000.0",
-    "settleTx": "0x0989e97fe41ff0fbc00d3db6c79cb08580e984109664f3d6fea85e74adaa5279",
+    "pos": 3,
+    "cash": 19.74662,
+    "settleTx": "0xba2e9112f9b3ded1b2cf57fa66708652b80820dcf0ec981414547c76f6a46ae4",
     "zeroSum": true
   }
 }

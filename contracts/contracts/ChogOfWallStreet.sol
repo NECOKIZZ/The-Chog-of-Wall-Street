@@ -8,29 +8,39 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-/// @notice A whitelisted dapp adapter for Tier-A quests. It must deliver `chogOut` $CHOG to the game in the same call.
+/// @notice A whitelisted dapp adapter for Tier-A quests. If it returns `cashOut` > 0 it must have delivered that much of the
+///         cash token (USDC) to the game in the same call; anything else it buys is held by the adapter for the Chog.
 interface IQuestAdapter {
-    function run(uint256 tokenId, address payer, bytes calldata data) external payable returns (uint256 chogOut);
+    function run(uint256 tokenId, address payer, bytes calldata data) external payable returns (uint256 cashOut);
+}
+
+/// @notice Swaps the game's buyback pot (USDC) into $CHOG and sends it to `to` (the burn address).
+interface IBuyback {
+    function swapToChog(uint256 cashIn, uint256 minChog, address to) external returns (uint256 chogOut);
 }
 
 /// @title ChogOfWallStreet
 /// @notice A Monopoly-style board on Monad where land belongs to Chog NFTs, not wallets.
-///         Every balance is keyed by tokenId. $CHOG is the only currency. Nothing is ever minted:
-///         every payout comes from another Chog, a fan (hype) or the Commons surplus.
-/// @dev Spec: docs/PLAN.md. Invariant (tested): CHOG.balanceOf(this) == accounted().
+///         Every balance is keyed by tokenId. The game money is USDC (CASH). $CHOG is the utility token: extra rolls,
+///         guards and hype are paid in $CHOG and burned, and the game's fees buy $CHOG back and burn it.
+///         Nothing is ever minted: every payout comes from another Chog or the Commons surplus.
+/// @dev Spec: docs/PLAN.md. Invariant (tested): CASH.balanceOf(this) == accounted().
 contract ChogOfWallStreet is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // ------------------------------------------------------------------ constants
     uint256 public constant SUPPLY = 1969;
-    uint256 internal constant E = 1e18;
+    uint256 internal constant E = 1e18; // accumulator precision, and one whole $CHOG
+    uint256 internal constant U = 1e3; // one game unit = $0.001 (USDC has 6 decimals)
     uint256 internal constant BPS = 10_000;
     address internal constant DEAD = 0x000000000000000000000000000000000000dEaD;
 
-    uint256 public constant MIN_DEPOSIT = 10_000 * E;
+    uint256 public constant START_DEPOSIT = 20_000 * U; // everyone opens with the same $20
+    uint256 public constant TOPUP_CAP = 20_000 * U; // top-ups (and cash from app squares) per Chog per season
+    uint256 public constant IDLE = 48 hours; // no roll for this long: the Chog's streets stop paying it
     uint256 public constant ROLL_EVERY = 30 minutes;
     uint256 public constant ROLL_CAP = 8;
-    uint256 public constant EXTRA_ROLL = 100 * E;
+    uint256 public constant EXTRA_ROLL_CHOG = 100 * E; // $CHOG, burned
     uint256 public constant BUY_FEE_BPS = 300; // 1% burned, 2% Commons
     uint256 public constant SELL_SPREAD_BPS = 500; // to the Commons
     uint256 public constant RENT_HOLDERS_BPS = 9000;
@@ -38,16 +48,16 @@ contract ChogOfWallStreet is ReentrancyGuard {
     uint256 public constant TAX_PREPAY_MAX = 3 days;
     uint256 public constant CAP_BPS = 4000; // one Chog holds at most 40% of a street...
     uint256 public constant CAP_FREE = 10; // ...after its first 10 Bricks
-    uint256 public constant FAIR_START_MAX = 50_000 * E;
+    uint256 public constant FAIR_START_MAX = 50_000 * U;
     uint256 public constant GO_BPS = 100;
-    uint256 public constant GO_CAP = 500 * E;
+    uint256 public constant GO_CAP = 500 * U;
     uint256 public constant LOUNGE_WIN_BPS = 2500;
-    uint256 public constant BAIL = 500 * E;
-    uint256 public constant MEV_TAX = 750 * E;
-    uint256 public constant GAS_TAX_CAP = 1000 * E;
-    uint256 public constant HEIST_MIN = 500 * E;
-    uint256 public constant HEIST_FINE = 500 * E;
-    uint256 public constant GUARD_COST = 500 * E;
+    uint256 public constant BAIL = 500 * U;
+    uint256 public constant MEV_TAX = 750 * U;
+    uint256 public constant GAS_TAX_CAP = 1000 * U;
+    uint256 public constant HEIST_MIN = 500 * U;
+    uint256 public constant HEIST_FINE = 500 * U;
+    uint256 public constant GUARD_CHOG = 500 * E; // $CHOG, burned
     uint256 public constant EXIT_BASE = 20;
     uint256 public constant EXIT_FLOOR = 10;
     uint256 public constant QUEUE = 48 hours;
@@ -58,7 +68,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
     uint256 public constant HYPE_MAX_BPS = 15_000;
     uint256 public constant HYPE_DUR = 4 hours;
     uint256 public constant SEASON = 7 days;
-    uint256 public constant KEEPER_TIP = 5 * E;
+    uint256 public constant KEEPER_TIP = 5 * U;
 
     // board: 0 go, 1 property, 2 chest, 3 entropy, 4 gas tax, 5 mev tax, 6 jail, 7 lounge, 8 go-to-jail, 9 heist
     bytes internal constant KINDS = hex"00010201040101030101060101010101010201010701030101010101010108010109010103010501";
@@ -67,8 +77,10 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     // ------------------------------------------------------------------ storage
     IERC721 public immutable CHOGS;
-    IERC20 public immutable CHOG;
+    IERC20 public immutable CASH; // USDC
+    IERC20 public immutable CHOG; // utility token, never held by the game
     address public admin; // can whitelist adapters, set the quest signer and seed tiers. Can never move funds.
+    address public buybackAdapter;
     address public questSigner;
     bool public tiersFrozen;
 
@@ -92,6 +104,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         uint64 hypeUntil;
         uint64 heistUntil;
         uint64 pendingBlock;
+        uint64 lastRoll;
         uint32 rollsSeason;
         uint32 seasonNo;
         uint16 hypeBps;
@@ -122,11 +135,13 @@ contract ChogOfWallStreet is ReentrancyGuard {
     mapping(bytes32 => bool) public usedReceipt;
     uint256[] public awakeIds; // every woken Chog, for the app to draw the board
     uint256 public maxDeposit = type(uint256).max; // guarded launch: cap on a Chog's cash after a deposit
+    mapping(uint256 => uint256) public seasonTopUp; // tokenId => cash added this season (top-ups + app squares)
+    mapping(uint256 => uint256) public topUpSeason;
 
     struct CashOut { address to; uint128 net; uint64 readyAt; }
     mapping(uint256 => CashOut) public cashOuts;
 
-    // buckets (all $CHOG held by this contract is in exactly one of these)
+    // buckets (all USDC held by this contract is in exactly one of these)
     uint256 public totalCash;
     uint256 public totalJar;
     uint256 public totalReserve;
@@ -137,7 +152,9 @@ contract ChogOfWallStreet is ReentrancyGuard {
     uint256 public seasonPot;
     uint256 public sleepPool;
     uint256 public queued;
-    uint256 public burned; // sent to DEAD, for display
+    uint256 public buybackPot; // fees waiting to buy back $CHOG
+    uint256 public burned; // USDC ever routed to buybacks, for display
+    uint256 public chogBurned; // $CHOG burned (utilities + buybacks), for display
 
     uint256 public sleepAcc; // per-Chog Sleeping Dividend, scaled 1e18
     uint256 public cashDay;
@@ -161,6 +178,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
     event CashOutRequested(uint256 indexed tokenId, address to, uint256 amount, uint256 tax, uint64 readyAt);
     event CashOutClaimed(uint256 indexed tokenId, address to, uint256 net);
     event SeasonEnded(uint256 indexed season, uint256 bellWinnerToken, uint256 bellPrize);
+    event Buyback(uint256 cashIn, uint256 chogBurned);
 
     error NotOwner();
     error NotAwake();
@@ -172,8 +190,9 @@ contract ChogOfWallStreet is ReentrancyGuard {
     error Locked();
     error Bad();
 
-    constructor(IERC721 chogs_, IERC20 chog_, address questSigner_) {
+    constructor(IERC721 chogs_, IERC20 cash_, IERC20 chog_, address questSigner_) {
         CHOGS = chogs_;
+        CASH = cash_;
         CHOG = chog_;
         admin = msg.sender;
         questSigner = questSigner_;
@@ -182,7 +201,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         uint128[11] memory rent = [uint128(0), 60, 90, 130, 170, 220, 270, 330, 450, 200, 0];
         for (uint256 i; i < 40; ++i) {
             uint8 d = uint8(DISTRICT[i]);
-            if (d != 0) props[i] = Prop(p0[d] * uint128(E), rent[d] * uint128(E), 0, 0, 0);
+            if (d != 0) props[i] = Prop(p0[d] * uint128(U), rent[d] * uint128(U), 0, 0, 0);
         }
     }
 
@@ -194,7 +213,9 @@ contract ChogOfWallStreet is ReentrancyGuard {
         for (uint256 i; i < ids.length; ++i) chogs[ids[i]].tier = tiers[i];
     }
     function freezeTiers() external { if (msg.sender != admin) revert NotOwner(); tiersFrozen = true; }
-    /// @notice Guarded launch: limits how much $CHOG a Chog can hold after a deposit. Never touches funds.
+    /// @notice The contract that turns the buyback pot into burned $CHOG. Checked on every use: it must burn real $CHOG.
+    function setBuybackAdapter(address a) external { if (msg.sender != admin) revert NotOwner(); buybackAdapter = a; }
+    /// @notice Guarded launch: limits how much cash a Chog can hold after a deposit. Never touches funds.
     function setMaxDeposit(uint256 m) external { if (msg.sender != admin) revert NotOwner(); maxDeposit = m; }
     function awakeCount() external view returns (uint256) { return awakeIds.length; }
     function awakeList(uint256 from, uint256 n) external view returns (uint256[] memory ids) {
@@ -226,7 +247,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
     function rentOf(uint256 sq, uint256 dice) public view returns (uint256) {
         uint16[6] memory m = [uint16(1), 2, 4, 7, 11, 16];
         uint256 l = level(sq);
-        if (district(sq) == 10) return dice * 20 * E * m[l];
+        if (district(sq) == 10) return dice * 20 * U * m[l];
         uint256 r = props[sq].baseRent * m[l];
         if (sq == hotSquare()) r *= 2; // Hot Street: holders get double, the extra half comes from the Commons (see _payRent)
         return r;
@@ -294,18 +315,25 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     function sleepingDividend(uint256 id) public view returns (uint256) { return (sleepAcc - chogs[id].sleepDebt) / E; }
 
-    /// @notice Everything this contract should hold. Equals CHOG.balanceOf(this) (zero-sum invariant).
+    /// @notice Everything this contract should hold. Equals CASH.balanceOf(this) (zero-sum invariant).
     function accounted() external view returns (uint256) {
-        return totalCash + totalJar + totalReserve + rentEscrow + totalUnclaimed + commons + lounge + seasonPot + sleepPool + queued;
+        return totalCash + totalJar + totalReserve + rentEscrow + totalUnclaimed + commons + lounge + seasonPot + sleepPool + queued + buybackPot;
+    }
+
+    /// @notice When this Chog's streets stop paying it: Property Tax runs out, or 48 hours pass without a roll.
+    function earningUntil(uint256 id) public view returns (uint256) {
+        Chog storage c = chogs[id];
+        uint256 idle = uint256(c.lastRoll) + IDLE;
+        return c.taxUntil < idle ? c.taxUntil : idle;
     }
 
     // ------------------------------------------------------------------ wake & sync
     function wake(uint256 id, uint256 amount) external nonReentrant {
         Chog storage c = chogs[id];
         if (CHOGS.ownerOf(id) != msg.sender) revert NotOwner();
-        if (c.awake || amount < MIN_DEPOSIT) revert Bad();
+        if (c.awake || amount != START_DEPOSIT) revert Bad();
         if (amount > maxDeposit) revert Cap();
-        CHOG.safeTransferFrom(msg.sender, address(this), amount);
+        CASH.safeTransferFrom(msg.sender, address(this), amount);
         uint256 div = (sleepAcc - c.sleepDebt) / E;
         if (div > sleepPool) div = sleepPool;
         sleepPool -= div;
@@ -318,6 +346,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         c.checkpoint = uint64(block.timestamp);
         c.immuneUntil = uint64(block.timestamp + 1 days);
         c.rollTs = uint64(block.timestamp);
+        c.lastRoll = uint64(block.timestamp);
         c.rolls = uint8(ROLL_CAP);
         c.plan = 1;
         c.seasonNo = uint32(seasonNo);
@@ -336,7 +365,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
     function topUp(uint256 id, uint256 amount) external nonReentrant {
         if (!chogs[id].awake) revert NotAwake();
         if (chogs[id].cash + amount > maxDeposit) revert Cap();
-        CHOG.safeTransferFrom(msg.sender, address(this), amount);
+        _countTopUp(id, amount);
+        CASH.safeTransferFrom(msg.sender, address(this), amount);
         _addCash(chogs[id], amount);
     }
 
@@ -347,17 +377,18 @@ contract ChogOfWallStreet is ReentrancyGuard {
     function roll(uint256 id) external {
         Chog storage c = _own(id);
         if (c.pendingBlock != 0) revert Pending();
+        _checkpoint(id, c); // settle rent up to now before the 48-hour clock restarts
+        c.lastRoll = uint64(block.timestamp);
         _useRoll(c);
         c.pendingBlock = uint64(block.number);
         c.planCommitted = c.plan;
         emit Rolled(id, block.number, c.plan);
     }
 
+    /// @notice An extra roll costs 100 $CHOG from the owner's wallet, burned.
     function buyExtraRoll(uint256 id) external {
         Chog storage c = _own(id);
-        _subCash(c, EXTRA_ROLL);
-        _burn(EXTRA_ROLL / 2);
-        lounge += EXTRA_ROLL / 2;
+        _burnChog(msg.sender, EXTRA_ROLL_CHOG);
         c.rolls += 1;
     }
 
@@ -371,7 +402,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         uint256 seed = uint256(keccak256(abi.encode(h, id, c.rollsSeason, seasonNo)));
         c.pendingBlock = 0;
         _tickSeason();
-        if (msg.sender != c.owner && c.cash >= KEEPER_TIP) { _subCash(c, KEEPER_TIP); CHOG.safeTransfer(msg.sender, KEEPER_TIP); }
+        if (msg.sender != c.owner && c.cash >= KEEPER_TIP) { _subCash(c, KEEPER_TIP); CASH.safeTransfer(msg.sender, KEEPER_TIP); }
         _resolve(id, c, seed);
     }
 
@@ -413,13 +444,13 @@ contract ChogOfWallStreet is ReentrancyGuard {
             c.heistUntil = uint64(block.timestamp + 1 hours);
         } else if (k == 2 || k == 3) {
             uint8 card = uint8(seed % 8);
-            if (card == 0) _fromCommons(c, 200 * E);
-            else if (card == 1) _toLounge(c, 300 * E);
+            if (card == 0) _fromCommons(c, 200 * U);
+            else if (card == 1) _toLounge(c, 300 * U);
             else if (card == 2) c.rolls += 1;
             else if (card == 3) _toJail(c);
             else if (card == 4) { c.pos = 0; _passGo(id, c); }
-            else if (card == 5) _fromCommons(c, 150 * E);
-            else if (card == 6) _toLounge(c, 100 * E);
+            else if (card == 5) _fromCommons(c, 150 * U);
+            else if (card == 6) _toLounge(c, 100 * U);
             else c.jailCard = true;
             emit Card(id, card);
         }
@@ -459,7 +490,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         bricks[sq][id] += n;
         debt[sq][id] += uint256(n) * p.acc;
         uint256 b = cost / 100;
-        _burn(b);
+        _toBuyback(b);
         _toCommons(fee - b);
         if (bellEnd != 0) { bellEnd += 1 minutes; bellLeaderToken = id; bellLeader = c.owner; }
     }
@@ -502,7 +533,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
     }
 
     // ------------------------------------------------------------------ rent, tax, claims
-    /// @dev Moves accumulated rent into `unclaimed`. Rent earned while Property Tax was unpaid goes to the Commons.
+    /// @dev Moves accumulated rent into `unclaimed`. Rent earned while Property Tax was unpaid, or after 48 hours
+    ///      without a roll, goes to the Commons instead (pro rata over the time since the last checkpoint).
     function _checkpoint(uint256 id, Chog storage c) internal {
         uint256 pending;
         for (uint256 i; i < 40; ++i) {
@@ -518,7 +550,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
         if (pending > rentEscrow) pending = rentEscrow;
         rentEscrow -= pending;
         uint256 span = block.timestamp - last;
-        uint256 paidFrom = c.taxUntil > last ? c.taxUntil : last;
+        uint256 until = earningUntil(id);
+        uint256 paidFrom = until > last ? until : last;
         uint256 lapsed = block.timestamp > paidFrom ? block.timestamp - paidFrom : 0;
         uint256 forfeit = span == 0 ? 0 : pending * (lapsed > span ? span : lapsed) / span;
         _toCommons(forfeit);
@@ -528,8 +561,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     function checkpoint(uint256 id) external { _checkpoint(id, chogs[id]); }
 
-    /// @notice Claim rent into the Chog's cash. Bonuses above 1x come from the Commons surplus (max 10% of it per claim)
-    ///         and the hype jar. Nothing is minted.
+    /// @notice Claim rent into the Chog's cash. Bonuses above 1x (Prestige, stamps, tier, hype) come from the Commons
+    ///         surplus, at most 10% of it per claim. Nothing is minted.
     function claim(uint256 id) external nonReentrant {
         Chog storage c = _own(id);
         _checkpoint(id, c);
@@ -544,9 +577,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
         uint256 boost;
         if (block.timestamp < c.hypeUntil && c.hypeBps > BPS) {
             boost = base * (c.hypeBps - BPS) / BPS;
-            if (boost > c.jar) boost = c.jar;
-            c.jar -= boost;
-            totalJar -= boost;
+            if (boost > lim - bonus) boost = lim - bonus;
+            commons -= boost;
         }
         _addCash(c, base + bonus + boost);
         emit Claimed(id, base, bonus, boost);
@@ -572,30 +604,27 @@ contract ChogOfWallStreet is ReentrancyGuard {
         Chog storage c = _own(id);
         if (c.jail == 0) revert Bad();
         _subCash(c, BAIL);
-        _burn(BAIL / 2);
+        _toBuyback(BAIL / 2);
         lounge += BAIL / 2;
         c.jail = 0;
     }
 
+    /// @notice A guard costs 500 $CHOG from the owner's wallet, burned.
     function hireGuard(uint256 id) external {
         Chog storage c = _own(id);
         if (c.guards >= 4) revert Cap();
-        _subCash(c, GUARD_COST);
-        _burn(GUARD_COST / 2);
-        _toCommons(GUARD_COST / 2);
+        _burnChog(msg.sender, GUARD_CHOG);
         c.guards += 1;
     }
 
-    /// @notice Anyone can hype any awake Chog with $CHOG: 10% burned, 90% into its jar. Boost +0.10x for 4h, max 1.5x.
+    /// @notice Anyone can hype any awake Chog with $CHOG: 10% burned, 90% straight to its owner as a tip.
+    ///         Its rent claims get +0.10x for 4h (max 1.5x), paid from the Commons surplus.
     function hype(uint256 id, uint256 amount) external nonReentrant {
         Chog storage c = chogs[id];
-        if (!c.awake || amount == 0) revert Bad();
-        CHOG.safeTransferFrom(msg.sender, address(this), amount);
+        if (!c.awake || amount < 10) revert Bad();
         uint256 b = amount / 10;
-        CHOG.safeTransfer(DEAD, b);
-        burned += b;
-        c.jar += amount - b;
-        totalJar += amount - b;
+        _burnChog(msg.sender, b);
+        CHOG.safeTransferFrom(msg.sender, CHOGS.ownerOf(id), amount - b);
         uint256 base = block.timestamp < c.hypeUntil ? c.hypeBps : BPS;
         uint256 m = base + HYPE_STEP_BPS;
         c.hypeBps = uint16(m > HYPE_MAX_BPS ? HYPE_MAX_BPS : m);
@@ -633,16 +662,17 @@ contract ChogOfWallStreet is ReentrancyGuard {
     }
 
     // ------------------------------------------------------------------ dapp quests
-    /// @notice Tier A: the owner sends MON and a whitelisted adapter performs the dapp action (e.g. MON -> $CHOG on Kuru).
-    ///         The output lands in the Chog. Only on the square the Chog is standing on.
+    /// @notice Tier A: the owner sends MON and a whitelisted adapter performs the dapp action (stake, buy $CHOG, swap).
+    ///         USDC it returns lands in the Chog's cash (counts toward the season top-up cap); anything else is held
+    ///         by the adapter for the Chog. Only on the square the Chog is standing on.
     function quest(uint256 id, bytes calldata data) external payable nonReentrant {
         Chog storage c = _own(id);
         address a = adapterOf[c.pos];
         if (a == address(0)) revert NotHere();
-        uint256 b0 = CHOG.balanceOf(address(this));
+        uint256 b0 = CASH.balanceOf(address(this));
         uint256 out = IQuestAdapter(a).run{value: msg.value}(id, msg.sender, data);
-        if (CHOG.balanceOf(address(this)) - b0 < out) revert Bad();
-        if (out != 0) _addCash(c, out);
+        if (CASH.balanceOf(address(this)) - b0 < out) revert Bad();
+        if (out != 0) { _countTopUp(id, out); _addCash(c, out); }
         _stamp(id, c, c.pos, out);
     }
 
@@ -675,7 +705,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         if (block.timestamp / 1 days != cashDay) { cashDay = block.timestamp / 1 days; cashedToday = 0; }
         cashedToday += amount;
         commons += tax / 2;
-        _burn(tax / 4);
+        _toBuyback(tax / 4);
         seasonPot += tax - tax / 2 - tax / 4;
         c.lastCash = uint64(block.timestamp);
         uint64 ready = uint64(block.timestamp + QUEUE);
@@ -689,7 +719,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         if (q.net == 0 || block.timestamp < q.readyAt) revert Locked();
         delete cashOuts[id];
         queued -= q.net;
-        CHOG.safeTransfer(q.to, q.net);
+        CASH.safeTransfer(q.to, q.net);
         emit CashOutClaimed(id, q.to, q.net);
     }
 
@@ -715,6 +745,27 @@ contract ChogOfWallStreet is ReentrancyGuard {
     }
 
     function tickSeason() external { _tickSeason(); }
+
+    // ------------------------------------------------------------------ $CHOG buyback
+    /// @notice Anyone can turn the buyback pot into $CHOG and burn it. The burn address must receive at least `minChog`.
+    function buyback(uint256 minChog) external nonReentrant {
+        uint256 a = buybackPot;
+        address ad = buybackAdapter;
+        if (a == 0 || ad == address(0)) revert Bad();
+        buybackPot = 0;
+        uint256 b0 = CASH.balanceOf(address(this));
+        uint256 d0 = CHOG.balanceOf(DEAD);
+        CASH.forceApprove(ad, a);
+        IBuyback(ad).swapToChog(a, minChog, DEAD);
+        CASH.forceApprove(ad, 0);
+        uint256 used = b0 - CASH.balanceOf(address(this));
+        if (used > a) revert Bad();
+        if (used < a) buybackPot = a - used; // anything not spent stays in the pot
+        uint256 got = CHOG.balanceOf(DEAD) - d0;
+        if (got == 0 || got < minChog) revert Bad();
+        chogBurned += got;
+        emit Buyback(used, got);
+    }
 
     // ------------------------------------------------------------------ internals
     function _own(uint256 id) internal returns (Chog storage c) {
@@ -760,5 +811,13 @@ contract ChogOfWallStreet is ReentrancyGuard {
         seasonPot += sp;
     }
 
-    function _burn(uint256 a) internal { if (a == 0) return; burned += a; CHOG.safeTransfer(DEAD, a); }
+    function _toBuyback(uint256 a) internal { if (a == 0) return; buybackPot += a; burned += a; }
+
+    function _burnChog(address from, uint256 a) internal { CHOG.safeTransferFrom(from, DEAD, a); chogBurned += a; }
+
+    function _countTopUp(uint256 id, uint256 a) internal {
+        if (topUpSeason[id] != seasonNo) { topUpSeason[id] = seasonNo; seasonTopUp[id] = 0; }
+        seasonTopUp[id] += a;
+        if (seasonTopUp[id] > TOPUP_CAP) revert Cap();
+    }
 }

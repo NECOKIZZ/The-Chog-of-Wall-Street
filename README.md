@@ -2,89 +2,86 @@
 
 **A Monopoly-style city on Monad where the land belongs to Chog NFTs, not to wallets.**
 
-- Every street, station and utility on the 40-square board is a real Monad app (Kuru, Uniswap, nad.fun, FastLane, Magma, Perpl, Polymarket…).
-- **Bricks** are shares of a street. They're bought by your roll plan, earn rent from every Chog that lands, and **can never leave the Chog**. Selling the empire means selling the NFT.
-- **$CHOG** pays for everything, and **nothing is ever minted.** Every coin a Chog earns was paid by another Chog, given by a fan, or comes from the shared Commons surplus.
-- **Cashing out is allowed but costly:**
-  - a 10–20% tax that goes to the players who stay;
-  - a 48-hour wait;
-  - a city-wide daily cap;
-  - Prestige resets to 0.
+Roll your Chog around **Chog Street**. Buy **Bricks** (shares of a street) where you land, and collect rent every time another Chog lands there. Everything you build lives inside the NFT. Built for **Chogathon 2026**.
 
-  So the better exit is selling the whole Chog, which pushes NFT value up.
+**Live: https://necokizz.github.io/The-Chog-of-Wall-Street/**. It republishes automatically on every push to `main` that touches `app/`.
 
-Built for **Chogathon 2026**.
+## How the money works
+- **USDC is the game money,** so a dollar stays a dollar. Everyone opens with the same **$20** and can top up at most **$20 more per season**. USDC from the Uniswap square counts toward that cap.
+- **$CHOG is the power-up token.** Extra rolls (100 $CHOG), guards (500 $CHOG) and hype are paid in $CHOG and burned. Hype also tips 90% to the hyped Chog's owner.
+- **Fees buy $CHOG back and burn it.** 1% of every Brick purchase, half of bail and a quarter of every cash-out tax go into the Bank's buyback pot. Anyone can run the buyback: USDC → WMON on Uniswap → $CHOG on nad.fun → burned.
+- **Nothing is ever minted.** Every dollar a Chog earns was paid by another Chog or comes from the Commons surplus. The contract proves it: `USDC.balanceOf(game) == accounted()`.
+- **Leaving costs, staying pays.** Cash-outs are taxed 10–20%, wait 48 hours, are capped city-wide per day, and reset Prestige. Bricks never leave the Chog, so the better exit is selling the whole NFT.
+- **Roll at least once every 48 hours.** After that, your streets stop paying you until you roll again, and the rent goes to the Commons. You never lose your Bricks.
 
-## Play
-**Live: https://necokizz.github.io/The-Chog-of-Wall-Street/** (republished automatically on every push to `main` that touches `app/`).
-
-The first screen lets you pick a city:
-
+## The cities
 | City | What it is | You need |
 |---|---|---|
-| **Practice** | Play money, 14 bots, guided tour, fast-forward. Fully simulated in the browser | Nothing |
-| **Testnet** | The real contracts on Monad testnet. Mint a free test Chog and test $CHOG in the app; every action is a testnet transaction | A wallet plus a little testnet MON |
-| **Mainnet** | Your real Chog Genesis NFT and real $CHOG deposits. Six squares do real things on Monad (see below); the others link to the apps | A wallet, a Chog Genesis NFT, at least 10,000 $CHOG, and MON for gas and quests |
+| **Practice** | Play money, 14 bot Chogs, a guided tour, fast-forward. Fully simulated in the browser | Nothing |
+| **Testnet** | The real contracts on Monad testnet. Get free test USDC, test $CHOG and a test Chog in the app; every action is a transaction | A wallet and a little testnet MON |
+| **Mainnet** | Real Chog Genesis NFT, real USDC, real $CHOG, and six squares that do real things on Monad. **Not deployed yet** | A Chog Genesis NFT, $20 of USDC, some $CHOG for power-ups, MON for gas |
 
-**Real dapp squares on mainnet.** Each one was verified on-chain and tested on a mainnet fork (`contracts/test/mainnet.fork.test.js`):
+**The six real app squares** (mainnet adapters, all tested on a mainnet fork in `contracts/test/mainnet.fork.test.js`):
 
 | Square | Action |
 |---|---|
-| nad.fun Lane, Chog Alley | Buy real $CHOG with MON on nad.fun's DEX router. It lands as the Chog's cash |
-| FastLane Station | Stake MON into shMON |
-| aPriori Station | Stake MON into aprMON |
-| Kintsu Station | Stake MON into sMON |
-| Uniswap Boardwalk | Swap MON into USDC on Uniswap v3 |
+| nad.fun Lane, Chog Alley | Buy $CHOG with MON on nad.fun. The $CHOG is held for the Chog |
+| FastLane Station | Stake MON into shMON, held for the Chog |
+| aPriori Station | Stake MON into aprMON, held for the Chog |
+| Kintsu Station | Stake MON into sMON, held for the Chog |
+| Uniswap Boardwalk | Swap MON into USDC on Uniswap v3, straight into the Chog's cash |
 
-Staked and swapped positions are held for the Chog's tokenId. They move with a sale, and the holder can withdraw them after 7 days.
+Positions held for a Chog belong to its tokenId. They move with a sale, and the holder can withdraw them after 7 days.
 
-**Not wired yet:**
-- **Kuru Tower:** Kuru's v1 order books are inactive, and Kuru Flow needs its off-chain quote API.
-- **Magma Station:** Magma's public deposit functions revert on mainnet.
+## The app
+- **Desk:** your Chog, what happened while you were away, messages, to-do, the season clock and the 48-hour earning clock.
+- **Map:** the board, flat or 3D. Tap any square for its title deed, where you can Buy, Sell, Mortgage or Auction.
+- **Leaders:** This season (pays prizes) and Richest.
+- **Portfolio:** your balance and everything you own.
+- **Bank:** the city's treasury, mortgages, auctions and the $CHOG buyback.
+- **Rules.**
 
-Both link to the real apps instead.
+It also has light and dark mode, a guided first tour, and profile cards for every Chog.
 
-You can also open [`app/index.html`](app/index.html) directly in a browser. That's the **Practice City**: play money, 14 bot Chogs, and real Chog Genesis art. You don't need a wallet or a server.
-
-- A guided tour walks you through your first roll.
-- The **First rounds** checklist has **Show me** buttons that point at exactly where to click.
-- **? Help** has the rules, a glossary, and tour replay.
-- **+2 hours** and **+1 day** fast-forward time, so you can see rent, Prestige, Property Tax and the season's Closing Bell play out.
+Mortgages and auctions run in Practice only for now; they aren't in the contract yet.
 
 ## Repo
 | Path | What |
 |---|---|
-| `app/` | The game UI. `app/src/build.sh` builds `app/index.html` from `src/` (styles `style.html`, page `shell.html`, rules `engine.js`, interface `ui.js`, onboarding `guide.js`, on-chain `chain.js`) |
-| `contracts/` | Solidity core (`ChogOfWallStreet.sol`), mocks, Hardhat tests (incl. the zero-sum invariant), deploy script |
-| `docs/PLAN.md` | The full design: economy, board, withdrawal rules, retention, exploits, MVP |
-| `docs/research/` | Teardowns of Chog Raid, Fomopoly, Daemon, Hoodopoly, Stonkboard, Vault Street, Upland and $MONO, and what we took from each |
+| `app/` | The game. `app/src/build.sh` builds the single file `app/index.html` from `style.html`, `shell.html`, `engine.js` (Practice rules), `ui.js`, `guide.js` and `chain.js` (on-chain mode) |
+| `contracts/` | `ChogOfWallStreet.sol`, the dapp and buyback adapters, mocks, unit tests (incl. zero-sum, the 48-hour rule and deposit caps), mainnet fork tests, deploy scripts |
+| `docs/HANDOFF.md` | Where everything stands and how to continue |
+| `docs/OPEN-PROBLEMS.md` | Design problems and what was decided |
+| `docs/PLAN.md` | The original full design |
+| `docs/research/` | Teardowns of the games we learned from |
 
 ## Live on Monad testnet (chain 10143)
 | Contract | Address |
 |---|---|
-| ChogOfWallStreet (game) | [`0xD4A674261A992A4f4E3a7FEC1A0e7A07F7AC6bC6`](https://testnet.monadvision.com/address/0xD4A674261A992A4f4E3a7FEC1A0e7A07F7AC6bC6) |
-| Mock $CHOG | [`0x8A4fD1897924D182Db1BD0C7B4ed13fCC610feb6`](https://testnet.monadvision.com/address/0x8A4fD1897924D182Db1BD0C7B4ed13fCC610feb6) |
-| Mock Chog Genesis | [`0x9B4AC1ab5503920BCCE821AA0A9CB8A9d838619E`](https://testnet.monadvision.com/address/0x9B4AC1ab5503920BCCE821AA0A9CB8A9d838619E) |
-| Mock Kuru-style swap adapter (quests on squares 1, 3, 37, 39) | [`0x6ED957563A36fAf67C58b017a35Db7AAf5724f60`](https://testnet.monadvision.com/address/0x6ED957563A36fAf67C58b017a35Db7AAf5724f60) |
+| ChogOfWallStreet (game) | [`0x4f4e8a4FCA7784D7531Cd01Fef7963d24e82c141`](https://testnet.monadvision.com/address/0x4f4e8a4FCA7784D7531Cd01Fef7963d24e82c141) |
+| Test USDC (game money) | [`0x2496958B8816F2FD88E888a05aA7d34A7D46Ed12`](https://testnet.monadvision.com/address/0x2496958B8816F2FD88E888a05aA7d34A7D46Ed12) |
+| Test $CHOG | [`0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF`](https://testnet.monadvision.com/address/0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF) |
+| Test Chog Genesis | [`0x5b5D262376Ae025CeB6218C8547dE889c973F645`](https://testnet.monadvision.com/address/0x5b5D262376Ae025CeB6218C8547dE889c973F645) |
+| Stand-in app adapter (squares 1, 3, 5, 25, 35, 37: MON → test USDC) | [`0x66331182082DA6D816B096572d60DeFE64C42d8d`](https://testnet.monadvision.com/address/0x66331182082DA6D816B096572d60DeFE64C42d8d) |
+| Stand-in buyback (test USDC → burned test $CHOG) | [`0x8323e6957edd756138f020B84deAC4fE5eE69549`](https://testnet.monadvision.com/address/0x8323e6957edd756138f020B84deAC4fE5eE69549) |
 
-**Smoke test on-chain:**
-- Chog #1 was woken with 20,000 $CHOG.
-- It rolled and landed: [settle tx](https://testnet.monadvision.com/tx/0x202f4b52d048c7298ae152873806a86e56689ffb7cbe13e8b5c4cc033aafc277).
-- `balanceOf(game) == accounted()` held.
-
-The full record is in [`contracts/deployments/monadTestnet.json`](contracts/deployments/monadTestnet.json).
+The full record, including the on-chain smoke test, is in [`contracts/deployments/monadTestnet.json`](contracts/deployments/monadTestnet.json).
 
 ## Contracts
 ```bash
 cd contracts
 npm install
-npx hardhat test
-DEPLOYER_KEY=0x... npx hardhat run scripts/deploy.js --network monadTestnet
+npx hardhat test                                   # unit tests
+FORK=1 npx hardhat test test/mainnet.fork.test.js  # real mainnet adapters on a fork
+DEPLOYER_KEY=0x... REUSE=1 npx hardhat run scripts/deploy.js --network monadTestnet
+FORK=1 npx hardhat run scripts/deploy-mainnet.js   # mainnet dry run on a fork
 ```
-Without `CHOG_NFT` and `CHOG_TOKEN` set, the deploy script uses mock contracts. See [`contracts/README.md`](contracts/README.md) for the function map and known limits.
 
 **Mainnet references:**
 - Chog Genesis: `0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763` (1,969 tokens)
 - $CHOG: `0x350035555E10d9AfAF1566AaebfCeD5BA6C27777`
+- USDC: `0x754704Bc059F8C67012fEd69BC8A327a5aafb603`
 
-**Status:** prototype. Not audited. Dapp adapter addresses are still to be verified.
+Every address is listed in `contracts/config/monad-mainnet.js`.
+
+**Status:** hackathon prototype. Not audited. Mainnet is not deployed.

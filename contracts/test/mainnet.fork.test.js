@@ -7,9 +7,13 @@ const M = require("../config/monad-mainnet");
 const E = 10n ** 18n;
 const run = process.env.FORK ? describe : describe.skip;
 
-run("Mainnet fork: real $CHOG, real Chog Genesis, real dapps", function () {
+const USD = n => BigInt(Math.round(n * 1e6)); // USDC base units
+const USDC_WHALE = "0x659bD0BC4167BA25c62E05656F78043E7eD4a9da"; // the WMON/USDC Uniswap v3 pool (fork only)
+const DEAD = "0x000000000000000000000000000000000000dEaD";
+
+run("Mainnet fork: real USDC, real $CHOG, real Chog Genesis, real dapps", function () {
   this.timeout(600_000);
-  let game, chog, nft, owner, ownerAddr, admin;
+  let game, chog, usdc, nft, owner, ownerAddr, admin;
   const TOKEN = 1n;
 
   before(async () => {
@@ -23,14 +27,18 @@ run("Mainnet fork: real $CHOG, real Chog Genesis, real dapps", function () {
     await network.provider.request({ method: "hardhat_impersonateAccount", params: [ownerAddr] });
     await network.provider.request({ method: "hardhat_setBalance", params: [ownerAddr, "0x" + (1000n * E).toString(16)] });
     owner = await ethers.getSigner(ownerAddr);
-    // give the real Chog owner some real $CHOG from the nad.fun pool's balance (fork only)
-    await network.provider.request({ method: "hardhat_impersonateAccount", params: [M.NADFUN_CHOG_POOL] });
-    await network.provider.request({ method: "hardhat_setBalance", params: [M.NADFUN_CHOG_POOL, "0x" + (10n * E).toString(16)] });
-    await chog.connect(await ethers.getSigner(M.NADFUN_CHOG_POOL)).transfer(ownerAddr, 100_000n * E);
+    // give the real Chog owner real $CHOG and real USDC from pool balances (fork only)
+    for (const [who, token, amt] of [[M.NADFUN_CHOG_POOL, M.CHOG, 100_000n * E], [USDC_WHALE, M.USDC, USD(100)]]) {
+      await network.provider.request({ method: "hardhat_impersonateAccount", params: [who] });
+      await network.provider.request({ method: "hardhat_setBalance", params: [who, "0x" + (10n * E).toString(16)] });
+      await (await ethers.getContractAt("IERC20", token)).connect(await ethers.getSigner(who)).transfer(ownerAddr, amt);
+    }
+    usdc = await ethers.getContractAt("IERC20", M.USDC);
 
-    game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(M.CHOG_GENESIS, M.CHOG, admin.address);
+    game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(M.CHOG_GENESIS, M.USDC, M.CHOG, admin.address);
+    await usdc.connect(owner).approve(await game.getAddress(), ethers.MaxUint256);
     await chog.connect(owner).approve(await game.getAddress(), ethers.MaxUint256);
-    await game.connect(owner).wake(TOKEN, 20_000n * E);
+    await game.connect(owner).wake(TOKEN, USD(20));
   });
 
   async function adapterAtSquare0(name, ...args) {
@@ -39,32 +47,56 @@ run("Mainnet fork: real $CHOG, real Chog Genesis, real dapps", function () {
     return a;
   }
 
-  it("wakes a real Chog Genesis NFT with real $CHOG", async () => {
-    expect((await game.chogs(TOKEN)).cash).to.equal(20_000n * E);
-    expect(await chog.balanceOf(await game.getAddress())).to.equal(await game.accounted());
+  const balanced = async () => expect(await usdc.balanceOf(await game.getAddress())).to.equal(await game.accounted());
+
+  it("wakes a real Chog Genesis NFT with $20 of real USDC", async () => {
+    expect((await game.chogs(TOKEN)).cash).to.equal(USD(20));
+    await balanced();
   });
 
-  it("nad.fun: buys real $CHOG with MON into the Chog's cash (quoted by nad.fun Lens)", async () => {
+  it("$CHOG utility: an extra roll burns 100 real $CHOG", async () => {
+    const d0 = await chog.balanceOf(DEAD);
+    await game.connect(owner).buyExtraRoll(TOKEN);
+    expect(await chog.balanceOf(DEAD)).to.equal(d0 + 100n * E);
+  });
+
+  it("nad.fun: buys real $CHOG with MON and holds it for the Chog (quoted by nad.fun Lens)", async () => {
     const lens = new ethers.Contract(M.NADFUN_LENS, ["function getAmountOut(address,uint256,bool) view returns (address,uint256)"], admin);
     const [router, quote] = await lens.getAmountOut(M.CHOG, E, true);
     expect(router.toLowerCase()).to.equal(M.NADFUN_DEX_ROUTER.toLowerCase());
-    await adapterAtSquare0("NadFunChogAdapter", M.NADFUN_DEX_ROUTER, M.CHOG);
+    const a = await adapterAtSquare0("NadFunChogAdapter", M.NADFUN_DEX_ROUTER, M.CHOG);
     const minOut = (quote * 97n) / 100n;
-    const cash0 = (await game.chogs(TOKEN)).cash;
     await game.connect(owner).quest(TOKEN, ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [minOut]), { value: E });
-    const got = (await game.chogs(TOKEN)).cash - cash0;
-    console.log("      1 MON →", ethers.formatEther(got), "$CHOG (quote", ethers.formatEther(quote), ")");
+    const got = await a.held(TOKEN, M.CHOG);
+    console.log("      1 MON →", ethers.formatEther(got), "$CHOG held for the Chog (quote", ethers.formatEther(quote), ")");
     expect(got).to.be.gte(minOut);
     expect(await game.stampCount(TOKEN)).to.equal(1n);
-    expect(await chog.balanceOf(await game.getAddress())).to.equal(await game.accounted());
+    await balanced();
   });
 
-  it("Uniswap: swaps MON → USDC on Uniswap v3 and holds it for the Chog", async () => {
-    const a = await adapterAtSquare0("UniswapUsdcAdapter", M.UNI_SWAP_ROUTER02, M.WMON, M.USDC, M.UNI_WMON_USDC_FEE);
+  it("Uniswap: swaps MON → USDC on Uniswap v3 straight into the Chog's cash", async () => {
+    await adapterAtSquare0("UniswapUsdcAdapter", M.UNI_SWAP_ROUTER02, M.WMON, M.USDC, M.UNI_WMON_USDC_FEE);
+    const cash0 = (await game.chogs(TOKEN)).cash;
     await game.connect(owner).quest(TOKEN, "0x", { value: 50n * E });
-    const h = await a.held(TOKEN, M.USDC);
-    console.log("      50 MON →", Number(h) / 1e6, "USDC");
-    expect(h).to.be.gt(0n);
+    const got = (await game.chogs(TOKEN)).cash - cash0;
+    console.log("      50 MON →", Number(got) / 1e6, "USDC of cash");
+    expect(got).to.be.gt(0n);
+    await balanced();
+  });
+
+  it("buyback: fee USDC → WMON (Uniswap) → $CHOG (nad.fun) → burned", async () => {
+    await game.connect(owner).requestCashOut(TOKEN, USD(0.4)); // a quarter of the exit tax goes to the buyback pot
+    const pot = await game.buybackPot();
+    expect(pot).to.be.gt(0n);
+    const bb = await (await ethers.getContractFactory("ChogBuybackAdapter")).deploy(await game.getAddress(), M.UNI_SWAP_ROUTER02, M.NADFUN_DEX_ROUTER, M.USDC, M.WMON, M.CHOG, M.UNI_WMON_USDC_FEE);
+    await game.setBuybackAdapter(await bb.getAddress());
+    const d0 = await chog.balanceOf(DEAD);
+    await game.buyback(1);
+    const burnt = (await chog.balanceOf(DEAD)) - d0;
+    console.log("     ", Number(pot) / 1e6, "USDC of fees → burned", ethers.formatEther(burnt), "$CHOG");
+    expect(burnt).to.be.gt(0n);
+    expect(await game.buybackPot()).to.equal(0n);
+    await balanced();
   });
 
   for (const [name, addr, kind] of [["shMON", M.shMON, 0], ["aprMON", M.aprMON, 0], ["sMON", M.sMON, 2]]) {

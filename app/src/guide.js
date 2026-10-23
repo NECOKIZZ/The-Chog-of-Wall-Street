@@ -153,13 +153,13 @@ window.Guide = (() => {
     if (tour) return; // no tips on top of the tour
     if (ev === "rolled") {
       complete("roll");
-      if (d?.jail) hint("jail", { only: "map", title: "Rug Jail", sel: "#bail", text: "Roll doubles to walk out (3 tries), or pay 500 bail. Your Bricks still earn rent while you're inside." });
+      if (d?.jail) hint("jail", { only: "map", title: "Rug Jail", sel: "#bail", text: "Roll doubles to walk out (3 tries), or pay $0.50 bail. Your Bricks still earn rent while you're inside." });
       const sq = d?.sq;
-      if (sq?.t === "go") hint("go", { only: "map", title: "GENESIS dividend", sel: "#lastev", text: "Passing GENESIS pays 1% of your Bricks' value (max 500) from the Commons. Own nothing, earn nothing." });
+      if (sq?.t === "go") hint("go", { only: "map", title: "GENESIS dividend", sel: "#lastev", text: "Passing GENESIS pays 1% of your Bricks' value (max $0.50) from the Commons. Own nothing, earn nothing." });
       if (sq?.t === "tax") hint("tax-sq", { only: "map", title: sq.name, sel: "#lastev", text: "Tax squares pay into the Nad Lounge pot. Land on the Nad Lounge corner to win 25% of it." });
     }
     if (ev === "tile" && d?.landed && SQ[d.i].brand) hint("quest-card", { title: "A real Monad app", sel: "#modal .questbox", text: "This square is wired to a real app. In Practice it's simulated. On Testnet and Mainnet the position is bought for real and held by your Chog, not your wallet." });
-    if (ev === "heistOpen") hint("heist", { title: "Heist", sel: "#modal", text: "Pick a target. The % is your chance. Win: take 10% of their unclaimed rent. Lose: pay them 500 and go to Rug Jail. Cash and Bricks are never at risk." });
+    if (ev === "heistOpen") hint("heist", { title: "Heist", sel: "#modal", text: "Pick a target. The % is your chance. Win: take 10% of their unclaimed rent. Lose: pay them $0.50 and go to Rug Jail. Cash and Bricks are never at risk." });
     if (ev === "room" && d === "portfolio") hint("bank-out", { only: "portfolio", title: "Leaving costs money", sel: ["#coAmt", "#bankOut"], text: "Drag the slider to see the tax (20%, falling to 10% the longer you stay), the 48-hour wait, and the Prestige you'd lose. Selling the whole Chog usually beats stripping it." });
     if (ev === "render" && G.me) stateHints();
   }

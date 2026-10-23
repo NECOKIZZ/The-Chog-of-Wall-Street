@@ -103,7 +103,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 .avatar{border-radius:14px;background-size:cover;background-position:center;background-color:var(--bg-2);flex:none}
 
 /* ---------- nav ---------- */
-.nav{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--card);border-bottom:1.5px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.nav{position:absolute;top:0;left:0;right:0;z-index:30;background:none;border:0;padding-top:env(safe-area-inset-top,0px)}
+body[data-view="landing"] .nav .brand{color:#fff} body[data-view="landing"] .nav .brand .mark rect{fill:#fff}
+body[data-view="landing"] .nav .iconbtn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);color:#fff;box-shadow:none}
+.navlinks .roomlink{display:grid;place-items:center;width:40px;height:40px;padding:0;border-radius:12px}
+.navlinks .roomlink svg{width:21px;height:21px}
+.navlinks .roomlink[aria-current="page"]{background:var(--purple-soft)}
 .navpill{display:flex;align-items:center;gap:6px;max-width:1200px;height:64px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .brand .mark{width:30px;height:30px;flex:none}
 .L-foot .brand{color:#fff}
@@ -114,7 +119,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .navlinks a,.navlinks .roomlink{position:relative;border:0;background:none;padding:8px 12px;border-radius:10px;font-weight:700;font-size:14px;color:var(--ink-2);text-decoration:none}
 .navlinks a:hover,.navlinks .roomlink:hover{background:var(--bg-2);color:var(--ink)}
 .navlinks .roomlink[aria-current="page"]{color:var(--purple)}
-.navlinks .roomlink[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-13px;height:3px;border-radius:3px 3px 0 0;background:var(--purple)}
+.navlinks .roomlink[aria-current="page"]::after{display:none;content:"";position:absolute;left:12px;right:12px;bottom:-13px;height:3px;border-radius:3px 3px 0 0;background:var(--purple)}
 .navtools{display:flex;gap:6px;align-items:center;margin-left:6px}
 @media (max-width:760px){.landing-links a{display:none}}
 @media (max-width:420px){.app-links~* .brand span,body:has(#app:not([hidden])) .brand span{display:none}}

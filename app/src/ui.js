@@ -29,7 +29,7 @@ $("#themeBtn").onclick = () => { const next = isDark() ? "light" : "dark"; docum
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", paintThemeBtn);
 paintThemeBtn();
 function go(view) {
-  U.view = view;
+  U.view = view; document.body.dataset.view = view;
   $("#landing").hidden = view !== "landing"; $("#onboard").hidden = view !== "onboard"; $("#app").hidden = view !== "app";
   $("#landingLinks").hidden = view === "app"; $("#appLinks").hidden = view !== "app"; $("#tabbar").hidden = view !== "app";
   if (view === "onboard") renderOnboard();
@@ -139,8 +139,8 @@ function renderOnboard() {
   const box = $("#onboard");
   if (!U.city) {
     box.innerHTML = `<div class="stepper"><span class="on">1 · City</span><span>2 · Chog</span><span>3 · Deposit</span></div>
-      <h1 style="font-size:clamp(2rem,4.5vw,3.2rem)">Open an account</h1><p class="muted" style="margin:10px 0 24px">Pick a city. Start with Practice if it's your first time.</p>
-      <div class="cities">${document.querySelector(".cities").innerHTML}</div>`;
+      <h1 style="font-size:clamp(2rem,4.5vw,3.2rem)">Pick a city</h1><p class="muted" style="margin:10px 0 24px">Start with Practice if it's your first time.</p>
+      <div class="L-cities" style="margin-top:0">${document.querySelector(".L-cities").innerHTML}</div>`;
     return;
   }
   if (!G.chogs.length) initWorld();
@@ -687,4 +687,4 @@ setInterval(() => {
   const eb = $("#room-desk .pagehead .eyebrow"); if (eb) eb.textContent = eb.textContent.replace(/Day \d+ · \d\d:\d\d/, clockStr(G.t));
 }, 1000);
 
-renderLanding();
+document.body.dataset.view = "landing"; renderLanding();

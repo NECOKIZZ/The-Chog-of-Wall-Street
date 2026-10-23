@@ -104,7 +104,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 .avatar{border-radius:14px;background-size:cover;background-position:center;background-color:var(--bg-2);flex:none}
 
 /* ---------- nav ---------- */
-.nav{position:fixed;top:0;left:0;right:0;z-index:30;background:var(--card);border-bottom:1.5px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.nav{position:absolute;top:0;left:0;right:0;z-index:30;background:none;border:0;padding-top:env(safe-area-inset-top,0px)}
+body[data-view="landing"] .nav .brand{color:#fff} body[data-view="landing"] .nav .brand .mark rect{fill:#fff}
+body[data-view="landing"] .nav .iconbtn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);color:#fff;box-shadow:none}
+.navlinks .roomlink{display:grid;place-items:center;width:40px;height:40px;padding:0;border-radius:12px}
+.navlinks .roomlink svg{width:21px;height:21px}
+.navlinks .roomlink[aria-current="page"]{background:var(--purple-soft)}
 .navpill{display:flex;align-items:center;gap:6px;max-width:1200px;height:64px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .brand .mark{width:30px;height:30px;flex:none}
 .L-foot .brand{color:#fff}
@@ -115,7 +120,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .navlinks a,.navlinks .roomlink{position:relative;border:0;background:none;padding:8px 12px;border-radius:10px;font-weight:700;font-size:14px;color:var(--ink-2);text-decoration:none}
 .navlinks a:hover,.navlinks .roomlink:hover{background:var(--bg-2);color:var(--ink)}
 .navlinks .roomlink[aria-current="page"]{color:var(--purple)}
-.navlinks .roomlink[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-13px;height:3px;border-radius:3px 3px 0 0;background:var(--purple)}
+.navlinks .roomlink[aria-current="page"]::after{display:none;content:"";position:absolute;left:12px;right:12px;bottom:-13px;height:3px;border-radius:3px 3px 0 0;background:var(--purple)}
 .navtools{display:flex;gap:6px;align-items:center;margin-left:6px}
 @media (max-width:760px){.landing-links a{display:none}}
 @media (max-width:420px){.app-links~* .brand span,body:has(#app:not([hidden])) .brand span{display:none}}
@@ -569,16 +574,15 @@ details.more .renttable{margin-top:8px}
   <div class="navpill">
     <button class="brand" data-go="landing" aria-label="The Chog of Wall Street, home"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="6.5" cy="8.5" r="4.5" fill="var(--gold)"/><rect x="2" y="16" width="9" height="13" rx="2.5" fill="var(--purple)"/><rect x="12" y="10" width="9" height="19" rx="2.5" fill="var(--purple)"/><rect x="22" y="3" width="9" height="26" rx="2.5" fill="var(--purple)"/></svg><span>Chog of Wall St.</span></button>
     <nav class="navlinks landing-links" id="landingLinks">
-      <a href="#how">How it works</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
-      <button class="btn primary sm" data-go="onboard" style="margin-left:6px">Open an account</button>
+      <button class="btn gold sm" data-go="onboard">Play</button>
     </nav>
     <nav class="navlinks app-links" id="appLinks" hidden>
-      <button class="roomlink" data-room="desk">Desk</button>
-      <button class="roomlink" data-room="map">Map</button>
-      <button class="roomlink" data-room="leaders">Leaders</button>
-      <button class="roomlink" data-room="portfolio">Portfolio</button>
-      <button class="roomlink" data-room="bank">Bank</button>
-      <button class="roomlink" data-room="rules">Rules</button>
+      <button class="roomlink" data-room="desk" title="Desk" aria-label="Desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></button>
+      <button class="roomlink" data-room="map" title="Map" aria-label="Map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 8h18M3 16h18M8 3v18M16 3v18"/></svg></button>
+      <button class="roomlink" data-room="leaders" title="Leaders" aria-label="Leaders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></button>
+      <button class="roomlink" data-room="portfolio" title="Portfolio" aria-label="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg></button>
+      <button class="roomlink" data-room="bank" title="Bank" aria-label="Bank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg></button>
+      <button class="roomlink" data-room="rules" title="Rules" aria-label="Rules"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg></button>
       <span class="citybadge" id="cityBadge">Practice</span>
       <button class="me-chip" id="meChip" aria-haspopup="true" aria-expanded="false" aria-label="Your balance and holdings"><i class="avatar" id="meAvatar"></i><span class="mebal"><small>Balance</small><b class="num" id="meWorth">—</b></span><svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg></button>
     </nav>
@@ -1249,7 +1253,7 @@ $("#themeBtn").onclick = () => { const next = isDark() ? "light" : "dark"; docum
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", paintThemeBtn);
 paintThemeBtn();
 function go(view) {
-  U.view = view;
+  U.view = view; document.body.dataset.view = view;
   $("#landing").hidden = view !== "landing"; $("#onboard").hidden = view !== "onboard"; $("#app").hidden = view !== "app";
   $("#landingLinks").hidden = view === "app"; $("#appLinks").hidden = view !== "app"; $("#tabbar").hidden = view !== "app";
   if (view === "onboard") renderOnboard();
@@ -1359,8 +1363,8 @@ function renderOnboard() {
   const box = $("#onboard");
   if (!U.city) {
     box.innerHTML = `<div class="stepper"><span class="on">1 · City</span><span>2 · Chog</span><span>3 · Deposit</span></div>
-      <h1 style="font-size:clamp(2rem,4.5vw,3.2rem)">Open an account</h1><p class="muted" style="margin:10px 0 24px">Pick a city. Start with Practice if it's your first time.</p>
-      <div class="cities">${document.querySelector(".cities").innerHTML}</div>`;
+      <h1 style="font-size:clamp(2rem,4.5vw,3.2rem)">Pick a city</h1><p class="muted" style="margin:10px 0 24px">Start with Practice if it's your first time.</p>
+      <div class="L-cities" style="margin-top:0">${document.querySelector(".L-cities").innerHTML}</div>`;
     return;
   }
   if (!G.chogs.length) initWorld();
@@ -1907,7 +1911,7 @@ setInterval(() => {
   const eb = $("#room-desk .pagehead .eyebrow"); if (eb) eb.textContent = eb.textContent.replace(/Day \d+ · \d\d:\d\d/, clockStr(G.t));
 }, 1000);
 
-renderLanding();
+document.body.dataset.view = "landing"; renderLanding();
 </script>
 <script>
 "use strict";

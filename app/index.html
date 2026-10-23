@@ -205,9 +205,11 @@ body[data-mode="mainnet"] .citybadge{background:var(--gold-soft);color:var(--gol
 @media (max-width:820px){
   .app-links .roomlink{display:none}
   .mebal small{display:none}
-  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1.5px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));justify-content:space-around;gap:4px}
-  .tabbar button{flex:1;border:0;background:none;padding:9px 2px;border-radius:12px;font-weight:800;font-size:12.5px;color:var(--ink-3)}
-  .tabbar button[aria-current="page"]{color:var(--on-purple);background:var(--purple);box-shadow:0 3px 0 var(--purple-deep)}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(28,20,51,.06);padding:6px max(4px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(4px,env(safe-area-inset-left,0px))}
+  .tabbar button{flex:1;min-width:0;border:0;background:none;padding:4px 0 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:700;font-size:11px;letter-spacing:.01em;color:var(--ink-3);-webkit-tap-highlight-color:transparent}
+  .tabbar svg{width:22px;height:22px;padding:4px 16px;box-sizing:content-box;border-radius:99px;transition:background .15s,color .15s}
+  .tabbar button[aria-current="page"]{color:var(--purple)}
+  .tabbar button[aria-current="page"] svg{background:var(--purple-soft,rgba(124,77,255,.14))}
 }
 .cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:980px){.cols{grid-template-columns:1fr}}
@@ -326,7 +328,9 @@ body[data-mode="mainnet"] .citybadge{background:var(--gold-soft);color:var(--gol
 .tile.corner .tn{font-family:var(--display);font-size:clamp(5px,min(15cqi,15cqb),16px)}
 .tile.corner .tp{font-family:var(--body);font-weight:600;font-size:clamp(4px,min(9cqi,9cqb),10px);text-align:center;padding:0 4%;color:var(--ink-3)}
 .tile.special .tn{font-size:clamp(4px,min(11.5cqi,17cqb),11px)}
-@container (max-width:30px){.tile .tn,.tile .tp{display:none}}
+@container (max-width:30px){.tile .tp{display:none}.tile.special .tn,.tile .logo+.tn{display:none}
+  .tile.t .tn,.tile.b .tn{writing-mode:vertical-rl;transform:rotate(180deg);width:auto;max-height:100%;font-size:clamp(4px,min(24cqi,11cqb),6.5px);line-height:1.05;letter-spacing:0;overflow:hidden;text-wrap:wrap;word-break:normal}
+  .tile .logo{width:70cqi;height:70cqi}}
 .tile.mine::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--cream)}
 .tile.hot{box-shadow:inset 0 0 0 2.5px var(--red)}
 .tile.here{box-shadow:inset 0 0 0 3px var(--purple)}
@@ -581,7 +585,7 @@ details.more .renttable{margin-top:8px}
 </main>
 
 <nav class="tabbar" id="tabbar" hidden>
-  <button data-room="desk">Desk</button><button data-room="map">Map</button><button data-room="leaders">Leaders</button><button data-room="portfolio">Portfolio</button><button data-room="bank">Bank</button><button data-room="rules">Rules</button>
+  <button data-room="desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Desk</button><button data-room="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 8h18M3 16h18M8 3v18M16 3v18"/></svg>Map</button><button data-room="leaders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>Leaders</button><button data-room="portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>Portfolio</button><button data-room="bank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg>Bank</button><button data-room="rules"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>Rules</button>
 </nav>
 
 <div class="scrim" id="scrim" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
@@ -1404,8 +1408,7 @@ ${onChain() ? "" : `<div class="card" id="deskInbox"><div class="row between"><h
     host.innerHTML = `<div class="grid-map">
       <div class="stage"><div class="stagebar"><div><div class="eyebrow">Chog Street</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
           <button class="viewswitch" id="viewSwitch" role="switch" aria-checked="${U.angled}" aria-label="3D view"><span data-v="flat">Flat</span><span class="vs"><i></i></span><span data-v="3d">3D</span></button></div>
-        <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div>
-        <div class="legend"><span><i style="background:var(--purple)"></i>You are here</span><span><i style="background:var(--gold);border-radius:50%"></i>Your streets</span><span><i style="background:var(--red)"></i>Hot Street (rent ×2)</span><span>Tap any square for its card</span></div></div>
+        <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div></div>
       <div class="rail">
         <div class="card hudme" id="hudMe"></div>
         <div class="card dock stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>

@@ -272,8 +272,7 @@ ${onChain() ? "" : `<div class="card" id="deskInbox"><div class="row between"><h
     host.innerHTML = `<div class="grid-map">
       <div class="stage"><div class="stagebar"><div><div class="eyebrow">Chog Street</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
           <button class="viewswitch" id="viewSwitch" role="switch" aria-checked="${U.angled}" aria-label="3D view"><span data-v="flat">Flat</span><span class="vs"><i></i></span><span data-v="3d">3D</span></button></div>
-        <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div>
-        <div class="legend"><span><i style="background:var(--purple)"></i>You are here</span><span><i style="background:var(--gold);border-radius:50%"></i>Your streets</span><span><i style="background:var(--red)"></i>Hot Street (rent ×2)</span><span>Tap any square for its card</span></div></div>
+        <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div></div>
       <div class="rail">
         <div class="card hudme" id="hudMe"></div>
         <div class="card dock stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>

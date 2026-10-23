@@ -26,10 +26,10 @@ async function main() {
   const chogNft = prev.chogNft ? await ethers.getContractAt("MockChogNFT", prev.chogNft) : await (await F("MockChogNFT")).deploy();
   const usdc = await (await F("MockUSDC")).deploy();
   for (const c of [chog, chogNft, usdc]) await c.waitForDeployment();
-  out.cashToken = await usdc.getAddress(); out.chogToken = await chog.getAddress(); out.chogNft = await chogNft.getAddress(); out.questSigner = me.address;
+  out.cashToken = await usdc.getAddress(); out.chogToken = await chog.getAddress(); out.chogNft = await chogNft.getAddress();
   console.log("MockUSDC        ", out.cashToken, "\nMockCHOG        ", out.chogToken, prev.chogToken ? "(reused)" : "", "\nMockChogNFT     ", out.chogNft, prev.chogNft ? "(reused)" : "");
 
-  const game = await (await F("ChogOfWallStreet")).deploy(out.chogNft, out.cashToken, out.chogToken, me.address);
+  const game = await (await F("ChogOfWallStreet")).deploy(out.chogNft, out.cashToken, out.chogToken);
   await game.waitForDeployment();
   const gameAddr = out.game = await game.getAddress();
   console.log("ChogOfWallStreet", gameAddr);
@@ -43,12 +43,25 @@ async function main() {
   for (const sq of [1, 3, 5, 25, 35, 37]) await wait(game.setAdapter(sq, out.swapAdapter)); // the six app squares
   await wait(game.setBuybackAdapter(out.buybackAdapter));
 
+  // the Bank's desks: season office, batch reader, savings (a test ERC-4626 vault stands in for Morpho)
+  const seasons = await (await F("ChogSeasons")).deploy(gameAddr);
+  const lens = await (await F("ChogLens")).deploy();
+  const vault = await (await F("MockVault")).deploy(out.cashToken);
+  for (const c of [seasons, lens, vault]) await c.waitForDeployment();
+  out.seasons = await seasons.getAddress(); out.lens = await lens.getAddress(); out.vault = await vault.getAddress();
+  const savings = await (await F("ChogSavings")).deploy(out.chogNft, out.cashToken, out.vault);
+  await savings.waitForDeployment();
+  out.savings = await savings.getAddress();
+  await wait(game.setSeasons(out.seasons));
+  console.log("ChogSeasons     ", out.seasons, "\nChogLens        ", out.lens, "\nMockVault       ", out.vault, "\nChogSavings     ", out.savings);
+
   // demo assets for the deployer
   await wait(usdc.mint(me.address, USD(1_000)));
   await wait(chog.mint(me.address, 1_000_000n * E));
   for (const id of [1, 2, 3, 4, 5]) { try { await chogNft.ownerOf(id); } catch (e) { await wait(chogNft.mint(me.address, id)); } }
   await wait(usdc.approve(gameAddr, ethers.MaxUint256));
   await wait(chog.approve(gameAddr, ethers.MaxUint256));
+  await wait(game.fundBank(USD(50))); // seed the Bank's reserves so the mortgage desk can lend
 
   // smoke test: wake #1 with $20, commit a roll, land it from a later block
   await wait(game.wake(1, USD(20)));

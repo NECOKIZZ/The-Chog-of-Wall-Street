@@ -15,6 +15,7 @@ module.exports = {
   UNI_QUOTER_V2: "0x661e93cca42afacb172121ef892830ca3b70f08d",
   UNI_WMON_USDC_FEE: 3000, // pool 0x659bD0BC4167BA25c62E05656F78043E7eD4a9da (deepest)
   // Not wired (verified on a fork): Kuru v1 order books have no bids (MarketStateError); Kuru Flow needs its off-chain quote API.
+  MORPHO_USDC_VAULT: "0x78999cc96d2Ba0341588C60CcB0E91c6C33CF371", // Morpho Vault V2 "Hyperithm USDC Apex" (ERC-4626, ~53M USDC). max* views return 0 by design; use preview*
   shMON: "0x1B68626dCa36c7fE922fD2d55E4f631d962dE19c", // FastLane, ERC-4626 native deposit(uint256,address)
   gMON: "0x8498312A6B3CbD158bf0c93AbdCF29E6e4F55081", // Magma. Not wired: deposit() and deposit(uint256,address) revert on mainnet
   aprMON: "0x0c65A0BC65a5D819235B71F554D210D3F80E0852", // aPriori, ERC-4626 native deposit(uint256,address)

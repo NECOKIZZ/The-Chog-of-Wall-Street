@@ -33,7 +33,7 @@ describe("ChogOfWallStreet", () => {
     usdc = await (await ethers.getContractFactory("MockUSDC")).deploy();
     chog = await (await ethers.getContractFactory("MockCHOG")).deploy();
     nft = await (await ethers.getContractFactory("MockChogNFT")).deploy();
-    game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(await nft.getAddress(), await usdc.getAddress(), await chog.getAddress(), signer.address);
+    game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(await nft.getAddress(), await usdc.getAddress(), await chog.getAddress());
     adapter = await (await ethers.getContractFactory("MockSwapAdapter")).deploy(await usdc.getAddress(), await game.getAddress(), 500_000n); // 0.50 USDC per MON
     await usdc.mint(await adapter.getAddress(), D(1_000_000));
     for (const [who, id] of [[alice, ALICE], [bob, BOB], [carol, CAROL]]) {
@@ -131,14 +131,12 @@ describe("ChogOfWallStreet", () => {
     await game.connect(alice).wake(ALICE, D(20_000));
     await game.connect(bob).wake(BOB, D(20_000));
     await time.increase(10 * 86400);
-    expect(await game.prestige(ALICE)).to.equal(10n);
-    expect(await game.exitTaxPct(ALICE)).to.equal(19n);
+    // after 10 days: Prestige 10%, exit tax 19% (one loyal week off 20%)
     const cap = await game.dailyCapLeft(); // 2% of $40 = $0.80
     expect(cap).to.equal(D(800));
     await expect(game.connect(alice).requestCashOut(ALICE, cap + 1n)).to.be.revertedWithCustomError(game, "Cap");
     const commons0 = await game.commons(), pot0 = await game.buybackPot();
     await game.connect(alice).requestCashOut(ALICE, D(500));
-    expect(await game.prestige(ALICE)).to.equal(0n);
     const tax = (D(500) * 19n) / 100n;
     expect(await game.commons()).to.equal(commons0 + tax / 2n);
     expect(await game.buybackPot()).to.equal(pot0 + tax / 4n); // a quarter of the tax buys back $CHOG
@@ -204,26 +202,9 @@ describe("ChogOfWallStreet", () => {
     const cash0 = (await game.chogs(ALICE)).cash;
     await game.connect(alice).quest(ALICE, "0x", { value: E });
     expect((await game.chogs(ALICE)).cash).to.equal(cash0 + D(500));
-    expect(await game.stampCount(ALICE)).to.equal(1n);
+    expect((await game.chogs(ALICE)).stamps).to.not.equal(0n);
     expect(await game.rollsOf(ALICE)).to.be.gte(8n);
     await invariant();
-  });
-
-  it("Tier-B receipt needs the quest signer, the right square, and can't be reused", async () => {
-    await game.connect(alice).wake(ALICE, D(20_000));
-    const pos = (await game.chogs(ALICE)).pos;
-    const txHash = ethers.id("some-dapp-tx");
-    const expiry = (await time.latest()) + 3600;
-    const { chainId } = await ethers.provider.getNetwork();
-    const digest = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
-      ["uint256", "address", "uint256", "uint256", "bytes32", "uint256", "address"],
-      [chainId, await game.getAddress(), ALICE, pos, txHash, expiry, alice.address]));
-    const bad = await bob.signMessage(ethers.getBytes(digest));
-    await expect(game.connect(alice).questReceipt(ALICE, pos, txHash, expiry, bad)).to.be.revertedWithCustomError(game, "Bad");
-    const sig = await signer.signMessage(ethers.getBytes(digest));
-    await game.connect(alice).questReceipt(ALICE, pos, txHash, expiry, sig);
-    expect(await game.stampCount(ALICE)).to.equal(1n);
-    await expect(game.connect(alice).questReceipt(ALICE, pos, txHash, expiry, sig)).to.be.revertedWithCustomError(game, "Bad");
   });
 
   it("rent earned while Property Tax is unpaid goes to the Commons", async () => {
@@ -248,7 +229,7 @@ describe("ChogOfWallStreet", () => {
     await game.connect(alice).prepayTax(ALICE, 3 * 86400); // tax is not the reason
     const last = (await game.chogs(ALICE)).lastRoll;
     expect(await game.earningUntil(ALICE)).to.equal(last + 48n * 3600n);
-    await game.connect(alice).checkpoint(ALICE);
+    await game.connect(alice).claim(ALICE);
     const commons0 = await game.commons();
     await time.increase(49 * 3600); // Alice idles past 48h
     for (let k = 0; k < 40; k++) {
@@ -257,9 +238,9 @@ describe("ChogOfWallStreet", () => {
       await rollAndSettle(BOB, bob);
     }
     const pending = await game.pendingRent(ALICE);
-    const u0 = (await game.chogs(ALICE)).unclaimed;
-    await game.connect(alice).checkpoint(ALICE);
-    const gained = (await game.chogs(ALICE)).unclaimed - u0;
+    const cash0 = (await game.chogs(ALICE)).cash;
+    await game.connect(alice).claim(ALICE);
+    const gained = (await game.chogs(ALICE)).cash - cash0; // includes any claim bonus, still far below pending
     if (pending > 0n) {
       expect(gained).to.be.lt(pending); // most of it forfeited to the Commons
       expect(await game.commons()).to.be.gt(commons0);
@@ -270,4 +251,140 @@ describe("ChogOfWallStreet", () => {
     expect(await game.earningUntil(ALICE)).to.be.gt(BigInt(await time.latest()));
     await invariant();
   });
+
+  it("mortgage: borrow half a street, its rent goes to the Bank, no selling or cash-out until repaid +10%", async () => {
+    for (const [who, id] of [[alice, ALICE], [bob, BOB]]) { await game.connect(who).wake(id, D(20_000)); await game.connect(who).setPlan(id, 2); }
+    await playUntilBricks(ALICE, alice);
+    let sq = 0; for (; sq < 40; sq++) if ((await game.bricks(sq, ALICE)) > 0n) break;
+    await usdc.mint(admin.address, D(100_000)); await usdc.approve(await game.getAddress(), ethers.MaxUint256);
+    await game.fundBank(D(50_000)); // seed the Bank's reserves
+    // let the city run so the Commons (the Bank's reserves) builds up from fees and rent
+    for (let k = 0; k < 40 && (await game.commons()) < (await game.brickValue(ALICE)) * 2n; k++) {
+      for (const [who, id] of [[alice, ALICE], [bob, BOB]]) {
+        if ((await game.rollsOf(id)) === 0n) await time.increase(1800);
+        const c = await game.chogs(id); if (c.jail > 0 && c.cash >= D(500)) await game.connect(who).payBail(id);
+        if (c.cash < D(1_000) && (await game.seasonTopUp(id)) <= D(15_000)) await game.connect(who).topUp(id, D(5_000));
+        try { await rollAndSettle(id, who); } catch (e) { /* jailed or broke */ }
+      }
+    }
+    sq = 0; for (; sq < 40; sq++) if ((await game.bricks(sq, ALICE)) > 0n) break;
+    const cash0 = (await game.chogs(ALICE)).cash;
+    await game.connect(alice).mortgage(ALICE, sq);
+    const l = await game.loan(sq, ALICE);
+    expect(l).to.be.gt(0n);
+    expect((await game.chogs(ALICE)).cash).to.equal(cash0 + l);
+    await expect(game.connect(alice).sellBricks(ALICE, sq, 1, 0)).to.be.revertedWithCustomError(game, "Locked");
+    await expect(game.connect(alice).requestCashOut(ALICE, D(10))).to.be.revertedWithCustomError(game, "Locked");
+    await expect(game.connect(alice).mortgage(ALICE, sq)).to.be.revertedWithCustomError(game, "Bad");
+    const c1 = (await game.chogs(ALICE)).cash;
+    await game.connect(alice).repay(ALICE, sq);
+    expect((await game.chogs(ALICE)).cash).to.equal(c1 - l - l / 10n);
+    expect(await game.loanOf(ALICE)).to.equal(0n);
+    await invariant();
+  });
+
+  it("auction: bids come from Chog cash, outbid refunds, the winner gets the Bricks and the seller the money", async () => {
+    for (const [who, id] of [[alice, ALICE], [bob, BOB], [carol, CAROL]]) { await game.connect(who).wake(id, D(20_000)); await game.connect(who).setPlan(id, 2); }
+    await playUntilBricks(ALICE, alice);
+    let sq = 0; for (; sq < 40; sq++) if ((await game.bricks(sq, ALICE)) > 0n) break;
+    const n = await game.bricks(sq, ALICE);
+    await game.connect(alice).startAuction(ALICE, sq, 1);
+    await expect(game.connect(alice).sellBricks(ALICE, sq, 1, 0)).to.be.revertedWithCustomError(game, "Locked");
+    const a = await game.auctions(sq);
+    await expect(game.connect(bob).bid(BOB, sq, a.reserve - 1n)).to.be.revertedWithCustomError(game, "Bad");
+    const bobCash = (await game.chogs(BOB)).cash;
+    await game.connect(bob).bid(BOB, sq, a.reserve);
+    await game.connect(carol).bid(CAROL, sq, a.reserve * 2n);
+    expect((await game.chogs(BOB)).cash).to.equal(bobCash); // refunded
+    await invariant();
+    await expect(game.settleAuction(sq)).to.be.revertedWithCustomError(game, "Bad"); // still running
+    await time.increase(2 * 3600 + 1);
+    const sellerCash = (await game.chogs(ALICE)).cash;
+    await game.connect(keeper).settleAuction(sq);
+    expect(await game.bricks(sq, ALICE)).to.equal(n - 1n);
+    expect(await game.bricks(sq, CAROL)).to.be.gte(1n);
+    expect((await game.chogs(ALICE)).cash).to.equal(sellerCash + a.reserve * 2n);
+    expect(await game.totalEscrow()).to.equal(0n);
+    await invariant();
+  });
+
+  it("seasons: rank, nominate the bottom, settle the wealth tax, and claim prizes from the pool", async () => {
+    const seasons = await (await ethers.getContractFactory("ChogSeasons")).deploy(await game.getAddress());
+    await game.setSeasons(await seasons.getAddress());
+    await expect(game.setSeasons(keeper.address)).to.be.revertedWithCustomError(game, "NotOwner"); // set once
+    const players = [[alice, ALICE], [bob, BOB], [carol, CAROL]];
+    // a 4th player so the bottom quarter has one seat
+    const [, , , , , , dave] = await ethers.getSigners(); const DAVE = 4;
+    await nft.mint(dave.address, DAVE); await usdc.mint(dave.address, D(200_000)); await usdc.connect(dave).approve(await game.getAddress(), ethers.MaxUint256);
+    players.push([dave, DAVE]);
+    for (const [who, id] of players) { await game.connect(who).wake(id, D(20_000)); await game.connect(who).setPlan(id, 2); }
+    for (let round = 0; round < 24; round++) {
+      for (const [who, id] of players) {
+        if ((await game.rollsOf(id)) === 0n) continue;
+        const c = await game.chogs(id);
+        if (c.jail > 0 && c.cash >= D(500)) await game.connect(who).payBail(id);
+        try { await rollAndSettle(id, who); } catch (e) { /* broke */ }
+      }
+      await time.increase(30 * 60);
+    }
+    for (const [, id] of players) await seasons.rank(id);
+    const [topIds] = await seasons.top(1);
+    expect(topIds.length).to.equal(4);
+    expect(await game.activeCount(1)).to.be.gte(1n);
+    await expect(seasons.nominate(1, ALICE)).to.be.revertedWithCustomError(seasons, "Bad"); // season not over
+    await time.increase(7 * 86400);
+    await game.tickSeason(); await time.increase(120); await game.tickSeason();
+    expect(await game.endedAt(1)).to.be.gt(0n);
+    const pool0 = await game.prizePool(1);
+    expect(pool0).to.be.gt(0n);
+    await invariant();
+    const active = []; for (const [, id] of players) if (await game.activeIn(1, id)) active.push(id);
+    for (const id of active) await seasons.nominate(1, id);
+    const [bottomIds] = await seasons.bottom(1);
+    expect(bottomIds.length).to.equal(Math.min(50, Math.floor(active.length / 4)));
+    await expect(seasons.settle(1)).to.be.revertedWithCustomError(seasons, "Bad"); // window still open
+    await time.increase(86400 + 1);
+    const taxedCash = bottomIds.length ? (await game.chogs(bottomIds[0])).cash : 0n;
+    await seasons.settle(1);
+    if (bottomIds.length) expect(await game.taxed(1, bottomIds[0])).to.equal(true);
+    expect(await game.prizePool(1)).to.equal(pool0 + taxedCash * 5n / 100n);
+    let paid = 0n;
+    for (const [, id] of players) { const o = await seasons.owed(1, id); const c0 = (await game.chogs(id)).cash; await seasons.claim(1, id); expect((await game.chogs(id)).cash).to.equal(c0 + o); paid += o; }
+    expect(paid).to.be.lte(await seasons.base(1));
+    await expect(seasons.claim(1, ALICE)).to.be.revertedWithCustomError(seasons, "Bad"); // once
+    await invariant();
+    await time.increase(31 * 86400);
+    await game.rolloverPrize(1);
+    expect(await game.prizePool(1)).to.equal(0n);
+    await invariant();
+  });
+
+  it("lens: reads many Chogs and their Bricks in one call", async () => {
+    for (const [who, id] of [[alice, ALICE], [bob, BOB]]) await game.connect(who).wake(id, D(20_000));
+    await rollAndSettle(ALICE, alice);
+    const lens = await (await ethers.getContractFactory("ChogLens")).deploy();
+    const [data, rolls] = await lens.chogs(await game.getAddress(), [ALICE, BOB]);
+    const dec = game.interface.decodeFunctionResult("chogs", data[0]);
+    expect(dec.cash).to.equal((await game.chogs(ALICE)).cash);
+    expect(rolls[1]).to.equal(8n);
+    const b = await lens.bricksOf(await game.getAddress(), [ALICE, BOB]);
+    expect(b.length).to.equal(80);
+  });
+
+  it("savings: USDC parked in a lending vault belongs to the Chog, earns interest, and only the holder withdraws", async () => {
+    const vault = await (await ethers.getContractFactory("MockVault")).deploy(await usdc.getAddress());
+    const sav = await (await ethers.getContractFactory("ChogSavings")).deploy(await nft.getAddress(), await usdc.getAddress(), await vault.getAddress());
+    await usdc.connect(alice).approve(await sav.getAddress(), ethers.MaxUint256);
+    await expect(sav.connect(bob).deposit(ALICE, D(1_000))).to.be.revertedWithCustomError(sav, "NotOwner");
+    await sav.connect(alice).deposit(ALICE, D(10_000));
+    await vault.accrue(D(1_000)); // the market pays interest
+    expect(await sav.savedValue(ALICE)).to.be.gt(D(10_900));
+    await nft.connect(alice).transferFrom(alice.address, carol.address, ALICE); // savings travel with the NFT
+    await expect(sav.connect(alice).withdraw(ALICE, ethers.MaxUint256)).to.be.revertedWithCustomError(sav, "NotOwner");
+    const w0 = await usdc.balanceOf(carol.address);
+    await sav.connect(carol).withdraw(ALICE, ethers.MaxUint256);
+    expect(await usdc.balanceOf(carol.address)).to.be.gt(w0 + D(10_900));
+    expect(await sav.shares(ALICE)).to.equal(0n);
+  });
 });
+

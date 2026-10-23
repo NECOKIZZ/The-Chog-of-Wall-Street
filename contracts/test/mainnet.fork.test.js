@@ -35,7 +35,7 @@ run("Mainnet fork: real USDC, real $CHOG, real Chog Genesis, real dapps", functi
     }
     usdc = await ethers.getContractAt("IERC20", M.USDC);
 
-    game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(M.CHOG_GENESIS, M.USDC, M.CHOG, admin.address);
+    game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(M.CHOG_GENESIS, M.USDC, M.CHOG);
     await usdc.connect(owner).approve(await game.getAddress(), ethers.MaxUint256);
     await chog.connect(owner).approve(await game.getAddress(), ethers.MaxUint256);
     await game.connect(owner).wake(TOKEN, USD(20));
@@ -70,7 +70,7 @@ run("Mainnet fork: real USDC, real $CHOG, real Chog Genesis, real dapps", functi
     const got = await a.held(TOKEN, M.CHOG);
     console.log("      1 MON →", ethers.formatEther(got), "$CHOG held for the Chog (quote", ethers.formatEther(quote), ")");
     expect(got).to.be.gte(minOut);
-    expect(await game.stampCount(TOKEN)).to.equal(1n);
+    expect((await game.chogs(TOKEN)).stamps).to.not.equal(0n);
     await balanced();
   });
 
@@ -97,6 +97,18 @@ run("Mainnet fork: real USDC, real $CHOG, real Chog Genesis, real dapps", functi
     expect(burnt).to.be.gt(0n);
     expect(await game.buybackPot()).to.equal(0n);
     await balanced();
+  });
+
+  it("Savings desk: parks real USDC in the Morpho vault (Hyperithm USDC Apex) for the Chog and withdraws it", async () => {
+    const sav = await (await ethers.getContractFactory("ChogSavings")).deploy(M.CHOG_GENESIS, M.USDC, M.MORPHO_USDC_VAULT);
+    await usdc.connect(owner).approve(await sav.getAddress(), ethers.MaxUint256);
+    await sav.connect(owner).deposit(TOKEN, USD(10));
+    const v = await sav.savedValue(TOKEN);
+    console.log("      $10 saved → worth", Number(v) / 1e6, "USDC in Morpho");
+    expect(v).to.be.gte(USD(9.99));
+    const w0 = await usdc.balanceOf(ownerAddr);
+    await sav.connect(owner).withdraw(TOKEN, ethers.MaxUint256);
+    expect((await usdc.balanceOf(ownerAddr)) - w0).to.be.gte(USD(9.99));
   });
 
   for (const [name, addr, kind] of [["shMON", M.shMON, 0], ["aprMON", M.aprMON, 0], ["sMON", M.sMON, 2]]) {

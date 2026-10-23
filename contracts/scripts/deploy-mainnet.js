@@ -28,7 +28,7 @@ async function main() {
   console.log(`deployer ${me.address} · ${ethers.formatEther(await ethers.provider.getBalance(me.address))} MON${process.env.FORK ? " (fork)" : ""}`);
   const wait = async tx => (await tx).wait();
 
-  const game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(M.CHOG_GENESIS, M.USDC, M.CHOG, me.address);
+  const game = await (await ethers.getContractFactory("ChogOfWallStreet")).deploy(M.CHOG_GENESIS, M.USDC, M.CHOG);
   await game.waitForDeployment();
   const g = await game.getAddress();
   console.log("ChogOfWallStreet", g);
@@ -41,12 +41,21 @@ async function main() {
     uni: await (await F("UniswapUsdcAdapter")).deploy(g, M.CHOG_GENESIS, M.UNI_SWAP_ROUTER02, M.WMON, M.USDC, M.UNI_WMON_USDC_FEE),
     buyback: await (await F("ChogBuybackAdapter")).deploy(g, M.UNI_SWAP_ROUTER02, M.NADFUN_DEX_ROUTER, M.USDC, M.WMON, M.CHOG, M.UNI_WMON_USDC_FEE),
   };
-  const out = { network: process.env.FORK ? "monad-fork" : "monad", chainId: 143, deployer: me.address, deployedAt: new Date().toISOString(), game: g, cashToken: M.USDC, chogToken: M.CHOG, chogNft: M.CHOG_GENESIS, questSigner: me.address, maxDeposit: Number(MAX_DEPOSIT) / 1e6, adapters: {}, squares: {} };
+  const out = { network: process.env.FORK ? "monad-fork" : "monad", chainId: 143, deployer: me.address, deployedAt: new Date().toISOString(), game: g, cashToken: M.USDC, chogToken: M.CHOG, chogNft: M.CHOG_GENESIS, maxDeposit: Number(MAX_DEPOSIT) / 1e6, adapters: {}, squares: {} };
   for (const [k, a] of Object.entries(adapters)) { await a.waitForDeployment(); out.adapters[k] = await a.getAddress(); console.log("adapter", k, out.adapters[k]); }
   for (const [sq, k] of WIRING) { await wait(game.setAdapter(sq, out.adapters[k])); out.squares[sq] = k; }
   await wait(game.setMaxDeposit(MAX_DEPOSIT));
   await wait(game.setBuybackAdapter(out.adapters.buyback));
   console.log("wired squares", out.squares, "maxDeposit", out.maxDeposit);
+
+  // the Bank's desks: season office (prizes + wealth tax), batch reader, savings in the Morpho USDC vault
+  const seasons = await (await F("ChogSeasons")).deploy(g);
+  const lens = await (await F("ChogLens")).deploy();
+  const savings = await (await F("ChogSavings")).deploy(M.CHOG_GENESIS, M.USDC, M.MORPHO_USDC_VAULT);
+  for (const c of [seasons, lens, savings]) await c.waitForDeployment();
+  out.seasons = await seasons.getAddress(); out.lens = await lens.getAddress(); out.savings = await savings.getAddress(); out.vault = M.MORPHO_USDC_VAULT;
+  await wait(game.setSeasons(out.seasons));
+  console.log("ChogSeasons", out.seasons, "· ChogLens", out.lens, "· ChogSavings", out.savings);
 
   const file = path.join(__dirname, "..", "deployments", `${out.network}.json`);
   fs.mkdirSync(path.dirname(file), { recursive: true });

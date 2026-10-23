@@ -5,8 +5,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @notice A whitelisted dapp adapter for Tier-A quests. If it returns `cashOut` > 0 it must have delivered that much of the
 ///         cash token (USDC) to the game in the same call; anything else it buys is held by the adapter for the Chog.
@@ -38,6 +36,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
     uint256 public constant START_DEPOSIT = 20_000 * U; // everyone opens with the same $20
     uint256 public constant TOPUP_CAP = 20_000 * U; // top-ups (and cash from app squares) per Chog per season
     uint256 public constant IDLE = 48 hours; // no roll for this long: the Chog's streets stop paying it
+    uint256 public constant ACTIVE_ROLLS = 20; // rolls in a season to share the "active" prize
+    uint256 public constant AUCTION_LEN = 2 hours;
     uint256 public constant ROLL_EVERY = 30 minutes;
     uint256 public constant ROLL_CAP = 8;
     uint256 public constant EXTRA_ROLL_CHOG = 100 * E; // $CHOG, burned
@@ -79,10 +79,9 @@ contract ChogOfWallStreet is ReentrancyGuard {
     IERC721 public immutable CHOGS;
     IERC20 public immutable CASH; // USDC
     IERC20 public immutable CHOG; // utility token, never held by the game
-    address public admin; // can whitelist adapters, set the quest signer and seed tiers. Can never move funds.
+    address public admin; // can whitelist adapters, set the season module once and seed tiers. Can never move funds.
     address public buybackAdapter;
-    address public questSigner;
-    bool public tiersFrozen;
+    address public seasons; // ChogSeasons: decides season prizes and the wealth tax; this contract enforces the limits
 
     struct Prop {
         uint128 p0; // base Brick price
@@ -132,11 +131,23 @@ contract ChogOfWallStreet is ReentrancyGuard {
     mapping(uint256 => mapping(uint256 => uint256)) internal debt; // square => tokenId => acc debt
     mapping(uint256 => mapping(uint256 => uint64)) public questDay; // tokenId => square => last UTC day
     mapping(uint256 => address) public adapterOf; // square => Tier-A adapter
-    mapping(bytes32 => bool) public usedReceipt;
     uint256[] public awakeIds; // every woken Chog, for the app to draw the board
     uint256 public maxDeposit = type(uint256).max; // guarded launch: cap on a Chog's cash after a deposit
     mapping(uint256 => uint256) public seasonTopUp; // tokenId => cash added this season (top-ups + app squares)
     mapping(uint256 => uint256) public topUpSeason;
+
+    // Bank: mortgages (a loan from the Commons against one street) and auctions (one at a time per street)
+    mapping(uint256 => mapping(uint256 => uint256)) public loan; // square => tokenId => loan
+    mapping(uint256 => uint256) public loanOf; // tokenId => total loans
+    struct Auction { uint64 seller; uint64 n; uint64 ends; uint64 bidder; uint128 reserve; uint128 bid; }
+    mapping(uint256 => Auction) public auctions; // square => live auction
+    // Seasons: start values, active Chogs, prize pools (paid out by the ChogSeasons module within these limits)
+    mapping(uint256 => uint256) public startValue; // tokenId => appraisal when it joined the current season
+    mapping(uint256 => uint256) public activeCount; // season => Chogs with ACTIVE_ROLLS rolls
+    mapping(uint256 => mapping(uint256 => bool)) public activeIn; // season => tokenId
+    mapping(uint256 => uint256) public prizePool; // ended season => USDC left to pay
+    mapping(uint256 => uint256) public endedAt; // season => timestamp
+    mapping(uint256 => mapping(uint256 => bool)) public taxed; // season => tokenId (wealth tax taken)
 
     struct CashOut { address to; uint128 net; uint64 readyAt; }
     mapping(uint256 => CashOut) public cashOuts;
@@ -153,6 +164,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
     uint256 public sleepPool;
     uint256 public queued;
     uint256 public buybackPot; // fees waiting to buy back $CHOG
+    uint256 public totalEscrow; // auction bids
+    uint256 public totalPrize; // sum of prizePool
     uint256 public burned; // USDC ever routed to buybacks, for display
     uint256 public chogBurned; // $CHOG burned (utilities + buybacks), for display
 
@@ -189,13 +202,13 @@ contract ChogOfWallStreet is ReentrancyGuard {
     error Funds();
     error Locked();
     error Bad();
+    error Bankrupt();
 
-    constructor(IERC721 chogs_, IERC20 cash_, IERC20 chog_, address questSigner_) {
+    constructor(IERC721 chogs_, IERC20 cash_, IERC20 chog_) {
         CHOGS = chogs_;
         CASH = cash_;
         CHOG = chog_;
         admin = msg.sender;
-        questSigner = questSigner_;
         seasonStart = block.timestamp;
         uint128[11] memory p0 = [uint128(0), 40, 60, 90, 120, 160, 200, 250, 320, 180, 150];
         uint128[11] memory rent = [uint128(0), 60, 90, 130, 170, 220, 270, 330, 450, 200, 0];
@@ -207,12 +220,11 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     // ------------------------------------------------------------------ admin (no fund access)
     function setAdapter(uint256 square, address adapter) external { if (msg.sender != admin) revert NotOwner(); adapterOf[square] = adapter; }
-    function setQuestSigner(address s) external { if (msg.sender != admin) revert NotOwner(); questSigner = s; }
+    function setSeasons(address s) external { if (msg.sender != admin || seasons != address(0)) revert NotOwner(); seasons = s; }
     function setTiers(uint256[] calldata ids, uint8[] calldata tiers) external {
-        if (msg.sender != admin || tiersFrozen) revert NotOwner();
+        if (msg.sender != admin || awakeIds.length != 0) revert NotOwner(); // only before the first Chog wakes
         for (uint256 i; i < ids.length; ++i) chogs[ids[i]].tier = tiers[i];
     }
-    function freezeTiers() external { if (msg.sender != admin) revert NotOwner(); tiersFrozen = true; }
     /// @notice The contract that turns the buyback pot into burned $CHOG. Checked on every use: it must burn real $CHOG.
     function setBuybackAdapter(address a) external { if (msg.sender != admin) revert NotOwner(); buybackAdapter = a; }
     /// @notice Guarded launch: limits how much cash a Chog can hold after a deposit. Never touches funds.
@@ -227,24 +239,23 @@ contract ChogOfWallStreet is ReentrancyGuard {
     }
 
     // ------------------------------------------------------------------ views
-    function kind(uint256 sq) public pure returns (uint8) { return uint8(KINDS[sq]); }
-    function district(uint256 sq) public pure returns (uint8) { return uint8(DISTRICT[sq]); }
+    function kind(uint256 sq) internal pure returns (uint8) { return uint8(KINDS[sq]); }
+    function district(uint256 sq) internal pure returns (uint8) { return uint8(DISTRICT[sq]); }
 
-    function brickPrice(uint256 sq) external view returns (uint256) { Prop storage p = props[sq]; return p.p0 + p.p0 * p.supply / 100; }
 
     /// @dev Integral of the linear curve price(s) = p0 * (1 + s/100) from s to s+n.
-    function curve(uint256 p0, uint256 s, uint256 n) public pure returns (uint256) {
+    function curve(uint256 p0, uint256 s, uint256 n) internal pure returns (uint256) {
         return p0 * n + p0 * (s * n + n * (n - 1) / 2) / 100;
     }
 
-    function level(uint256 sq) public view returns (uint256 l) {
+    function level(uint256 sq) internal view returns (uint256 l) {
         Prop storage p = props[sq];
         if (p.p0 == 0) return 0;
         uint256 x = p.reserve / p.p0;
         if (x >= 700) return 5; if (x >= 300) return 4; if (x >= 120) return 3; if (x >= 40) return 2; if (x >= 10) return 1;
     }
 
-    function rentOf(uint256 sq, uint256 dice) public view returns (uint256) {
+    function rentOf(uint256 sq, uint256 dice) internal view returns (uint256) {
         uint16[6] memory m = [uint16(1), 2, 4, 7, 11, 16];
         uint256 l = level(sq);
         if (district(sq) == 10) return dice * 20 * U * m[l];
@@ -253,7 +264,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         return r;
     }
 
-    function hotSquare() public view returns (uint256) {
+    function hotSquare() internal view returns (uint256) {
         uint256 day = block.timestamp / 1 days;
         uint256 k = (day * 7 + 3) % 28;
         for (uint256 i; i < 40; ++i) if (district(i) != 0) { if (k == 0) return i; --k; }
@@ -271,17 +282,17 @@ contract ChogOfWallStreet is ReentrancyGuard {
         for (uint256 i; i < 40; ++i) { uint256 n = bricks[i][id]; if (n != 0) r += (n * props[i].acc - debt[i][id]) / E; }
     }
 
-    function prestige(uint256 id) public view returns (uint256) {
+    function prestige(uint256 id) internal view returns (uint256) {
         Chog storage c = chogs[id];
         uint256 since = c.lastCash > c.woke ? c.lastCash : c.woke;
         uint256 d = (block.timestamp - since) / 1 days;
         return d > PRESTIGE_CAP ? PRESTIGE_CAP : d;
     }
 
-    function stampCount(uint256 id) public view returns (uint256 n) { uint256 s = chogs[id].stamps; while (s != 0) { n += s & 1; s >>= 1; } }
+    function stampCount(uint256 id) internal view returns (uint256 n) { uint256 s = chogs[id].stamps; while (s != 0) { n += s & 1; s >>= 1; } }
 
     /// @notice Claim weight in percent above 1x: Prestige + stamps (max 28) + tier.
-    function bonusPct(uint256 id) public view returns (uint256) {
+    function bonusPct(uint256 id) internal view returns (uint256) {
         uint8[5] memory tb = [0, 3, 6, 8, 10];
         uint256 st = stampCount(id);
         return prestige(id) + (st > 28 ? 28 : st) + tb[chogs[id].tier];
@@ -289,10 +300,11 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     function appraisal(uint256 id) public view returns (uint256) {
         Chog storage c = chogs[id];
-        return c.cash + c.unclaimed + pendingRent(id) + brickValue(id) + c.jar;
+        uint256 v = c.cash + c.unclaimed + pendingRent(id) + brickValue(id) + c.jar;
+        return v > loanOf[id] ? v - loanOf[id] : 0;
     }
 
-    function exitTaxPct(uint256 id) public view returns (uint256) {
+    function exitTaxPct(uint256 id) internal view returns (uint256) {
         Chog storage c = chogs[id];
         uint256 since = c.lastCash > c.woke ? c.lastCash : c.woke;
         uint256 weeks_ = (block.timestamp - since) / 7 days;
@@ -317,7 +329,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
 
     /// @notice Everything this contract should hold. Equals CASH.balanceOf(this) (zero-sum invariant).
     function accounted() external view returns (uint256) {
-        return totalCash + totalJar + totalReserve + rentEscrow + totalUnclaimed + commons + lounge + seasonPot + sleepPool + queued + buybackPot;
+        return totalCash + totalJar + totalReserve + rentEscrow + totalUnclaimed + commons + lounge + seasonPot + sleepPool + queued + buybackPot + totalEscrow + totalPrize;
     }
 
     /// @notice When this Chog's streets stop paying it: Property Tax runs out, or 48 hours pass without a roll.
@@ -352,6 +364,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         c.seasonNo = uint32(seasonNo);
         awakeIds.push(id);
         _addCash(c, amount + div);
+        startValue[id] = amount + div;
         emit Woke(id, msg.sender, amount, div);
     }
 
@@ -378,6 +391,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
         Chog storage c = _own(id);
         if (c.pendingBlock != 0) revert Pending();
         _checkpoint(id, c); // settle rent up to now before the 48-hour clock restarts
+        if (c.seasonNo != seasonNo) { c.seasonNo = uint32(seasonNo); c.rollsSeason = 0; c.warden = 0; startValue[id] = appraisal(id); }
+        if (c.cash == 0 && c.unclaimed == 0 && _freeBricks(id) == 0) revert Bankrupt(); // top up to play again
         c.lastRoll = uint64(block.timestamp);
         _useRoll(c);
         c.pendingBlock = uint64(block.number);
@@ -410,6 +425,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         uint8 d1 = uint8(seed % 6) + 1;
         uint8 d2 = uint8((seed >> 8) % 6) + 1;
         c.rollsSeason += 1;
+        if (c.rollsSeason == ACTIVE_ROLLS) { activeIn[c.seasonNo][id] = true; activeCount[c.seasonNo] += 1; }
         if (c.jail > 0) {
             if (d1 == d2 || c.jailCard) { c.jail = 0; c.jailCard = d1 == d2 ? c.jailCard : false; }
             else { c.jail -= 1; emit Landed(id, d1, d2, c.pos, 0, 0); return; }
@@ -462,6 +478,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
         uint256 maxN = plan == 0 ? 3 : plan == 1 ? 6 : 15;
         uint256 keepBps = plan == 0 ? 5000 : plan == 1 ? 2500 : 0;
         if (plan == 0 && level(sq) > 1) return 0;
+        if (_locked(sq, id)) return 0;
         if ((sq == 1 || sq == 3) && appraisal(id) >= FAIR_START_MAX) return 0; // Fair Start streets
         uint256 budget = c.cash * (BPS - keepBps) / BPS;
         Prop storage p = props[sq];
@@ -499,6 +516,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
     function sellBricks(uint256 id, uint256 sq, uint64 n, uint256 minOut) external nonReentrant {
         Chog storage c = _own(id);
         if (n == 0 || bricks[sq][id] < n) revert Bad();
+        if (_locked(sq, id)) revert Locked();
         _checkpoint(id, c);
         Prop storage p = props[sq];
         uint256 v = curve(p.p0, p.supply - n, n);
@@ -542,7 +560,8 @@ contract ChogOfWallStreet is ReentrancyGuard {
             if (n == 0) continue;
             uint256 owed = (n * props[i].acc - debt[i][id]) / E;
             debt[i][id] = n * props[i].acc;
-            pending += owed;
+            if (loan[i][id] != 0) { if (owed > rentEscrow) owed = rentEscrow; rentEscrow -= owed; commons += owed; } // mortgaged: the Bank keeps it
+            else pending += owed;
         }
         uint256 last = c.checkpoint;
         c.checkpoint = uint64(block.timestamp);
@@ -559,7 +578,6 @@ contract ChogOfWallStreet is ReentrancyGuard {
         totalUnclaimed += pending - forfeit;
     }
 
-    function checkpoint(uint256 id) external { _checkpoint(id, chogs[id]); }
 
     /// @notice Claim rent into the Chog's cash. Bonuses above 1x (Prestige, stamps, tier, hype) come from the Commons
     ///         surplus, at most 10% of it per claim. Nothing is minted.
@@ -676,16 +694,6 @@ contract ChogOfWallStreet is ReentrancyGuard {
         _stamp(id, c, c.pos, out);
     }
 
-    /// @notice Tier B: proof-of-visit. A signed receipt that the owner's wallet used the dapp (checked by the indexer).
-    function questReceipt(uint256 id, uint256 sq, bytes32 txHash, uint256 expiry, bytes calldata sig) external {
-        Chog storage c = _own(id);
-        if (block.timestamp > expiry || usedReceipt[txHash] || c.pos != sq) revert Bad();
-        bytes32 h = MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encode(block.chainid, address(this), id, sq, txHash, expiry, msg.sender)));
-        if (ECDSA.recover(h, sig) != questSigner) revert Bad();
-        usedReceipt[txHash] = true;
-        _stamp(id, c, sq, 0);
-    }
-
     function _stamp(uint256 id, Chog storage c, uint256 sq, uint256 out) internal {
         bool first = c.stamps & (1 << sq) == 0;
         c.stamps |= 1 << sq;
@@ -698,7 +706,7 @@ contract ChogOfWallStreet is ReentrancyGuard {
     /// @notice Request a cash-out. Taxed 10-20%, queued 48h, capped city-wide, and it resets Prestige to 0.
     function requestCashOut(uint256 id, uint256 amount) external nonReentrant {
         Chog storage c = _own(id);
-        if (block.timestamp < uint256(c.movedAt) + MOVING_DAY || cashOuts[id].net != 0) revert Locked();
+        if (block.timestamp < uint256(c.movedAt) + MOVING_DAY || cashOuts[id].net != 0 || loanOf[id] != 0) revert Locked();
         if (amount == 0 || amount > dailyCapLeft()) revert Cap();
         uint256 tax = amount * exitTaxPct(id) / 100;
         _subCash(c, amount);
@@ -734,7 +742,11 @@ contract ChogOfWallStreet is ReentrancyGuard {
                 seasonPot -= prize;
                 _addCash(w, prize);
             } else prize = 0;
-            // Leaderboard shares (top-10, Wardens, Golden Chog) ship later as a Merkle distributor; until then the pot rolls over.
+            // The rest of the pot becomes this season's prize pool, shared out by the ChogSeasons module.
+            prizePool[seasonNo] = seasonPot;
+            totalPrize += seasonPot;
+            seasonPot = 0;
+            endedAt[seasonNo] = block.timestamp;
             emit SeasonEnded(seasonNo, bellLeaderToken, prize);
             seasonNo += 1;
             seasonStart = block.timestamp;
@@ -745,6 +757,114 @@ contract ChogOfWallStreet is ReentrancyGuard {
     }
 
     function tickSeason() external { _tickSeason(); }
+
+    // ------------------------------------------------------------------ the Bank: mortgages and auctions
+    /// @notice Borrow half a street's sell value from the Commons (one loan can take at most half of it). Until repaid, that street's rent
+    ///         goes to the Commons, its Bricks can't be sold or auctioned, and the Chog can't cash out.
+    function mortgage(uint256 id, uint256 sq) external nonReentrant {
+        Chog storage c = _own(id);
+        uint256 n = bricks[sq][id];
+        if (n == 0 || _locked(sq, id)) revert Bad();
+        _checkpoint(id, c);
+        Prop storage p = props[sq];
+        uint256 amt = curve(p.p0, p.supply - n, n) * (BPS - SELL_SPREAD_BPS) / BPS / 2;
+        if (amt == 0 || amt > commons / 2) revert Cap(); // the Bank lends at most half of what it holds
+        commons -= amt;
+        loan[sq][id] = amt;
+        loanOf[id] += amt;
+        _addCash(c, amt);
+    }
+
+    /// @notice Anyone can add USDC to the Bank's reserves (the Commons). Nothing comes back: it funds loans and bonuses.
+    function fundBank(uint256 amount) external { CASH.safeTransferFrom(msg.sender, address(this), amount); commons += amount; }
+
+    /// @notice Repay a mortgage: the loan back to the Commons plus a 10% fee (split like any Commons inflow).
+    function repay(uint256 id, uint256 sq) external nonReentrant {
+        Chog storage c = _own(id);
+        uint256 amt = loan[sq][id];
+        if (amt == 0) revert Bad();
+        _checkpoint(id, c);
+        _subCash(c, amt + amt / 10);
+        commons += amt;
+        _toCommons(amt / 10);
+        loan[sq][id] = 0;
+        loanOf[id] -= amt;
+    }
+
+    /// @notice Offer `n` Bricks of one street to other Chogs for 2 hours. The reserve is what the Bank would pay.
+    function startAuction(uint256 id, uint256 sq, uint64 n) external {
+        _own(id);
+        if (n == 0 || bricks[sq][id] < n || _locked(sq, id) || auctions[sq].n != 0) revert Bad();
+        Prop storage p = props[sq];
+        uint256 reserve = curve(p.p0, p.supply - n, n) * (BPS - SELL_SPREAD_BPS) / BPS;
+        auctions[sq] = Auction(uint64(id), n, uint64(block.timestamp + AUCTION_LEN), 0, uint128(reserve), 0);
+    }
+
+    /// @notice Bid from your Chog's cash. The previous bidder is refunded. A bid in the last 10 minutes adds 10 minutes.
+    function bid(uint256 id, uint256 sq, uint256 amount) external nonReentrant {
+        Chog storage c = _own(id);
+        Auction storage a = auctions[sq];
+        if (a.n == 0 || block.timestamp >= a.ends || id == a.seller || amount < a.reserve || amount <= uint256(a.bid) * 101 / 100) revert Bad();
+        if (_room(props[sq], bricks[sq][id], a.n) < a.n) revert Cap();
+        _subCash(c, amount);
+        totalEscrow += amount;
+        if (a.bidder != 0) { totalEscrow -= a.bid; _addCash(chogs[a.bidder], a.bid); }
+        a.bidder = uint64(id);
+        a.bid = uint128(amount);
+        if (a.ends - block.timestamp < 10 minutes) a.ends += 10 minutes;
+    }
+
+    /// @notice Anyone can close a finished auction: the Bricks move to the winner and the bid to the seller.
+    function settleAuction(uint256 sq) external nonReentrant {
+        Auction memory a = auctions[sq];
+        if (a.n == 0 || block.timestamp < a.ends) revert Bad();
+        delete auctions[sq];
+        if (a.bidder == 0 || bricks[sq][a.seller] < a.n) { if (a.bidder != 0) { totalEscrow -= a.bid; _addCash(chogs[a.bidder], a.bid); } return; }
+        _checkpoint(a.seller, chogs[a.seller]);
+        _checkpoint(a.bidder, chogs[a.bidder]);
+        uint256 acc = props[sq].acc;
+        bricks[sq][a.seller] -= a.n;
+        debt[sq][a.seller] -= uint256(a.n) * acc;
+        bricks[sq][a.bidder] += a.n;
+        debt[sq][a.bidder] += uint256(a.n) * acc;
+        totalEscrow -= a.bid;
+        _addCash(chogs[a.seller], a.bid);
+    }
+
+    // ------------------------------------------------------------------ season prizes (amounts decided by ChogSeasons)
+    /// @notice Pay a share of an ended season's prize pool into a Chog. Only the season module; never more than the pool.
+    function payPrize(uint256 s, uint256 id, uint256 amt) external {
+        if (msg.sender != seasons || amt > prizePool[s] || !chogs[id].awake) revert Bad();
+        prizePool[s] -= amt;
+        totalPrize -= amt;
+        _addCash(chogs[id], amt);
+    }
+
+    /// @notice The season-end wealth tax: 5% of a Chog's cash into that season's prize pool, once per season.
+    function takeWealthTax(uint256 s, uint256 id) external returns (uint256 t) {
+        if (msg.sender != seasons || taxed[s][id] || endedAt[s] == 0) revert Bad();
+        taxed[s][id] = true;
+        Chog storage c = chogs[id];
+        t = c.cash * 5 / 100;
+        _subCash(c, t);
+        prizePool[s] += t;
+        totalPrize += t;
+    }
+
+    /// @notice Prizes nobody claimed within 30 days roll into the current season pot.
+    function rolloverPrize(uint256 s) external {
+        if (endedAt[s] == 0 || block.timestamp < endedAt[s] + 30 days) revert Locked();
+        uint256 a = prizePool[s];
+        prizePool[s] = 0;
+        totalPrize -= a;
+        seasonPot += a;
+    }
+
+    /// @notice What the season module needs about a Chog: its season, rolls, defences and start value.
+    function seasonStats(uint256 id) external view returns (uint256 season, uint256 rolls, uint256 warden, uint256 start) {
+        Chog storage c = chogs[id];
+        return (c.seasonNo, c.rollsSeason, c.warden, startValue[id]);
+    }
 
     // ------------------------------------------------------------------ $CHOG buyback
     /// @notice Anyone can turn the buyback pot into $CHOG and burn it. The burn address must receive at least `minChog`.
@@ -809,6 +929,13 @@ contract ChogOfWallStreet is ReentrancyGuard {
         sleepPool += s;
         sleepAcc += s * E / SUPPLY;
         seasonPot += sp;
+    }
+
+    function _locked(uint256 sq, uint256 id) internal view returns (bool) { return loan[sq][id] != 0 || (auctions[sq].n != 0 && auctions[sq].seller == id); }
+
+    /// @dev Sell value of Bricks not under a mortgage or auction (what's left to cover rent).
+    function _freeBricks(uint256 id) internal view returns (uint256 v) {
+        for (uint256 i; i < 40; ++i) { uint256 n = bricks[i][id]; if (n != 0 && !_locked(i, id)) v += n; }
     }
 
     function _toBuyback(uint256 a) internal { if (a == 0) return; buybackPot += a; burned += a; }

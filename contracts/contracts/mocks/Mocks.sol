@@ -52,3 +52,12 @@ contract MockBuyback {
         chog.mint(to, out);
     }
 }
+
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+/// @notice Lending-vault stand-in (ERC-4626) for testnet savings. `accrue` adds test USDC as interest.
+contract MockVault is ERC4626 {
+    constructor(IERC20 usdc_) ERC20("Test USDC Savings", "tsUSDC") ERC4626(IERC20Metadata(address(usdc_))) {}
+    function accrue(uint256 a) external { MockUSDC(address(asset())).mint(address(this), a); }
+}

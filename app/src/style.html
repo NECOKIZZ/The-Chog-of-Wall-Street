@@ -291,6 +291,21 @@ body[data-mode="mainnet"] .citybadge{background:var(--gold-soft);color:var(--gol
 .mapbox{position:relative;width:100%;max-width:min(820px,calc(100vh - 230px));min-width:min(100%,340px);margin:0 auto;aspect-ratio:1/1}
 .mapbox.angled{max-width:min(860px,calc((100vh - 230px) * 1.45))}
 #heroMap{max-width:none}
+.cardwall{position:relative;height:min(640px,calc(100vh - 160px));display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;overflow:hidden;transform:perspective(1400px) rotateY(-14deg) rotateX(6deg);-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent)}
+.ccol{overflow:hidden;min-width:0}
+.ctrack{display:flex;flex-direction:column;gap:16px;animation:cscroll 38s linear infinite}
+.ccol.c1 .ctrack{animation-duration:30s;animation-direction:reverse}
+.ccol.c2 .ctrack{animation-duration:44s}
+@keyframes cscroll{from{transform:translateY(0)}to{transform:translateY(calc(-50% - 8px))}}
+.ccard{background:var(--card);color:var(--ink);border:1.5px solid var(--line-2);border-radius:18px;box-shadow:0 5px 0 var(--ledge);overflow:hidden;flex:none}
+.ccard .cimg{display:block;aspect-ratio:1;background-size:cover;background-position:center;background-color:var(--bg-2)}
+.ccard .cbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.ccard .cbody b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ccard .pill{font-size:10.5px;padding:2px 7px}
+.cstreet{display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden}
+.cstreet i{width:10px;height:10px;border-radius:3px;flex:none}
+@media (prefers-reduced-motion:reduce){.ctrack{animation:none}}
+@media (max-width:720px){.cardwall{height:420px;transform:none}}
 .mapbox.angled{aspect-ratio:1.45/1;perspective:1600px}
 /* Board: design A "Classic deed". Cream tiles on thin ink lines, the colour band on the inner edge, names in capitals, everything upright. */
 .board{position:absolute;inset:0;display:grid;grid-template-columns:1.55fr repeat(9,1fr) 1.55fr;grid-template-rows:1.55fr repeat(9,1fr) 1.55fr;gap:0;background:var(--board);border:2px solid var(--ink);border-radius:6px;box-shadow:0 6px 0 var(--tile-edge)}
@@ -414,7 +429,12 @@ details.more .renttable{margin-top:8px}
 .sline b{font-size:14px}
 .treasury{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 @media (max-width:720px){.treasury{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.banktabs{display:flex;gap:4px;background:var(--bg-2);padding:4px;border-radius:14px;overflow-x:auto;margin-bottom:18px;scrollbar-width:none;max-width:100%;width:max-content}
+.banktabs::-webkit-scrollbar{display:none}
+.banktabs button{border:0;background:none;padding:9px 16px;border-radius:10px;font-weight:800;font-size:13.5px;color:var(--ink-2);white-space:nowrap;flex:none}
+.banktabs button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:0 2px 0 var(--ledge)}
 .mortlist{display:flex;flex-direction:column;gap:8px}
+.kv.words dd{font-family:inherit;font-weight:700;letter-spacing:0;text-align:right}
 .mortrow{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--raise);border-radius:12px;padding:9px 10px 9px 9px}
 .mortrow i{width:8px;align-self:stretch;border-radius:4px}
 .mortrow .btn{margin-bottom:3px}

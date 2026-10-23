@@ -1,33 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-interface IChogGameView {
-    function rollsOf(uint256 id) external view returns (uint256);
-    function pendingRent(uint256 id) external view returns (uint256);
-    function bricks(uint256 sq, uint256 id) external view returns (uint64);
-}
-
 /// @title ChogLens
-/// @notice Read-only batch views so the app can draw the whole city in a few calls (2,000 Chogs ≈ 20 calls),
-///         instead of several calls per Chog. Holds nothing and changes nothing.
+/// @notice Read-only batch reader, so the app can draw the whole city in a few calls (2,000 Chogs in about 20)
+///         instead of several calls per Chog. It runs many view calls on one contract and returns the raw results
+///         (decode them with that contract's ABI). A call that fails returns empty bytes. Holds nothing, changes nothing.
 contract ChogLens {
-    /// @notice Raw `chogs(id)` results (decode with the game ABI), plus rolls and pending rent, for each id.
-    function chogs(address game, uint256[] calldata ids) external view returns (bytes[] memory data, uint256[] memory rolls, uint256[] memory pending) {
-        uint256 n = ids.length;
-        data = new bytes[](n);
-        rolls = new uint256[](n);
-        pending = new uint256[](n);
-        for (uint256 i; i < n; ++i) {
-            (bool ok, bytes memory d) = game.staticcall(abi.encodeWithSignature("chogs(uint256)", ids[i]));
-            if (ok) data[i] = d;
-            rolls[i] = IChogGameView(game).rollsOf(ids[i]);
-            pending[i] = IChogGameView(game).pendingRent(ids[i]);
+    function read(address target, bytes[] calldata calls) external view returns (bytes[] memory out) {
+        out = new bytes[](calls.length);
+        for (uint256 i; i < calls.length; ++i) {
+            (bool ok, bytes memory d) = target.staticcall(calls[i]);
+            if (ok) out[i] = d;
         }
-    }
-
-    /// @notice Bricks held by each id on every square, flattened: out[k * 40 + sq].
-    function bricksOf(address game, uint256[] calldata ids) external view returns (uint64[] memory out) {
-        out = new uint64[](ids.length * 40);
-        for (uint256 k; k < ids.length; ++k) for (uint256 sq; sq < 40; ++sq) out[k * 40 + sq] = IChogGameView(game).bricks(sq, ids[k]);
     }
 }

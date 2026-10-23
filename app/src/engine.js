@@ -110,7 +110,7 @@ const G = {
   seasonNo: 1, seasonStartT: 0, bellEnd: null, lastBuyer: null, golden: null, cashedToday: 0, cashDay: 0,
   me: null, chogs: [], feed: [], plan: "balanced", busy: false, speed: 1, tab: "chog", sheet: null,
   wallet: { usdc: 100000, chog: 50000, mon: 1000 }, mode: "practice", buyback: 0, chogBurned: 0,
-  activity: [], inbox: [], lastSeen: 0, page: "desk", auctions: [],
+  activity: [], inbox: [], lastSeen: 0, page: "desk", auctions: [], escrow: 0, vault: { idx: 1, apy: 0.062 }, seasons: [],
 };
 let seed = 7;
 const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
@@ -199,12 +199,12 @@ function sellBricks(c, p, n) {
 // ---------- the Bank: mortgages and auctions ----------
 // A mortgage is a loan from the Commons against one street: half its Bricks' sell value. While mortgaged, that street's rent
 // share goes to the Commons, its Bricks can't be sold, and you can't cash out. Repaying costs the loan + 10% (the 10% is a fee).
-const MORT_LTV = 0.5, MORT_FEE = 0.1, MORT_POOL = 0.2, AUC_LEN = 2 * HOUR;
+const MORT_LTV = 0.5, MORT_FEE = 0.1, AUC_LEN = 2 * HOUR, AUC_SNIPE = 10;
 const locked = (c, p) => !!(c.mort?.[p.i] || c.auc?.[p.i]);
-const debt = c => Object.values(c.mort || {}).reduce((a, b) => a + b, 0);
+const debt = c => c.loanTotal != null ? c.loanTotal : Object.values(c.mort || {}).reduce((a, b) => a + b, 0); // on-chain: loanOf
 const freeBrickValue = c => PROPS.reduce((v, p) => v + (myBricks(c, p) && !locked(c, p) ? sellValue(p, myBricks(c, p)) * (1 - K.sellSpread) : 0), 0);
 const loanOffer = (c, p) => myBricks(c, p) ? sellValue(p, myBricks(c, p)) * (1 - K.sellSpread) * MORT_LTV : 0;
-const loanRoom = () => Math.max(0, G.commons * MORT_POOL - G.chogs.reduce((a, c) => a + debt(c), 0));
+const loanRoom = () => Math.max(0, G.commons / 2); // one loan can take at most half of what the Bank holds
 function mortgage(c, p) {
   if (locked(c, p) || !myBricks(c, p)) return 0;
   const loan = Math.min(loanOffer(c, p), loanRoom(), G.commons); if (loan < 1) return 0;
@@ -219,26 +219,71 @@ function repayMortgage(c, p) {
   if (c === G.me) act("repay", `You paid off the mortgage on ${p.name}`, -cost);
   return cost;
 }
-// An auction offers some of your Bricks on one street to the other Chogs for 2 hours. The bank price (what selling would pay)
-// is the reserve. The best bid at or above it wins: cash moves buyer → seller and the Bricks change hands. Nothing is minted.
+// An auction offers some of your Bricks on one street for 2 hours (one auction per street). The bank price (what selling
+// would pay) is the reserve. Bids come out of the bidder's cash and wait in escrow; an outbid bidder gets theirs back at once.
+// A bid in the last 10 minutes adds 10 minutes. At the end the Bricks go to the best bid and the money to the seller.
+let aucSeq = 1;
+const auctionOn = i => G.auctions.find(a => a.i === i);
 function startAuction(c, p, n) {
-  n = Math.min(n, myBricks(c, p)); if (n <= 0 || locked(c, p)) return null;
-  const a = { seller: c.id, i: p.i, n, reserve: sellValue(p, n) * (1 - K.sellSpread), ends: G.t + AUC_LEN };
+  n = Math.min(n, myBricks(c, p)); if (n <= 0 || locked(c, p) || auctionOn(p.i)) return null;
+  const a = { id: aucSeq++, seller: c.id, i: p.i, n, reserve: sellValue(p, n) * (1 - K.sellSpread), ends: G.t + AUC_LEN, bid: 0, bidder: null };
   c.auc[p.i] = true; G.auctions.push(a); return a;
+}
+const minBid = a => Math.max(a.reserve, a.bid * 1.01 + 1);
+function bidAuction(c, a, amt) {
+  const p = SQ[a.i];
+  if (!a || c.id === a.seller || G.t >= a.ends || amt < minBid(a) || c.cash < amt || capFor(c, p, a.n) < a.n) return false;
+  c.cash -= amt; G.escrow += amt;
+  if (a.bidder) { const prev = byId(a.bidder); G.escrow -= a.bid; prev.cash += a.bid; if (prev === G.me && c !== G.me) act("auction", `${c.name} outbid you on ${p.name}. Your ${fmt(a.bid)} is back in your cash`, a.bid); }
+  a.bid = amt; a.bidder = c.id;
+  if (a.ends - G.t < AUC_SNIPE) a.ends += AUC_SNIPE;
+  if (a.seller === G.me?.id && c !== G.me) act("auction", `${c.name} bid ${fmt(amt)} for your Bricks on ${p.name}`);
+  return true;
 }
 function settleAuction(a) {
   const c = byId(a.seller), p = SQ[a.i]; delete c.auc[a.i];
-  const n = Math.min(a.n, myBricks(c, p)); let best = null;
-  if (n > 0) for (const b of G.chogs) {
-    if (b === c || !b.bot || capFor(b, p, n) < n) continue;
-    const bid = Math.round(a.reserve * (0.95 + rnd() * 0.4));
-    if (bid >= a.reserve && b.cash >= bid * 1.5 && (!best || bid > best.bid)) best = { b, bid };
+  const b = a.bidder ? byId(a.bidder) : null;
+  if (!b || myBricks(c, p) < a.n) {
+    if (b) { G.escrow -= a.bid; b.cash += a.bid; }
+    if (c === G.me) act("auction", `Your auction on ${p.name} ended with no bid at the bank price. Your Bricks stay with you`);
+    return null;
   }
-  if (!best) { if (c === G.me) act("auction", `Your auction on ${p.name} ended with no bid above the bank price. Your Bricks stay with you`); return null; }
-  best.b.cash -= best.bid; c.cash += best.bid; p.h[c.id] -= n; if (!p.h[c.id]) delete p.h[c.id]; p.h[best.b.id] = myBricks(best.b, p) + n;
-  if (best.b.taxUntil < G.t) best.b.taxUntil = G.t + DAY;
-  if (c === G.me) { act("auction", `${best.b.name} won your ${n} Brick${n > 1 ? "s" : ""} on ${p.name} for ${fmt(best.bid)}`, best.bid); log(`Auction: ${best.b.name} bought your ${n} Brick${n > 1 ? "s" : ""} on ${p.name} for ${fmt(best.bid)}.`, "me"); }
-  return best;
+  p.h[c.id] -= a.n; if (!p.h[c.id]) delete p.h[c.id]; p.h[b.id] = myBricks(b, p) + a.n;
+  G.escrow -= a.bid; c.cash += a.bid;
+  if (b.taxUntil < G.t) b.taxUntil = G.t + DAY;
+  const what = `${a.n} Brick${a.n > 1 ? "s" : ""} on ${p.name}`;
+  if (c === G.me) { act("auction", `${b.name} won your ${what} for ${fmt(a.bid)}`, a.bid); log(`Auction: ${b.name} bought your ${what} for ${fmt(a.bid)}.`, "me"); }
+  if (b === G.me) { act("auction", `You won ${what} at auction for ${fmt(a.bid)}`, -a.bid); log(`Auction: you won ${what} for ${fmt(a.bid)}.`, "me"); }
+  return b;
+}
+// Bots bid on open auctions now and then, and sometimes put a few of their own Bricks up.
+function botAuctions() {
+  for (const a of G.auctions) {
+    if (G.t >= a.ends || rnd() > 0.12) continue;
+    const p = SQ[a.i], b = G.chogs[ri(G.chogs.length)];
+    if (!b.bot || b.id === a.seller || b.id === a.bidder) continue;
+    const amt = Math.round(minBid(a) * (1 + rnd() * 0.08));
+    if (amt <= a.reserve * 1.35 && b.cash >= amt * 1.5) bidAuction(b, a, amt);
+  }
+  if (rnd() < 0.02) {
+    const c = G.chogs[ri(G.chogs.length)]; if (!c.bot) return;
+    const p = PROPS.filter(p => myBricks(c, p) >= 2 && !locked(c, p) && !auctionOn(p.i))[0];
+    if (p) startAuction(c, p, 1 + ri(Math.min(3, myBricks(c, p))));
+  }
+}
+
+// ---------- the Bank's savings desk (Morpho USDC vault on mainnet) ----------
+// Savings sit outside the game: USDC from your wallet goes into a lending vault, held against your Chog, and earns the
+// vault's interest. It isn't game money, so it never touches the zero-sum ledger. In Practice the vault pays a steady rate.
+const saved = c => (c.save?.shares || 0) * G.vault.idx;
+function saveDeposit(c, amt) {
+  amt = Math.min(amt, G.wallet.usdc); if (amt < 1) return 0;
+  G.wallet.usdc -= amt; c.save = c.save || { shares: 0, principal: 0 };
+  c.save.shares += amt / G.vault.idx; c.save.principal += amt; return amt;
+}
+function saveWithdraw(c) {
+  const v = saved(c); if (v < 1) return 0;
+  G.wallet.usdc += v; c.save = { shares: 0, principal: 0 }; return v;
 }
 
 function rentOf(p, dice) {
@@ -431,7 +476,9 @@ function advance(mins) {
     if (G.me && G.me.autoTax && G.me.taxUntil < G.t + 6 * HOUR) prepayTax(G.me, 1);
     G.chogs.forEach(c => { if (c.bot && rnd() < c.act * 0.22) botTurn(c); });
     G.chogs.forEach(c => { c.queue.forEach(q => { if (!q.ready && G.t >= q.at) { q.ready = true; if (c === G.me) { log(`Cash-out of ${fmt(q.net)} is ready to claim.`, "me"); act("cashout", "Your cash-out is ready. Claim it in the Bank", q.net); } } }); });
+    botAuctions();
     G.auctions = G.auctions.filter(a => { if (G.t < a.ends) return true; settleAuction(a); return false; });
+    G.vault.idx *= 1 + G.vault.apy * 10 / (365 * DAY);
     G.chogs.forEach(c => { if (c.bot && c.pendingReply && G.t >= c.pendingReply.at) { c.pendingReply = null; sendDM(c, G.me, line("reply")); } });
     if (G.me && rnd() < 0.004) { const b = G.chogs.filter(x => x.bot)[ri(G.chogs.length - 1)]; if (b) { const shared = PROPS.find(p => myBricks(G.me, p) && myBricks(b, p)); sendDM(b, G.me, shared ? line("neighbour", shared.name) : line("hello")); } }
     const end = G.seasonStartT + K.seasonLen;
@@ -441,31 +488,47 @@ function advance(mins) {
   G.tick = 0;
   runBuyback();
 }
-// Season-end wealth tax: the bottom quarter of active Chogs (5+ rolls, awake 3+ days) pays 5% of its cash into the pot, which then pays the top.
+// Season end, as on-chain: the Closing Bell winner takes 10% of the pot. Then the bottom quarter of active Chogs (20+ rolls,
+// at most 50) pays 5% of its cash into what's left, and that prize pool is shared: 45% to the top 10 by growth (weights
+// 10..1), +5% to #1, 15% to the top 3 defenders, 35% split across every active Chog. A share nobody qualifies for rolls
+// into next season's pot.
+const ACTIVE_ROLLS = 20;
+const isActive = c => c.rollsSeason >= ACTIVE_ROLLS;
 function wealthTax() {
-  const eligible = G.chogs.filter(c => (c.rollsSeason >= 5 || idle(c)) && G.t - c.woke >= 3 * DAY && !c.bankrupt); // sitting still doesn't dodge it
-  const ranked = [...eligible].sort((a, b) => appraisal(a) - appraisal(b));
-  const bottom = ranked.slice(0, Math.floor(eligible.length / 4));
+  const active = G.chogs.filter(isActive);
+  const k = Math.min(50, Math.floor(active.length / 4));
+  const bottom = [...active].sort((a, b) => appraisal(a) - appraisal(b)).slice(0, k);
   let total = 0;
-  bottom.forEach(c => { const x = c.cash * 0.05; c.cash -= x; G.season += x; total += x; if (c === G.me) act("wealthtax", `Season ended with you in the bottom quarter. You paid 5% of your cash to the season pot`, -x); });
-  if (total) log(`Wealth tax: the bottom ${bottom.length} Chogs paid ${fmt(total)} into the season pot.`);
-  return bottom;
+  bottom.forEach(c => { const x = c.cash * 0.05; c.cash -= x; total += x; if (c === G.me) act("wealthtax", `Season ended with you in the bottom quarter. You paid 5% of your cash into the prize pool`, -x); });
+  if (total) log(`Wealth tax: the bottom ${bottom.length} Chogs paid ${fmt(total)} into the prize pool.`);
+  return { bottom, total };
 }
 function endSeason() {
-  wealthTax();
-  const pot = G.season; const ranked = [...G.chogs].sort((a, b) => (appraisal(b) - b.seasonAppraisal) - (appraisal(a) - a.seasonAppraisal));
-  const top = ranked.slice(0, 10); const tw = top.reduce((a, _, i) => a + (10 - i), 0);
-  top.forEach((c, i) => { c.cash += pot * 0.4 * (10 - i) / tw; });
-  const active = G.chogs.filter(c => c.rollsSeason >= 20); active.forEach(c => { c.cash += pot * 0.3 / Math.max(1, active.length); });
-  const wardens = [...G.chogs].sort((a, b) => b.warden - a.warden).slice(0, 3).filter(c => c.warden > 0);
-  wardens.forEach(c => { c.cash += pot * 0.15 / wardens.length; }); if (!wardens.length) G.commons += pot * 0.15;
-  if (G.lastBuyer) G.lastBuyer.cash += pot * 0.1; else G.commons += pot * 0.1;
-  ranked[0].cash += pot * 0.05;
-  if (!active.length) G.commons += pot * 0.3;
-  const gold = ranked[0]; G.golden = gold;
-  log(`SEASON ${G.seasonNo} ENDED. ${gold.name} is the Golden Chog. Closing Bell winner: ${G.lastBuyer ? G.lastBuyer.name : "nobody"}. ${fmt(pot)} paid out.`, "me");
-  G.season = 0; G.seasonNo++; G.seasonStartT = G.t; G.bellEnd = null; G.lastBuyer = null;
+  const no = G.seasonNo, rec = { no, pot: G.season, bell: 0, bellId: G.lastBuyer?.id ?? null, tax: 0, taxed: [], paid: {}, top: [], wardens: [], active: 0, rolled: 0 };
+  if (G.lastBuyer) { rec.bell = G.season * 0.1; G.season -= rec.bell; G.lastBuyer.cash += rec.bell; rec.paid[G.lastBuyer.id] = rec.bell; }
+  const wt = wealthTax(); rec.tax = wt.total; rec.taxed = wt.bottom.map(c => c.id);
+  const pool = G.season + wt.total; G.season = 0; rec.pool = pool;
+  const pay = (c, x) => { c.cash += x; rec.paid[c.id] = (rec.paid[c.id] || 0) + x; };
+  let left = pool;
+  const growth = [...G.chogs].sort((a, b) => (appraisal(b) - b.seasonAppraisal) - (appraisal(a) - a.seasonAppraisal));
+  const top = growth.filter(c => isActive(c) || c.rollsSeason > 0).slice(0, 10);
+  const tw = top.reduce((a, _, i) => a + (10 - i), 0);
+  top.forEach((c, i) => { const x = pool * 0.45 * (10 - i) / tw; pay(c, x); left -= x; });
+  if (top[0]) { pay(top[0], pool * 0.05); left -= pool * 0.05; }
+  const wardens = [...G.chogs].filter(c => c.warden > 0).sort((a, b) => b.warden - a.warden).slice(0, 3);
+  wardens.forEach(c => { const x = pool * 0.15 / wardens.length; pay(c, x); left -= x; });
+  const active = G.chogs.filter(isActive);
+  active.forEach(c => { const x = pool * 0.35 / active.length; pay(c, x); left -= x; });
+  rec.top = top.map(c => c.id); rec.wardens = wardens.map(c => c.id); rec.active = active.length; rec.rolled = Math.max(0, left);
+  G.season = Math.max(0, left); // unclaimed shares roll into the next season
+  const gold = top[0] || growth[0]; G.golden = gold; rec.golden = gold.id;
+  G.seasons.unshift(rec); if (G.seasons.length > 6) G.seasons.length = 6;
+  log(`SEASON ${no} ENDED. ${gold.name} is the Golden Chog. Closing Bell winner: ${G.lastBuyer ? G.lastBuyer.name : "nobody"}. ${fmt(rec.pot + rec.tax - rec.rolled)} paid out.`, "me");
+  G.seasonNo++; G.seasonStartT = G.t; G.bellEnd = null; G.lastBuyer = null;
   G.chogs.forEach(c => { c.seasonAppraisal = appraisal(c); c.rollsSeason = 0; c.warden = 0; });
-  if (G.me) { const rank = ranked.indexOf(G.me) + 1; act("season", `Season ${G.seasonNo - 1} ended. You finished #${rank} of ${ranked.length}${G.lastBuyer === G.me ? ", and you won the Closing Bell" : ""}`); toast(`Season ${G.seasonNo - 1} is over. You finished #${rank}.`); }
+  if (G.me) {
+    const rank = growth.indexOf(G.me) + 1, won = rec.paid[G.me.id] || 0;
+    act("season", `Season ${no} ended. You finished #${rank} of ${growth.length} by growth${won ? ` and won ${fmt(won)}` : ""}${rec.bellId === G.me.id ? ", including the Closing Bell" : ""}`, won);
+    toast(`Season ${no} is over. You finished #${rank}${won ? ` and won ${fmt(won)}` : ""}.`);
+  }
 }
-

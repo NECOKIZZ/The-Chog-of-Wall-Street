@@ -9,16 +9,18 @@ window.Chain = (() => {
     testnet: {
       key: "testnet", label: "Testnet City", name: "Monad Testnet", chainId: 10143, hex: "0x279f",
       rpc: "https://testnet-rpc.monad.xyz", explorer: "https://testnet.monadvision.com",
-      game: "0x4f4e8a4FCA7784D7531Cd01Fef7963d24e82c141", usdc: "0x2496958B8816F2FD88E888a05aA7d34A7D46Ed12", chog: "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF", nft: "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
+      game: "0x8122B6fa3a7d6db5b009Eb8687629EE713E60612", usdc: "0x2CC219302bB03Cef48667f2B8FDeE131115d5d25", chog: "0xc5fC739e97a411960Da8d98A8d02D7Cb9D79fcAF", nft: "0x5b5D262376Ae025CeB6218C8547dE889c973F645",
+      seasons: "0xc30A6Cf02cfb353233dA9784522C3b9fCf656d0E", chogLens: "0xf1a9611B7F2E97b35171f409055185fEBF86B63C", savings: "0xE95645690AFD3E24384b8BDdDe4881B7Ad725542", vaultName: "Test vault (stands in for Morpho)",
       mocks: true,
       squares: { 1: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for nad.fun)" }, 3: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for nad.fun)" }, 5: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for FastLane shMON)" }, 25: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for aPriori aprMON)" }, 35: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for Kintsu sMON)" }, 37: { kind: "mock", label: "Swap MON → test USDC into your Chog's cash (stand-in for Uniswap)" } },
-      adapters: { mock: "0x66331182082DA6D816B096572d60DeFE64C42d8d" },
+      adapters: { mock: "0xd77e24Ef746032C0148362375e10Ab42E0a6BbB8" },
       questMon: "0.5",
     },
     mainnet: {
       key: "mainnet", label: "Mainnet City", name: "Monad", chainId: 143, hex: "0x8f",
       rpc: "https://rpc.monad.xyz", explorer: "https://monadvision.com",
-      game: null, // filled from the mainnet deployment (see contracts/deployments/monad.json)
+      game: null, seasons: null, chogLens: null, savings: null, // filled from the mainnet deployment (see contracts/deployments/monad.json)
+      vaultName: "Morpho · Hyperithm USDC Apex",
       chog: "0x350035555E10d9AfAF1566AaebfCeD5BA6C27777", nft: "0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763",
       mocks: false,
       squares: {
@@ -51,18 +53,27 @@ window.Chain = (() => {
     "function buybackPot() view returns (uint256)", "function chogBurned() view returns (uint256)", "function seasonTopUp(uint256) view returns (uint256)", "function topUpSeason(uint256) view returns (uint256)", "function buyback(uint256)",
     "function wake(uint256,uint256)", "function topUp(uint256,uint256)", "function setPlan(uint256,uint8)", "function roll(uint256)", "function settle(uint256)", "function buyExtraRoll(uint256)",
     "function claim(uint256)", "function prepayTax(uint256,uint256)", "function payBail(uint256)", "function hireGuard(uint256)", "function hype(uint256,uint256)", "function heist(uint256,uint256)",
-    "function sellBricks(uint256,uint256,uint64,uint256)", "function quest(uint256,bytes) payable", "function requestCashOut(uint256,uint256)", "function claimCashOut(uint256)", "function sync(uint256)",
+    "function sellBricks(uint256,uint256,uint64,uint256)", "function appraisal(uint256) view returns (uint256)", "function startValue(uint256) view returns (uint256)", "function totalEscrow() view returns (uint256)",
+    "function loan(uint256,uint256) view returns (uint256)", "function loanOf(uint256) view returns (uint256)", "function auctions(uint256) view returns (uint64 seller,uint64 n,uint64 ends,uint64 bidder,uint128 reserve,uint128 bid)",
+    "function prizePool(uint256) view returns (uint256)", "function endedAt(uint256) view returns (uint256)", "function activeCount(uint256) view returns (uint256)", "function activeIn(uint256,uint256) view returns (bool)",
+    "function mortgage(uint256,uint256)", "function repay(uint256,uint256)", "function fundBank(uint256)", "function startAuction(uint256,uint256,uint64)", "function bid(uint256,uint256,uint256)", "function settleAuction(uint256)", "function quest(uint256,bytes) payable", "function requestCashOut(uint256,uint256)", "function claimCashOut(uint256)", "function sync(uint256)",
     "event Landed(uint256 indexed tokenId, uint8 d1, uint8 d2, uint8 pos, uint256 rentPaid, uint64 bricksBought)",
     "event Card(uint256 indexed tokenId, uint8 card)", "event Heist(uint256 indexed raider, uint256 indexed target, bool success, uint256 amount)",
-    "error NotOwner()", "error NotAwake()", "error Pending()", "error NoRolls()", "error NotHere()", "error Cap()", "error Funds()", "error Locked()", "error Bad()",
+    "error NotOwner()", "error NotAwake()", "error Pending()", "error NoRolls()", "error NotHere()", "error Cap()", "error Funds()", "error Locked()", "error Bad()", "error Bankrupt()",
   ];
   const ERC20 = ["function balanceOf(address) view returns (uint256)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)", "function mint(address,uint256)"];
   const ERC721 = ["function ownerOf(uint256) view returns (address)", "function mint(address,uint256)"];
+  const SEASONS = ["function rank(uint256)", "function nominate(uint256,uint256)", "function settle(uint256)", "function claim(uint256,uint256) returns (uint256)", "function owed(uint256,uint256) view returns (uint256)",
+    "function claimed(uint256,uint256) view returns (bool)", "function settled(uint256) view returns (bool)", "function base(uint256) view returns (uint256)",
+    "function top(uint256) view returns (uint256[] ids,int256[] scores)", "function wardens(uint256) view returns (uint256[] ids,int256[] scores)", "function bottom(uint256) view returns (uint256[] ids,int256[] scores)", "error Bad()"];
+  const SAVINGS = ["function deposit(uint256,uint256) returns (uint256)", "function withdraw(uint256,uint256) returns (uint256)", "function shares(uint256) view returns (uint256)", "function principal(uint256) view returns (uint256)", "function savedValue(uint256) view returns (uint256)", "error NotOwner()", "error Bad()"];
+  const LENS = ["function read(address,bytes[]) view returns (bytes[])"];
   const ADAPTER = ["function held(uint256,address) view returns (uint256)", "function unlockAt(uint256) view returns (uint64)", "function withdraw(uint256,address)"];
   const ERR = {
     NotOwner: "That Chog isn't owned by the connected wallet.", NotAwake: "Wake this Chog first.", Pending: "A roll is already in flight. Land it first.",
     NoRolls: "Out of rolls. Buy an extra roll or wait 30 minutes.", NotHere: "Stand on that square to do its quest.", Cap: "That's over a limit: $20 of top-ups per season, the deposit cap, or today's city-wide cash-out cap.",
-    Funds: "Not enough cash inside your Chog.", Locked: "Locked for now (48h cash-out queue, 72h after a sale, or 7-day position lock).", Bad: "The game rejected that action in the current state.",
+    Funds: "Not enough cash inside your Chog.", Locked: "Locked for now (a mortgage, the 48h cash-out queue, 72h after a sale, or the 7-day position lock).", Bad: "The game rejected that action in the current state.",
+    Bankrupt: "Your Chog is broke: no cash, no rent to claim and no free Bricks. Top it up in your Portfolio to keep playing.",
   };
   const CARD_TEXT = ["Airdrop: collect $0.20 from the Commons.", "Front-run by MEV: pay $0.30 to the Nad Lounge.", "Lucky Pyth roll: +1 free roll.", "Rugged: straight to Rug Jail.", "Advance to GENESIS.", "LP fees: collect $0.15 from the Commons.", "Vet bill: pay $0.10 to the Nad Lounge.", "Get out of Rug Jail free."];
 
@@ -131,7 +142,7 @@ window.Chain = (() => {
     document.body.dataset.mode = key;
     renderConnect();
   }
-  function applyDeployment(d) { net.game = d.game; for (const [sq, k] of Object.entries(d.squares || {})) net.adapters[sq] = d.adapters[k]; }
+  function applyDeployment(d) { net.game = d.game; net.seasons = d.seasons; net.chogLens = d.lens; net.savings = d.savings; for (const [sq, k] of Object.entries(d.squares || {})) net.adapters[sq] = d.adapters[k]; }
 
   function renderConnect(extraHtml = "") {
     const el = wakeEl();
@@ -227,47 +238,94 @@ window.Chain = (() => {
   }
 
   // ---------- reading the city ----------
+  /** Batch many view calls on one contract through ChogLens (a few hundred per RPC call). Failed calls come back null. */
+  async function many(target, iface, list, chunk = 250) {
+    const lens = new ethers.Contract(net.chogLens, LENS, rp), out = [];
+    for (let i = 0; i < list.length; i += chunk) {
+      const part = list.slice(i, i + chunk);
+      const raw = await rc(() => lens.read(target, part.map(([f, a]) => iface.encodeFunctionData(f, a || []))));
+      raw.forEach((d, k) => { try { out.push(d === "0x" ? null : iface.decodeFunctionResult(part[k][0], d)); } catch (_) { out.push(null); } });
+    }
+    return out;
+  }
+  const one = r => (r ? r[0] : 0n);
   async function refresh() {
     if (!gameR) return;
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000), I = gameR.interface;
     const n = Number(await rc(() => gameR.awakeCount()));
-    const ids = n ? (await rc(() => gameR.awakeList(0, Math.min(n, 100)))).map(Number) : [];
-    const cs = await pmap(ids, id => rc(() => gameR.chogs(id)));
-    const rolls = await pmap(ids, id => rc(() => gameR.rollsOf(id)));
-    const pend = await pmap(ids, id => rc(() => gameR.pendingRent(id)));
-    const propsR = await pmap(PROPS, p => rc(() => gameR.props(p.i)));
-    const potFns = [() => gameR.commons(), () => gameR.lounge(), () => gameR.seasonPot(), () => gameR.burned(), () => gameR.seasonNo(), () => gameR.seasonStart(), () => gameR.bellEnd(), () => gameR.accounted(), () => usdcT.balanceOf(net.game), () => gameR.sleepingDividend(0), () => gameR.buybackPot(), () => gameR.chogBurned()];
-    const pots = await pmap(potFns, f => rc(f), 4);
-    const pairs = PROPS.filter((p, k) => Number(propsR[k].supply) > 0).flatMap(p => ids.map(id => [p.i, id]));
-    const brick = await pmap(pairs, ([sq, id]) => rc(() => gameR.bricks(sq, id)).then(b => [sq, id, Number(b)]));
+    const ids = [];
+    for (let i = 0; i < n; i += 500) ids.push(...(await rc(() => gameR.awakeList(i, Math.min(500, n - i)))).map(Number));
+    const POTS = ["commons", "lounge", "seasonPot", "burned", "seasonNo", "seasonStart", "bellEnd", "accounted", "sleepingDividend", "buybackPot", "chogBurned", "totalEscrow"];
+    const potR = await many(net.game, I, POTS.map(f => [f, f === "sleepingDividend" ? [0] : []]));
+    const pot = Object.fromEntries(POTS.map((f, k) => [f, one(potR[k])]));
+    const seasonNo = Number(pot.seasonNo);
+    const per = await many(net.game, I, ids.flatMap(id => [["chogs", [id]], ["rollsOf", [id]], ["pendingRent", [id]], ["appraisal", [id]], ["startValue", [id]], ["loanOf", [id]]]));
+    const propsR = await many(net.game, I, PROPS.map(p => ["props", [p.i]]));
+    const aucR = await many(net.game, I, PROPS.map(p => ["auctions", [p.i]]));
+    const live = PROPS.filter((p, k) => propsR[k] && Number(propsR[k].supply) > 0);
+    const pairs = live.flatMap(p => ids.map(id => [p.i, id]));
+    const brick = await many(net.game, I, pairs.map(([sq, id]) => ["bricks", [sq, id]]), 400);
+    extra.held = fe(await rc(() => usdcT.balanceOf(net.game)));
     G.t = Math.floor(now / 60);
-    G.commons = fe(pots[0]); G.lounge = fe(pots[1]); G.season = fe(pots[2]); G.burned = fe(pots[3]); G.seasonNo = Number(pots[4]);
-    G.seasonStartT = Number(pots[5]) / 60; G.bellEnd = Number(pots[6]) ? Number(pots[6]) / 60 : null; extra.accounted = fe(pots[7]); extra.held = fe(pots[8]);
-    G.sleep = fe(pots[9]) * SUPPLY; G.buyback = fe(pots[10]); G.chogBurned = fe18(pots[11]);
-    PROPS.forEach((p, k) => { p.supply = Number(propsR[k].supply); p.reserve = fe(propsR[k].reserve); p.h = {}; });
-    brick.forEach(([sq, id, b]) => { if (b) SQ[sq].h[id] = b; });
+    G.commons = fe(pot.commons); G.lounge = fe(pot.lounge); G.season = fe(pot.seasonPot); G.burned = fe(pot.burned); G.seasonNo = seasonNo;
+    G.seasonStartT = Number(pot.seasonStart) / 60; G.bellEnd = Number(pot.bellEnd) ? Number(pot.bellEnd) / 60 : null; extra.accounted = fe(pot.accounted);
+    G.sleep = fe(pot.sleepingDividend) * SUPPLY; G.buyback = fe(pot.buybackPot); G.chogBurned = fe18(pot.chogBurned); G.escrow = fe(pot.totalEscrow);
+    PROPS.forEach((p, k) => { p.supply = Number(propsR[k]?.supply || 0); p.reserve = fe(propsR[k]?.reserve || 0); p.h = {}; });
+    brick.forEach((b, k) => { const v = Number(one(b)); if (v) SQ[pairs[k][0]].h[pairs[k][1]] = v; });
+    G.auctions = PROPS.map((p, k) => ({ p, a: aucR[k] })).filter(x => x.a && Number(x.a.n) > 0).map(({ p, a }) => ({ i: p.i, seller: Number(a.seller), n: Number(a.n), ends: Number(a.ends) / 60, bidder: Number(a.bidder) || null, reserve: fe(a.reserve), bid: fe(a.bid) }));
     const prev = new Map(G.chogs.map(c => [c.id, c]));
     G.chogs = ids.map((id, k) => {
-      const s = cs[k], r = rowOf(id), old = prev.get(id) || {};
+      const [s, rl, pd, ap, sv, lo] = per.slice(k * 6, k * 6 + 6), r = rowOf(id), old = prev.get(id) || {};
       const st = new Set(); let bits = BigInt(s.stamps); for (let i = 0; bits; i++, bits >>= 1n) if (bits & 1n) st.add(i);
+      const thisSeason = Number(s.seasonNo) === seasonNo; // the Chog's season counters reset on its first roll of a new season
       return {
         ...old, id, name: r[1].replace(/^CHOG /, ""), full: r[1], img: artOf(id), tier: r[3] || "Common", eyes: r[4], head: r[5], body: r[6], mouth: r[7],
-        bot: id !== myId, pos: Number(s.pos), cash: fe(s.cash), unclaimed: fe(s.unclaimed) + fe(pend[k]), jar: fe(s.jar), rolls: Number(rolls[k]),
+        bot: id !== myId, pos: Number(s.pos), cash: fe(s.cash), unclaimed: fe(s.unclaimed) + fe(one(pd)), jar: fe(s.jar), rolls: Number(one(rl)),
         hypeMult: Number(s.hypeBps) / 10000 || 1, hypeUntil: Number(s.hypeUntil) / 60, guards: Number(s.guards), jail: Number(s.jail), jailCard: s.jailCard,
         lastCash: Number(s.lastCash) / 60, woke: Number(s.woke) / 60, lastRoll: Number(s.lastRoll) / 60, taxUntil: Number(s.taxUntil) / 60, immuneUntil: Number(s.immuneUntil) / 60, heistUntil: Number(s.heistUntil),
-        stamps: st, qday: old.qday || {}, pos_: {}, warden: Number(s.warden), rollsSeason: Number(s.rollsSeason), plan: ["safe", "balanced", "degen"][Number(s.plan)] || "balanced",
-        pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, seasonAppraisal: old.seasonAppraisal ?? null, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
+        stamps: st, qday: old.qday || {}, pos_: {}, warden: thisSeason ? Number(s.warden) : 0, rollsSeason: thisSeason ? Number(s.rollsSeason) : 0, plan: ["safe", "balanced", "degen"][Number(s.plan)] || "balanced",
+        chainGrowth: thisSeason ? fe(one(ap)) - fe(one(sv)) : 0, loanTotal: fe(one(lo)), mort: {}, auc: {},
+        pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
       };
     });
+    G.auctions.forEach(a => { const c = G.chogs.find(x => x.id === a.seller); if (c) c.auc[a.i] = true; });
     const before = G.me && G.me.id === myId ? { unclaimed: G.me.unclaimed, jar: G.me.jar } : null;
     G.me = G.chogs.find(c => c.id === myId) || G.me;
     liveDiff(before, G.me);
     if (G.me && me) {
+      const mine = PROPS.filter(p => myBricks(G.me, p));
+      if (G.me.loanTotal > 0) (await many(net.game, I, mine.map(p => ["loan", [p.i, myId]]))).forEach((l, k) => { const v = fe(one(l)); if (v) G.me.mort[mine[k].i] = v; });
       const q = await rc(() => gameR.cashOuts(myId));
       G.me.queue = Number(q.net) ? [{ net: fe(q.net), at: Number(q.readyAt) / 60, ready: now >= Number(q.readyAt) }] : [];
-      await loadPositions(); await loadWallet(); saveSnap();
+      await loadPositions(); await loadWallet();
+      if (typeof U !== "undefined" && U.room === "bank") await loadBank();
+      saveSnap();
     }
     render();
+  }
+  // ---------- the Bank's on-chain desks: season office and savings ----------
+  async function loadBank() {
+    const S = new ethers.Contract(net.seasons, SEASONS, rp), SI = S.interface, I = gameR.interface, s = G.seasonNo, last = s - 1;
+    const b = extra.bank = { s, last, board: [], past: null, save: null };
+    const [top] = await many(net.seasons, SI, [["top", [s]]]);
+    if (top) b.board = top.ids.map((id, k) => ({ id: Number(id), score: fe(top.scores[k]) }));
+    if (last >= 1) {
+      const g = await many(net.game, I, [["endedAt", [last]], ["prizePool", [last]], ["activeCount", [last]], ["activeIn", [last, myId]]]);
+      const q = await many(net.seasons, SI, [["settled", [last]], ["base", [last]], ["owed", [last, myId]], ["claimed", [last, myId]], ["bottom", [last]]]);
+      const endedAt = Number(one(g[0]));
+      b.past = { no: last, endedAt, pool: fe(one(g[1])), active: Number(one(g[2])), meActive: !!one(g[3]), settled: !!one(q[0]), base: fe(one(q[1])), owed: fe(one(q[2])), claimed: !!one(q[3]), bottom: q[4] ? q[4].ids.map(Number) : [] };
+      const p = b.past; p.windowEnd = endedAt + 86400;
+      if (endedAt && Date.now() / 1000 < p.windowEnd) { // who could be nominated: the poorest Chogs that were active last season
+        const act = await many(net.game, I, G.chogs.map(c => ["activeIn", [last, c.id]]));
+        const k = Math.min(50, Math.floor(p.active / 4));
+        p.candidates = G.chogs.filter((c, j) => one(act[j]) && !p.bottom.includes(c.id)).sort((x, y) => appraisal(x) - appraisal(y)).slice(0, Math.max(0, k - p.bottom.length)).map(c => c.id);
+      }
+    }
+    if (net.savings) {
+      const V = new ethers.Contract(net.savings, SAVINGS, rp), VI = V.interface;
+      const r = await many(net.savings, VI, [["shares", [myId]], ["principal", [myId]], ["savedValue", [myId]]]);
+      b.save = { shares: one(r[0]), principal: fe(one(r[1])), value: fe(one(r[2])) };
+    }
   }
   const snapKey = () => `cows.snap.${net.key}.${myId}`;
   function snapOf(c) { return { t: G.t, unclaimed: c.unclaimed, jar: c.jar, cash: c.cash, bricks: brickValue(c), pos: c.pos, season: G.seasonNo, warden: c.warden }; }
@@ -392,6 +450,52 @@ window.Chain = (() => {
   }
   async function withdrawPos(i) { const p = extra.positions[i]; const ad = new ethers.Contract(p.adapter, ADAPTER, signer); await after(await tx(`Withdraw ${p.sym}`, () => ad.withdraw(myId, p.asset)), "withdraw"); }
 
+  // ---------- the Bank on-chain ----------
+  const bankAfter = async r => { if (r) { await refresh(); if (!$("#scrim").hidden && U.deed) openTile(U.deed.i, U.deed.landed); } return r; };
+  const mortgage = async sq => bankAfter(await tx(`Mortgage ${SQ[sq].name}`, () => game.mortgage(myId, sq)));
+  const repay = async sq => bankAfter(await tx(`Repay the mortgage on ${SQ[sq].name}`, () => game.repay(myId, sq)));
+  const startAuction = async (sq, n) => bankAfter(await tx(`Auction ${n} Brick${n > 1 ? "s" : ""} on ${SQ[sq].name}`, () => game.startAuction(myId, sq, n)));
+  const bid = async (sq, amt) => bankAfter(await tx(`Bid ${fmt(amt)} on ${SQ[sq].name}`, () => game.bid(myId, sq, W(amt))));
+  const settleAuction = async sq => bankAfter(await tx(`Settle the auction on ${SQ[sq].name}`, () => game.settleAuction(sq)));
+  async function fundBank(x) { const a = W(x); if (!(await ensureAllowance(a))) return; return bankAfter(await tx(`Add ${fmt(x)} to the Bank's reserves`, () => game.fundBank(a))); }
+  async function save(x) {
+    const a = W(x), t = new ethers.Contract(net.usdc, ERC20, signer);
+    if ((await t.allowance(me, net.savings)) < a && !(await tx("Approve USDC for savings", () => t.approve(net.savings, ethers.MaxUint256)))) return;
+    return bankAfter(await tx(`Save ${fmt(x)}`, () => new ethers.Contract(net.savings, SAVINGS, signer).deposit(myId, a)));
+  }
+  const unsave = async () => bankAfter(await tx("Withdraw your savings", () => new ethers.Contract(net.savings, SAVINGS, signer).withdraw(myId, ethers.MaxUint256)));
+  async function seasonAct(what) {
+    const S = new ethers.Contract(net.seasons, SEASONS, signer), b = extra.bank || {}, p = b.past;
+    if (what === "rank") return bankAfter(await tx("Put your growth on the prize board", () => S.rank(myId)));
+    if (what === "settle") return bankAfter(await tx(`Settle season ${p.no}`, () => S.settle(p.no)));
+    if (what === "claim") return bankAfter(await tx(`Claim your season ${p.no} prize`, () => S.claim(p.no, myId)));
+    if (what === "nominate") { for (const id of p.candidates || []) if (!(await tx(`Nominate #${id} for the wealth tax`, () => S.nominate(p.no, id)))) break; return bankAfter(true); }
+  }
+  function seasonHtml() {
+    const b = extra.bank; if (!b) return `<p class="tiny">Loading the prize board…</p>`;
+    const at = b.board.findIndex(x => x.id === myId), mine = G.me.chainGrowth;
+    return `<div class="stack"><div class="row between"><b>Prize board (top 10 by growth)</b><button class="btn sm primary" data-season="rank">${at >= 0 ? "Update my score" : "Put me on the board"}</button></div>
+      ${b.board.length ? `<div class="mortlist">${b.board.map((x, k) => { const c = G.chogs.find(y => y.id === x.id); return `<div class="row between small"><span>#${k + 1} ${x.id === myId ? "<b>You</b>" : esc(c?.name || "Chog #" + x.id)}</span><span class="num ${x.score >= 0 ? "up" : "down"}">${x.score >= 0 ? "+" : "−"}${fmt(Math.abs(x.score))}</span></div>`; }).join("")}</div>` : `<p class="empty">Nobody is on the board yet.</p>`}
+      <p class="tiny">The board stores a snapshot. Anyone can update any Chog's score at any time, so a stale high score gets corrected by rivals. Your growth now: ${mine >= 0 ? "+" : "−"}${fmt(Math.abs(mine))}.</p></div>`;
+  }
+  function pastSeasonHtml() {
+    const p = extra.bank?.past;
+    if (!p || !p.endedAt) return `<div class="card stack"><h3>Past seasons</h3><p class="empty">No season has ended on-chain yet. Seasons last 7 days; the last 24 hours are the Closing Bell.</p></div>`;
+    const nowS = Date.now() / 1000, inWindow = nowS < p.windowEnd;
+    const step = !p.settled ? (inWindow
+        ? `<p class="small muted">Settlement window: ${dur((p.windowEnd - nowS) / 60)} left. Anyone can nominate the poorest active Chogs (${p.bottom.length} of ${Math.min(50, Math.floor(p.active / 4))} so far). They pay 5% of their cash into the pool.</p>${p.candidates?.length ? `<button class="btn sm" data-season="nominate">Nominate ${p.candidates.length} Chog${p.candidates.length > 1 ? "s" : ""}</button>` : ""}`
+        : `<p class="small muted">The window is over. Anyone can settle the season: it takes the wealth tax and opens the prizes.</p><button class="btn sm primary" data-season="settle">Settle season ${p.no}</button>`)
+      : p.claimed ? `<p class="small">You've claimed your season ${p.no} prize.</p>`
+      : p.owed > 0 ? `<button class="btn gold" data-season="claim">Claim ${fmt(p.owed)}</button>` : `<p class="small muted">No prize for you this time${p.meActive ? "" : " (you had fewer than 20 rolls)"}.</p>`;
+    return `<div class="card stack"><h3>Season ${p.no}</h3><dl class="kv"><dt>Prize pool</dt><dd>${fmt(p.settled ? p.base : p.pool)}</dd><dt>Active Chogs (20+ rolls)</dt><dd>${p.active}</dd><dt>Nominated for the wealth tax</dt><dd>${p.bottom.length}</dd></dl>${step}<p class="tiny">Unclaimed prizes roll into a later season after 30 days.</p></div>`;
+  }
+  function savingsHtml() {
+    const sv = extra.bank?.save;
+    if (!net.savings) return `<p class="empty">The savings desk isn't deployed on this network yet.</p>`;
+    if (!sv) return `<p class="tiny">Loading your savings…</p>`;
+    return savingsCard({ value: sv.value, principal: sv.principal, wallet: extra.walletUsdc, apy: net.mocks ? "test vault" : "variable (Morpho market)", venue: net.vaultName, note: net.mocks ? "On testnet a test vault stands in for Morpho. On mainnet your USDC goes into the Morpho vault Hyperithm USDC Apex (about $50M deposited)." : "Your USDC goes into the Morpho vault Hyperithm USDC Apex on Monad. Its rate moves with borrowing demand. Smart-contract risk applies." });
+  }
+
   // ---------- dapp quests ----------
   async function minOutFor(sq, value) {
     const s = net.squares[sq];
@@ -460,5 +564,5 @@ window.Chain = (() => {
     }
   });
 
-  return { on, enter, dm, buyback, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
+  return { on, enter, dm, buyback, mortgage, repay, startAuction, bid, settleAuction, fundBank, save, unsave, seasonAct, seasonHtml, pastSeasonHtml, savingsHtml, loadBank, roll, claim, tax, bail, guard, sell, cashOut, claimCashOut, topUp, hype, heist, quest, questHtml, positionsHtml, walletHtml, ledgerHtml, refresh, net: () => net, NETS };
 })();

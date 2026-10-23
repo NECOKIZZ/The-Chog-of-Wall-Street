@@ -359,16 +359,17 @@ describe("ChogOfWallStreet", () => {
     await invariant();
   });
 
-  it("lens: reads many Chogs and their Bricks in one call", async () => {
+  it("lens: batches many view calls into one", async () => {
     for (const [who, id] of [[alice, ALICE], [bob, BOB]]) await game.connect(who).wake(id, D(20_000));
     await rollAndSettle(ALICE, alice);
     const lens = await (await ethers.getContractFactory("ChogLens")).deploy();
-    const [data, rolls] = await lens.chogs(await game.getAddress(), [ALICE, BOB]);
-    const dec = game.interface.decodeFunctionResult("chogs", data[0]);
-    expect(dec.cash).to.equal((await game.chogs(ALICE)).cash);
-    expect(rolls[1]).to.equal(8n);
-    const b = await lens.bricksOf(await game.getAddress(), [ALICE, BOB]);
-    expect(b.length).to.equal(80);
+    const I = game.interface, calls = [I.encodeFunctionData("chogs", [ALICE]), I.encodeFunctionData("rollsOf", [BOB]), I.encodeFunctionData("bricks", [1, ALICE]), I.encodeFunctionData("seasonNo", [])];
+    const out = await lens.read(await game.getAddress(), calls);
+    expect(I.decodeFunctionResult("chogs", out[0]).cash).to.equal((await game.chogs(ALICE)).cash);
+    expect(I.decodeFunctionResult("rollsOf", out[1])[0]).to.equal(8n);
+    expect(out.length).to.equal(4);
+    const bad = await lens.read(await game.getAddress(), ["0xdeadbeef"]); // a failing call comes back empty
+    expect(bad[0]).to.equal("0x");
   });
 
   it("savings: USDC parked in a lending vault belongs to the Chog, earns interest, and only the holder withdraws", async () => {

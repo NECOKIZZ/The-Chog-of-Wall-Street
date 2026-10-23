@@ -10,30 +10,37 @@
       <button class="roomlink" data-room="desk">Desk</button>
       <button class="roomlink" data-room="map">Map</button>
       <button class="roomlink" data-room="leaders">Leaders</button>
+      <button class="roomlink" data-room="portfolio">Portfolio</button>
       <button class="roomlink" data-room="bank">Bank</button>
       <button class="roomlink" data-room="rules">Rules</button>
       <span class="citybadge" id="cityBadge">Practice</span>
-      <button class="me-chip" id="meChip" data-room="desk"><i class="avatar" id="meAvatar"></i><span id="meWorth">—</span></button>
+      <button class="me-chip" id="meChip" aria-haspopup="true" aria-expanded="false" aria-label="Your balance and holdings"><i class="avatar" id="meAvatar"></i><span class="mebal"><small>Balance</small><b class="num" id="meWorth">—</b></span><svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg></button>
     </nav>
     <div class="navtools"><button class="iconbtn" id="themeBtn" aria-label="Switch to dark mode" title="Light or dark"></button></div>
   </div>
+  <div class="memenu" id="meMenu" hidden></div>
 </header>
 
 <!-- ================= LANDING ================= -->
 <main id="landing">
   <section class="hero"><div class="wrap">
     <div class="herogrid">
-      <div>
-        <div class="eyebrow">Chogathon 2026 · Built on Monad</div>
+      <div class="herocopy">
+        <span class="heropill"><i></i>Chogathon 2026 · Built on Monad</span>
         <h1>The city where <em>Chogs</em> own the land.</h1>
-        <p class="lead">Roll your Chog around Monad City. Buy Bricks in the streets you land on, and collect rent from every Chog that lands there after you. Everything you build lives inside the NFT.</p>
+        <p class="lead">Roll around Monad City, buy Bricks where you land, and collect rent every time another Chog lands there. Everything you build lives inside your NFT.</p>
         <div class="row">
-          <button class="btn gold lg" data-go="onboard">Open an account</button>
-          <button class="btn ghost lg" data-go="rules">Read the rules</button>
+          <button class="btn gold lg" data-city="practice">Play free now</button>
+          <a class="btn ghost lg" href="#how">How it works</a>
         </div>
-        <p class="tiny" style="margin-top:14px">Try it free in Practice City. No wallet needed.</p>
+        <div class="heroproof"><span class="stackav" id="heroAvatars"></span><span>1,969 Chogs can play · 6 real Monad apps · nothing is ever minted</span></div>
       </div>
-      <div class="mapbox angled" id="heroMap" aria-hidden="true"></div>
+      <div class="herostage" aria-hidden="true">
+        <div class="mapbox angled" id="heroMap"></div>
+        <div class="floatcard fc1"><span class="band" style="background:var(--d-brown)"></span><span class="fcbody"><span class="eyebrow">Title deed</span><b>nad.fun Lane</b><span class="tiny">Rent 120 · Cottage</span></span><img id="heroLogo" alt=""></div>
+        <div class="floatcard fc2"><i class="avatar" id="heroRentAv"></i><span><span class="tiny">#1462 landed on your street</span><b class="up num">RENT +1,540</b></span></div>
+        <div class="floatcard fc3"><span class="tiny">Season ends in</span><b class="num">2d 14h</b></div>
+      </div>
     </div>
   </div></section>
   <div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
@@ -87,12 +94,13 @@
   <section id="room-desk" data-roomview="desk"></section>
   <section id="room-map" data-roomview="map" hidden></section>
   <section id="room-leaders" data-roomview="leaders" hidden></section>
+  <section id="room-portfolio" data-roomview="portfolio" hidden></section>
   <section id="room-bank" data-roomview="bank" hidden></section>
   <section id="room-rules" data-roomview="rules" hidden></section>
 </main>
 
 <nav class="tabbar" id="tabbar" hidden>
-  <button data-room="desk">Desk</button><button data-room="map">Map</button><button data-room="leaders">Leaders</button><button data-room="bank">Bank</button><button data-room="rules">Rules</button>
+  <button data-room="desk">Desk</button><button data-room="map">Map</button><button data-room="leaders">Leaders</button><button data-room="portfolio">Portfolio</button><button data-room="bank">Bank</button><button data-room="rules">Rules</button>
 </nav>
 
 <div class="scrim" id="scrim" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>

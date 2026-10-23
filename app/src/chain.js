@@ -252,7 +252,7 @@ window.Chain = (() => {
         hypeMult: Number(s.hypeBps) / 10000 || 1, hypeUntil: Number(s.hypeUntil) / 60, guards: Number(s.guards), jail: Number(s.jail), jailCard: s.jailCard,
         lastCash: Number(s.lastCash) / 60, woke: Number(s.woke) / 60, taxUntil: Number(s.taxUntil) / 60, immuneUntil: Number(s.immuneUntil) / 60, heistUntil: Number(s.heistUntil),
         stamps: st, qday: old.qday || {}, pos_: {}, warden: Number(s.warden), rollsSeason: Number(s.rollsSeason), plan: ["safe", "balanced", "degen"][Number(s.plan)] || "balanced",
-        pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, seasonAppraisal: old.seasonAppraisal ?? 0, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
+        pendingBlock: Number(s.pendingBlock), queue: old.queue || [], broke: false, autoTax: false, seasonAppraisal: old.seasonAppraisal ?? null, lastIncome: old.lastIncome || 0, prevIncome: 0, income: 0,
       };
     });
     const before = G.me && G.me.id === myId ? { unclaimed: G.me.unclaimed, jar: G.me.jar } : null;

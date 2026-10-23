@@ -60,17 +60,19 @@ function renderLanding() {
   ];
   $("#faqList").innerHTML = faq.map(([q, a]) => `<details><summary>${q}</summary><p class="muted">${a}</p></details>`).join("");
   buildBoard($("#heroMap"), { preview: true });
+  $("#heroAvatars").innerHTML = CHOG_ART.slice(0, 5).map(a => `<i class="avatar" style="background-image:url(${a.img})"></i>`).join("");
+  $("#heroLogo").src = LOGOS.nadfun; $("#heroRentAv").style.backgroundImage = `url(${(CHOG_ART.find(a => a.id === 1462) || CHOG_ART[1]).img})`;
 }
 
 // ---------- the board (used by the hero and the Map) ----------
 function gridPos(i) { if (i <= 10) return [11, 11 - i]; if (i <= 20) return [11 - (i - 10), 1]; if (i <= 30) return [1, 1 + (i - 20)]; return [1 + (i - 30), 11]; }
+const GLYPH = { chance: "?", chest: "◆", tax: "%", heist: "!" };
 function tileInner(s, i) {
-  const side = i > 10 && i < 20 ? "l" : i > 30 ? "r" : "";
+  const side = i < 10 ? "b" : i < 20 ? "l" : i < 30 ? "t" : "r";
   if (["go", "jail", "lounge", "gojail"].includes(s.t)) return { cls: "corner", html: `<div class="tb"><div class="tn">${s.name}</div><div class="tp">${s.sub}</div></div>` };
-  if (s.t === "prop") return { cls: side, html: `<div class="bd" style="background:${D[s.d].c}"></div><div class="tb">${s.brand ? `<img class="logo" src="${LOGOS[s.brand]}" alt="">` : ""}<div class="tn">${s.name}</div><div class="lvl"></div><div class="tp"></div></div>` };
-  return { cls: "special " + side, html: `<div class="tb"><div class="tn">${s.name}</div>${s.sub ? `<div class="tp">${s.sub}</div>` : ""}</div>` };
-}
-function buildBoard(box, { preview } = {}) {
+  if (s.t === "prop") return { cls: side, html: `<div class="bd" style="background:${D[s.d].c}"><span class="lvl"></span></div><div class="tb">${s.brand ? `<img class="logo" src="${LOGOS[s.brand]}" alt="">` : ""}<div class="tn">${s.name}</div><div class="tp"></div></div>` };
+  return { cls: "special " + side, html: `<div class="tb"><div class="gl">${GLYPH[s.t] || ""}</div><div class="tn">${s.name}</div></div>` };
+}function buildBoard(box, { preview } = {}) {
   box.innerHTML = `<div class="board">${SQ.map((s, i) => { const [r, c] = gridPos(i); const t = tileInner(s, i); return `<button class="tile ${t.cls}" data-tile="${i}" style="grid-row:${r};grid-column:${c}" aria-label="${esc(s.name)}" ${preview ? 'tabindex="-1"' : ""}>${t.html}</button>`; }).join("")}<div class="boardcenter"><div><b>Monad City</b><small id="${preview ? "" : "centerNote"}">${preview ? "40 squares · 6 real Monad apps" : ""}</small></div></div></div><div class="pawn" ${preview ? "" : 'id="pawn"'} hidden></div>`;
   if (preview) {
     const p = box.querySelector(".pawn"); const art = CHOG_ART.find(a => a.id === 561) || CHOG_ART[0];
@@ -91,7 +93,7 @@ function renderTiles(box) {
     const el = box.querySelector(`[data-tile="${p.i}"]`); if (!el) return; const l = level(p);
     el.classList.toggle("hot", p.i === hot);
     el.classList.toggle("mine", !!(G.me && myBricks(G.me, p)));
-    el.querySelector(".lvl").innerHTML = Array.from({ length: 5 }, (_, k) => `<i class="${k < l ? "on" : ""}"></i>`).join("");
+    el.querySelector(".lvl").innerHTML = "<i></i>".repeat(l);
     el.querySelector(".tp").textContent = p.d === "util" ? `dice×${20 * LEVEL_MULT[l]}` : fmt(rentOf(p));
   });
   box.querySelectorAll(".tile.here").forEach(t => t.classList.remove("here"));
@@ -162,9 +164,11 @@ function enterApp() {
 function render() {
   if (U.view !== "app" || !G.me) return;
   const c = G.me; c.mood = moodOf(c);
-  $("#meAvatar").style.backgroundImage = `url(${c.img})`; $("#meWorth").textContent = fmt(appraisal(c));
+  $("#meAvatar").style.backgroundImage = `url(${c.img})`; $("#meWorth").textContent = fmt(c.cash);
+  if (!$("#meMenu").hidden) renderMeMenu();
   if (U.room === "desk") renderDesk();
   if (U.room === "map") renderMap();
+  if (U.room === "portfolio") renderPortfolio();
   if (U.room === "bank") renderBank();
   if (U.room === "leaders") renderLeaders();
   if (U.room === "rules" && !$("#room-rules").dataset.built) renderRules();
@@ -178,10 +182,10 @@ function activityHtml(limit = 10) {
 }
 function todos() {
   const c = G.me, out = [];
-  if (c.bankrupt === G.seasonNo) out.push(["Bankrupt: top up to play again", "bank"]);
+  if (c.bankrupt === G.seasonNo) out.push(["Bankrupt: top up to play again", "portfolio"]);
   if (c.unclaimed >= 1) out.push([`Claim ${fmt(c.unclaimed)} rent`, "claim"]);
-  if (c.queue.some(q => q.ready)) out.push(["Cash-out ready to collect", "bank"]);
-  if (brickValue(c) > 0 && !c.autoTax && c.taxUntil - G.t < 12 * HOUR) out.push([G.t > c.taxUntil ? "Property Tax unpaid: Bricks earn nothing" : `Property Tax runs out in ${dur(c.taxUntil - G.t)}`, "bank"]);
+  if (c.queue.some(q => q.ready)) out.push(["Cash-out ready to collect", "portfolio"]);
+  if (brickValue(c) > 0 && !c.autoTax && c.taxUntil - G.t < 12 * HOUR) out.push([G.t > c.taxUntil ? "Property Tax unpaid: Bricks earn nothing" : `Property Tax runs out in ${dur(c.taxUntil - G.t)}`, "portfolio"]);
   if (c.jail) out.push(["You're in Rug Jail: roll doubles or pay bail", "map"]);
   if (c.rolls > 0 && c.bankrupt !== G.seasonNo) out.push([`${c.rolls} roll${c.rolls > 1 ? "s" : ""} ready`, "map"]);
   return out;
@@ -192,15 +196,16 @@ function threads() {
   return [...by.entries()].sort((a, b) => b[1].t - a[1].t);
 }
 function ranking() { return [...G.chogs].sort((a, b) => appraisal(b) - appraisal(a)); }
-function seasonGain(c) { return appraisal(c) - (c.seasonAppraisal || 0); }
+// On-chain the contract doesn't store each Chog's start-of-season value yet, so growth reads 0 there rather than a wrong number.
+function seasonGain(c) { return c.seasonAppraisal == null ? 0 : appraisal(c) - c.seasonAppraisal; }
 function renderLeaders() {
   const bySeason = U.lb === "season";
   const r = bySeason ? [...G.chogs].sort((a, b) => seasonGain(b) - seasonGain(a)) : ranking();
   const n = r.length, bottomFrom = n - Math.floor(n / 4), me = r.indexOf(G.me), left = seasonEnd() - G.t;
   const val = x => bySeason ? seasonGain(x) : appraisal(x);
   const money = v => `<span class="num ${v > 0 ? "up" : v < 0 ? "down" : ""}">${v > 0 ? "+" : v < 0 ? "−" : ""}${fmt(Math.abs(v))}</span>`;
-  const plinth = (x, k) => x ? `<div class="plinth p${k + 1}"><i class="avatar" style="background-image:url(${x.img})"></i><b>${x === G.me ? "You" : esc(x.name)}</b><span class="small">${bySeason ? money(val(x)) : `<span class="num">${fmt(val(x))}</span>`}</span><div class="base">${k + 1}</div></div>` : "<div></div>";
-  const row = (x, i) => `<div class="lbrow ${x === G.me ? "me" : ""} ${i >= bottomFrom ? "inbottom" : ""}"><span class="num"><b>#${i + 1}</b></span><i class="avatar" style="background-image:url(${x.img})"></i><span class="nm">${x === G.me ? "You" : esc(x.name)}</span><span class="num">${fmt(appraisal(x))}</span><span class="chg">${money(seasonGain(x))}</span></div>`;
+  const plinth = (x, k) => x ? `<div class="plinth p${k + 1}" data-profile="${x.id}" role="button" tabindex="0"><i class="avatar" style="background-image:url(${x.img})"></i><b>${x === G.me ? "You" : esc(x.name)}</b><span class="small">${bySeason ? money(val(x)) : `<span class="num">${fmt(val(x))}</span>`}</span><div class="base">${k + 1}</div></div>` : "<div></div>";
+  const row = (x, i) => `<div class="lbrow ${x === G.me ? "me" : ""} ${i >= bottomFrom ? "inbottom" : ""}" data-profile="${x.id}" role="button" tabindex="0"><span class="num"><b>#${i + 1}</b></span><i class="avatar" style="background-image:url(${x.img})"></i><span class="nm">${x === G.me ? "You" : esc(x.name)}</span><span class="num">${fmt(appraisal(x))}</span><span class="chg">${money(seasonGain(x))}</span></div>`;
   const rows = [];
   r.forEach((x, i) => {
     if (i === 0) rows.push(`<div class="lbzone top"><span>Top 10 · share 40% of the season pot</span><span>${fmt(G.season)} in the pot</span></div>`);
@@ -223,7 +228,7 @@ function renderLeaders() {
   const c = G.me, pr = prestige(c), th = threads(), unread = G.inbox.filter(m => m.to === c.id && !m.read).length;
   const left = seasonEnd() - G.t, bell = G.bellEnd !== null, rank = ranking().indexOf(c) + 1, hot = SQ[hotIndex()];
   $("#room-desk").innerHTML = `
-  <div class="pagehead"><div><div class="eyebrow">${G.mode === "practice" ? "Practice City" : Chain.net()?.label || ""} · Season ${G.seasonNo} · ${clockStr(G.t)}</div><h1>Your desk, ${esc(c.name)}</h1></div>
+  <div class="pagehead"><div><div class="eyebrow">Season ${G.seasonNo} · ${clockStr(G.t)}</div><h1>Your desk, ${esc(c.name)}</h1></div>
     ${G.mode === "practice" ? `<div class="row"><span class="tiny">Practice clock</span><button class="btn sm" id="ff2">+2 hours</button><button class="btn sm" id="ffd">+1 day</button></div>` : ""}</div>
   <div class="cols">
     <div class="card" id="deskChog">
@@ -293,51 +298,83 @@ function paintSwitch() {
 }function squareText(s) {
   return { go: "Pass it to collect 1% of your Bricks' value (max 500) from the Commons.", chest: "Draw a Commons Chest card: payouts, moves and a get-out-of-jail card.", chance: "Draw a Market News card: payouts, fees, moves.", tax: s.name === "Gas Tax" ? "Pay 5% of your cash (max 1,000) into the Nad Lounge pot." : "Pay 750 into the Nad Lounge pot.", jail: "Just visiting, unless you were sent here. To get out: roll doubles (3 tries), pay 500, or use a card.", lounge: `Land here to win 25% of the Nad Lounge pot (now ${fmt(G.lounge)}).`, gojail: "Go straight to Rug Jail without passing GENESIS.", heist: "Pick a Chog and try to rob 10% of its unclaimed rent." }[s.t] || "";
 }
-function renderBank() {
-  const c = G.me, tr = exitTax(c), capLeft = dailyCapLeft(), maxOut = Math.floor(Math.min(c.cash, capLeft)), pr = prestige(c);
+function holdRow(label, count, value, body, open, cls = "") {
+  return `<details class="hold" ${open ? "open" : ""}><summary><span>${label}${count != null ? ` <span class="tiny">${count}</span>` : ""}</span><span class="num ${cls}">${value}</span><svg class="chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg></summary><div class="holdbody">${body}</div></details>`;
+}
+function streetLine(c, p) {
+  const n = myBricks(c, p), tag = c.mort?.[p.i] ? '<span class="pill bad">Mortgaged</span>' : c.auc?.[p.i] ? '<span class="pill gold">On auction</span>' : "";
+  return `<button class="sline" data-tile="${p.i}"><i style="background:${D[p.d].c}"></i><span><b>${p.name}</b> ${tag}<span class="tiny" style="display:block">${n} Bricks · ${Math.round(n / p.supply * 100)}% of the street · ${LEVEL_NAME[level(p)]}</span></span><span class="num">${fmt(sellValue(p, n) * (1 - K.sellSpread))}</span></button>`;
+}
+function renderPortfolio() {
+  const c = G.me, tr = exitTax(c), capLeft = dailyCapLeft(), maxOut = Math.floor(Math.min(c.cash, capLeft)), pr = prestige(c), dbt = debt(c);
   const amt = Math.min(+(U.coAmt ?? maxOut), maxOut), tax = amt * tr / 100, paid = G.t <= c.taxUntil;
-  const mine = PROPS.filter(p => myBricks(c, p));
-  const strip = (brickValue(c) * 0.95 + c.cash + c.unclaimed) * (1 - tr / 100);
-  $("#room-bank").innerHTML = `
-  <div class="pagehead"><div><div class="eyebrow">Your Chog's account</div><h1>Bank</h1></div></div>
+  const mine = PROPS.filter(p => myBricks(c, p)).sort((a, b) => sellValue(b, myBricks(c, b)) - sellValue(a, myBricks(c, a)));
+  const g = seasonGain(c), pos = Object.entries(c.pos_ || {});
+  $("#room-portfolio").innerHTML = `
+  <div class="pagehead"><div><div class="eyebrow">Inside ${esc(c.full || c.name)}</div><h1>Portfolio</h1></div></div>
   <div class="cols">
     <div class="stack">
-      <div class="card stack" id="bankSheet"><div class="eyebrow">Balance sheet · lives inside the NFT</div><div class="big">${fmt(appraisal(c))} <span class="small muted">$CHOG</span></div>
-        <dl class="kv"><dt>Cash</dt><dd>${fmt(c.cash)}</dd><dt>Unclaimed rent</dt><dd>${fmt(c.unclaimed)}</dd><dt>Bricks (sell value)</dt><dd>${fmt(brickValue(c))}</dd><dt>Dapp positions</dt><dd>${fmt(positionsValue(c))}</dd><dt>Hype jar</dt><dd>${fmt(c.jar)}</dd></dl>
-        <div class="row"><button class="btn primary" id="claimBtn" ${c.unclaimed < 1 ? "disabled" : ""}>Claim ${fmt(c.unclaimed)} rent</button><button class="btn" id="topup">Top up 5,000</button></div>
-        <p class="tiny">Claim bonus: ×${claimMult(c).toFixed(2)} (Prestige +${pr}%, stamps +${stampPct(c)}%, tier +${TIER_BONUS[c.tier]}%). The bonus is paid by the Commons, never minted.</p></div>
-      <div class="card stack" id="bankTax"><div class="row between"><h3>Property Tax</h3><span class="pill ${paid ? "ok" : "bad"}">${paid ? `Paid ${dur(c.taxUntil - G.t)} ahead` : "Unpaid"}</span></div>
-        <p class="small muted">0.5% of your Bricks' value per day (${fmt(brickValue(c) * K.propTaxDay)} today). If it's unpaid, your Bricks earn nothing, but you never lose them.</p>
-        <div class="row"><button class="btn sm" data-tax="1">Prepay 1 day</button><button class="btn sm" data-tax="3">Prepay 3 days</button>${onChain() ? "" : `<label class="row small" for="autoTax"><input type="checkbox" id="autoTax" ${c.autoTax ? "checked" : ""}> Autopay</label>`}</div></div>
-      <div class="card stack" id="bankStreets"><h3>Your streets</h3>${mine.length ? mine.map(p => { const n = myBricks(c, p); return `<button class="todo-like thread" data-tile="${p.i}" style="grid-template-columns:12px minmax(0,1fr) auto"><i style="width:12px;height:30px;border-radius:3px;background:${D[p.d].c}"></i><span><span class="t">${p.name}</span><span class="s" style="display:block">${n} Bricks · ${Math.round(n / p.supply * 100)}% · ${LEVEL_NAME[level(p)]}</span></span><span class="num small">${fmt(sellValue(p, n) * 0.95)}</span></button>`; }).join("") : `<p class="empty">No Bricks yet. Roll on the Map and your plan buys them.</p>`}</div>
-      <div class="card stack" id="bankGuards"><div class="row between"><h3>Guards</h3><span class="num">${c.guards} / 4</span></div><p class="small muted">Each guard costs 500 and cuts Heist odds against you by 5%. Claiming rent often also protects you, because robbers can only take unclaimed rent.</p><button class="btn sm" id="guard" ${c.guards >= 4 ? "disabled" : ""}>Hire a guard (500)</button></div>
-      ${onChain() ? Chain.positionsHtml() : ""}
+      <div class="card balcard" id="bankSheet"><div class="tiny">Account balance</div><div class="big">${fmt(c.cash)} <span class="small muted">$CHOG</span></div>
+        <div class="row" style="gap:16px;margin-top:6px"><span class="small muted">Net worth <b class="num" style="color:var(--ink)">${fmt(appraisal(c))}</b></span><span class="small muted">This season <b class="num ${g > 0 ? "up" : g < 0 ? "down" : ""}">${g >= 0 ? "+" : "−"}${fmt(Math.abs(g))}</b></span></div>
+        <div class="row" style="margin-top:14px"><button class="btn primary" id="claimBtn" ${c.unclaimed < 1 ? "disabled" : ""}>Claim ${fmt(c.unclaimed)} rent</button><button class="btn" id="topup">Top up 5,000</button></div></div>
+      <div class="card"><h3>What you own</h3><div class="holds">
+        ${holdRow("Streets", mine.length, fmt(brickValue(c)), mine.length ? mine.map(p => streetLine(c, p)).join("") : `<p class="empty">No Bricks yet. Roll on the Map and your plan buys them.</p>`, true)}
+        ${holdRow("Unclaimed rent", null, fmt(c.unclaimed), `<p class="small muted">Rent other Chogs paid to your Bricks. Claim it into your balance. Until you do, a HEIST can steal 10% of it.</p>`)}
+        ${onChain() ? `<div class="holdchain">${Chain.positionsHtml()}</div>` : holdRow("App positions", pos.length, fmt(positionsValue(c)), pos.length ? pos.map(([k, v]) => `<div class="row between small"><span>${esc(k)}</span><span class="num">${fmt(v)}</span></div>`).join("") : `<p class="empty">None yet. App squares on the Map put real positions inside your Chog.</p>`)}
+        ${holdRow("Hype jar", null, fmt(c.jar), `<p class="small muted">$CHOG other Chogs sent you. It tops up your rent claims while a hype is active.</p>`)}
+        ${dbt ? holdRow("Mortgages", Object.keys(c.mort).length, "−" + fmt(dbt), Object.entries(c.mort).map(([i, v]) => `<div class="row between small"><span>${SQ[i].name}</span><span class="num down">−${fmt(v)}</span></div>`).join("") + `<button class="btn sm" data-room="bank">Repay in the Bank</button>`, false, "down") : ""}
+        <div class="holdtotal"><span>Net worth</span><b class="num">${fmt(appraisal(c))}</b></div></div></div>
     </div>
     <div class="stack">
-      <div class="card stack" id="bankOut"><h3>Cash out to your wallet</h3><p class="small muted">Spending inside the game is free. Leaving costs money and resets Prestige.</p>
-        <label class="small" for="coAmt">Amount: <b class="num" id="coV">${fmt(amt)}</b> <span class="tiny">(max today ${fmt(maxOut)})</span></label>
+      <div class="card stack" id="bankTax"><div class="row between"><h3>Property Tax</h3><span class="pill ${paid ? "ok" : "bad"}">${paid ? `Paid ${dur(c.taxUntil - G.t)} ahead` : "Unpaid"}</span></div>
+        <p class="small muted">0.5% of your Bricks' value a day (${fmt(brickValue(c) * K.propTaxDay)} today). Unpaid streets earn nothing until you pay.</p>
+        <div class="row"><button class="btn sm" data-tax="1">Prepay 1 day</button><button class="btn sm" data-tax="3">Prepay 3 days</button>${onChain() ? "" : `<label class="row small" for="autoTax"><input type="checkbox" id="autoTax" ${c.autoTax ? "checked" : ""}> Autopay</label>`}</div></div>
+      <div class="card stack" id="bankGuards"><div class="row between"><h3>Guards</h3><span class="num">${c.guards} / 4</span></div><p class="small muted">Each guard costs 500 and cuts heist odds against you by 5%.</p><div><button class="btn sm" id="guard" ${c.guards >= 4 ? "disabled" : ""}>Hire a guard · 500</button></div></div>
+      <div class="card stack" id="bankOut"><h3>Cash out</h3>
+        ${dbt ? `<p class="small muted">Pay off your mortgages in the Bank before cashing out.</p>` : `<label class="small" for="coAmt">Amount <b class="num" id="coV">${fmt(amt)}</b> <span class="tiny">(max today ${fmt(maxOut)})</span></label>
         <input type="range" id="coAmt" min="0" max="${maxOut}" step="10" value="${Math.floor(amt)}">
-        <dl class="kv"><dt>Exit tax (${tr}%)</dt><dd id="coT">−${fmt(tax)}</dd><dt>Prestige lost</dt><dd style="color:var(--red)">+${pr}% → 0%</dd><dt>Wait</dt><dd>48 hours</dd><dt><b>You receive</b></dt><dd><b id="coN">${fmt(amt - tax)}</b></dd></dl>
-        <button class="btn danger" id="coGo" ${amt < 100 ? "disabled" : ""}>Request cash-out</button>
-        <p class="tiny">Half the tax goes to the players who stay, a quarter is burned, a quarter goes to the season pot.</p></div>
-      <div class="card tint stack" id="bankSell"><h3>Or sell the whole Chog</h3><p class="small muted">Bricks can only leave by selling the NFT. A buyer gets everything inside.</p>
-        <dl class="kv"><dt>Strip it and cash out</dt><dd>${fmt(strip)}</dd><dt>Sell the Chog (Appraisal)</dt><dd><b>${fmt(appraisal(c))}</b></dd></dl></div>
-      ${c.queue.length ? `<div class="card stack"><h3>Cash-out queue</h3>${c.queue.map(q => `<div class="row between"><span class="num">${fmt(q.net)}</span><span class="tiny">${q.ready ? "ready" : "ready in " + dur(q.at - G.t)}</span></div>`).join("")}${c.queue.some(q => q.ready) ? `<button class="btn green" id="coClaim">Collect to wallet</button>` : ""}</div>` : ""}
-      <div class="card stack"><h3>${onChain() ? "Your wallet" : "Practice wallet"}</h3>${onChain() ? Chain.walletHtml() + Chain.ledgerHtml() : `<dl class="kv"><dt>$CHOG</dt><dd>${fmt(G.wallet.chog)}</dd><dt>MON</dt><dd>${(+G.wallet.mon).toFixed(1)}</dd></dl>`}</div>
+        <dl class="kv"><dt>Exit tax (${tr}%)</dt><dd id="coT">−${fmt(tax)}</dd><dt>Prestige</dt><dd class="down">+${pr}% → 0%</dd><dt>Arrives in</dt><dd>48 hours</dd><dt>You receive</dt><dd id="coN">${fmt(amt - tax)}</dd></dl>
+        <div><button class="btn danger" id="coGo" ${amt < 100 ? "disabled" : ""}>Request cash-out</button></div>
+        <p class="tiny">Selling the whole Chog usually beats this: a buyer gets everything inside, worth ${fmt(appraisal(c))}.</p>`}</div>
+      ${c.queue.length ? `<div class="card stack"><h3>Cash-out queue</h3>${c.queue.map(q => `<div class="row between"><span class="num">${fmt(q.net)}</span><span class="tiny">${q.ready ? "ready" : "ready in " + dur(q.at - G.t)}</span></div>`).join("")}${c.queue.some(q => q.ready) ? `<div><button class="btn gold" id="coClaim">Collect to wallet</button></div>` : ""}</div>` : ""}
+      <div class="card stack"><h3>${onChain() ? "Your wallet" : "Practice wallet"}</h3>${onChain() ? Chain.walletHtml() : `<dl class="kv"><dt>$CHOG</dt><dd>${fmt(G.wallet.chog)}</dd><dt>MON</dt><dd>${(+G.wallet.mon).toFixed(1)}</dd></dl>`}</div>
     </div>
   </div>`;
   $("#claimBtn").onclick = doClaim; $("#topup").onclick = doTopUp; $("#guard").onclick = doGuard;
   document.querySelectorAll("[data-tax]").forEach(b => b.onclick = () => doTax(+b.dataset.tax));
   const at = $("#autoTax"); if (at) at.onchange = e => { c.autoTax = e.target.checked; render(); window.Guide?.on("tax"); };
-  const sl = $("#coAmt"); sl.oninput = () => { window.Guide?.on("cashslide"); U.coAmt = +sl.value; const t = U.coAmt * tr / 100; $("#coV").textContent = fmt(U.coAmt); $("#coT").textContent = "−" + fmt(t); $("#coN").textContent = fmt(U.coAmt - t); $("#coGo").disabled = U.coAmt < 100; };
-  $("#coGo").onclick = () => doCashOut(+sl.value);
+  const sl = $("#coAmt");
+  if (sl) { sl.oninput = () => { window.Guide?.on("cashslide"); U.coAmt = +sl.value; const t = U.coAmt * tr / 100; $("#coV").textContent = fmt(U.coAmt); $("#coT").textContent = "−" + fmt(t); $("#coN").textContent = fmt(U.coAmt - t); $("#coGo").disabled = U.coAmt < 100; }; $("#coGo").onclick = () => doCashOut(+sl.value); }
   const cc = $("#coClaim"); if (cc) cc.onclick = doCollect;
 }
-function renderRules() {
+function practiceLedger() {
+  const held = G.chogs.reduce((a, c) => a + c.cash + c.unclaimed + c.jar + positionsValue(c) + c.queue.reduce((x, q) => x + q.net, 0), 0) + PROPS.reduce((a, p) => a + p.reserve, 0) + G.commons + G.lounge + G.season + G.sleep;
+  const owed = G.inflow - G.outflow - G.burned, ok = Math.abs(held - owed) < 1;
+  return `<dl class="kv"><dt>Everything held in the city</dt><dd>${fmt(held)}</dd><dt>Paid in − paid out − burned</dt><dd>${fmt(owed)}</dd><dt>Zero-sum check</dt><dd>${ok ? '<span class="pill ok">balanced</span>' : '<span class="pill bad">mismatch</span>'}</dd></dl>`;
+}
+function renderBank() {
+  const c = G.me, mine = PROPS.filter(p => myBricks(c, p)), dbt = debt(c), room_ = loanRoom();
+  const myAuc = G.auctions.filter(a => a.seller === c.id);
+  $("#room-bank").innerHTML = `
+  <div class="pagehead"><div><div class="eyebrow">The house</div><h1>Bank of Monad City</h1></div></div>
+  <p class="muted" style="margin:-8px 0 20px;max-width:62ch">Every coin in the Bank came from players. Nothing is minted. It lends against your streets and runs the auction house.</p>
+  <div class="treasury"><div class="stat"><span>Commons (treasury)</span><b>${fmt(G.commons)}</b></div><div class="stat"><span>Nad Lounge pot</span><b>${fmt(G.lounge)}</b></div><div class="stat"><span>Season pot</span><b>${fmt(G.season)}</b></div><div class="stat"><span>Burned for good</span><b>${fmt(G.burned)}</b></div></div>
+  <div class="cols" style="margin-top:18px">
+    <div class="card stack" id="mortDesk"><div class="row between"><h3>Mortgage desk</h3>${dbt ? `<span class="pill bad">You owe ${fmt(dbt)}</span>` : ""}</div>
+      <p class="small muted">Borrow half a street's value. While it's mortgaged, that street's rent goes to the Bank and you can't sell those Bricks or cash out. Pay back the loan + 10% to lift it.</p>
+      ${onChain() ? `<p class="empty">Mortgages run in Practice City for now. They need a contract update before Testnet.</p>` : mine.length ? `<div class="mortlist">${mine.map(p => { const m = c.mort[p.i]; return `<div class="mortrow"><i style="background:${D[p.d].c}"></i><span><b>${p.name}</b><span class="tiny" style="display:block">${m ? `Loan ${fmt(m)} · repay ${fmt(m * (1 + MORT_FEE))}` : c.auc[p.i] ? "On auction" : `Worth ${fmt(sellValue(p, myBricks(c, p)) * (1 - K.sellSpread))}`}</span></span>${m ? `<button class="btn sm" data-repay="${p.i}">Repay ${fmt(m * (1 + MORT_FEE))}</button>` : `<button class="btn sm primary" data-mort="${p.i}" ${c.auc[p.i] || Math.min(loanOffer(c, p), room_) < 1 ? "disabled" : ""}>Borrow ${fmt(Math.min(loanOffer(c, p), room_))}</button>`}</div>`; }).join("")}</div>` : `<p class="empty">You need a street first. Roll on the Map and your plan buys Bricks.</p>`}
+      <p class="tiny">The Bank can lend ${fmt(room_)} more right now (it lends at most 20% of the Commons).</p></div>
+    <div class="stack">
+      <div class="card stack"><h3>Auction house</h3>
+        ${myAuc.length ? myAuc.map(a => `<div class="row between small"><span><b>${SQ[a.i].name}</b> · ${a.n} Brick${a.n > 1 ? "s" : ""}</span><span class="tiny">reserve ${fmt(a.reserve)} · ends in ${dur(a.ends - G.t)}</span></div>`).join("") : `<p class="small muted">Put Bricks up for auction from any street's card. Other Chogs bid for 2 hours, and the best bid at or above the bank price wins.</p>`}</div>
+      <div class="card tint stack"><h3>Zero-sum check</h3>${onChain() ? Chain.ledgerHtml() : practiceLedger()}</div>
+    </div>
+  </div>`;
+}function renderRules() {
   const host = $("#room-rules"); host.dataset.built = 1;
   const rows = SQ.map((s, i) => `<tr><td class="num">${i}</td><td>${s.name}</td><td>${s.t === "prop" ? (s.brand ? `${D[s.d].n} · <b>${WIRED[s.brand].name}</b>` : D[s.d].n) : "Special"}</td><td>${s.t === "prop" ? (s.q ? s.q[2] : `Rent ${s.d === "util" ? "dice × 20 × level" : fmt(s.base) + " × level"}`) : squareText(s)}</td></tr>`).join("");
   host.innerHTML = `<div class="pagehead"><div><div class="eyebrow">Docs</div><h1>Rules</h1></div><div class="row"><button class="btn primary sm" data-help="tour">Replay the tour</button><button class="btn sm" data-help="reset">Show tips again</button></div></div>
-  <div class="docs"><nav><a href="#r-quick">Quick start</a><a href="#r-bricks">Bricks and rent</a><a href="#r-value">Your Chog's value</a><a href="#r-time">Seasons and the timer</a><a href="#r-away">Away and always-on</a><a href="#r-cards">Cards, jail, heists</a><a href="#r-out">Cashing out</a><a href="#r-board">Every square</a><a href="#r-glossary">Glossary</a></nav>
+  <div class="docs"><nav><a href="#r-quick">Quick start</a><a href="#r-bricks">Bricks and rent</a><a href="#r-value">Your Chog's value</a><a href="#r-time">Seasons and the timer</a><a href="#r-away">Away and always-on</a><a href="#r-cards">Cards, jail, heists</a><a href="#r-bank">The Bank</a><a href="#r-out">Cashing out</a><a href="#r-board">Every square</a><a href="#r-glossary">Glossary</a></nav>
   <div>
   <section id="r-quick"><h2>Quick start</h2><ol><li>Open an account: deposit $CHOG into your Chog.</li><li>On the Map, press ROLL. Your Chog moves and your buying plan buys Bricks where it lands.</li><li>Other Chogs land on your streets and pay you rent. Claim it in the Bank.</li><li>Keep Property Tax paid so your Bricks keep earning. Check your Desk for what happened while you were away.</li></ol></section>
   <section id="r-bricks"><h2>Bricks and rent</h2><p>A Brick is a share of one street. Every Brick bought raises the next price. Rent grows with how much money sits in the street: empty lot ×1, cottage ×2, shop ×4, tower ×7, skyscraper ×11, neon landmark ×16. 90% of each rent goes to the Brick holders, 10% to the Commons. One Chog can hold at most 40% of a street. The two Launch District streets are reserved for Chogs worth less than 50,000.</p></section>
@@ -345,7 +382,7 @@ function renderRules() {
   <section id="r-time"><h2>Seasons and the timer</h2><p>The city never resets. Seasons last 7 days and the countdown is on your Desk. In the last 24 hours the Closing Bell rings: every Brick buy adds a minute, and the last buyer when it hits zero wins 10% of the season pot. Then the pot is shared: 40% to the 10 richest Chogs, 30% to every active Chog, 15% to the best defenders, 5% to the #1 Chog. Before that, the bottom quarter of active Chogs pay 5% of their cash into the pot. If you go bankrupt (no cash and no Bricks to sell), you sit out until next season, unless you top up.</p></section>
   <section id="r-away"><h2>Away and always-on players</h2><p><b>Away:</b> rolls pile up to 8, Property Tax can be prepaid for 3 days (or autopaid), your Bricks keep earning, and your Desk shows what happened. <b>Always-on:</b> rolls refill only every 30 minutes, extra rolls cost 100 $CHOG, one Chog can't own more than 40% of a street, and Property Tax grows with your holdings.</p></section>
   <section id="r-cards"><h2>Cards, jail, heists</h2><p>Market News (3 squares) and Commons Chest (2 squares) draw a card: a payout from the Commons, a fee into the Nad Lounge, a move, or a free roll. Got Rugged sends you to Rug Jail: roll doubles, pay 500, or use a card. On HEIST you can try to rob 10% of another Chog's unclaimed rent. Fail and you pay them 500 and go to jail.</p></section>
-  <section id="r-out"><h2>Cashing out</h2><p>Cash-outs are taxed 20%, down to 10% after loyal weeks. They wait 48 hours, are capped city-wide at 2% of all game cash per day, and reset Prestige to zero. After a Chog is sold, the new owner can't cash out for 72 hours.</p></section>
+  <section id="r-bank"><h2>The Bank</h2><p>The Bank belongs to the city, not to any player. It holds the Commons, the Nad Lounge pot and the season pot, and every coin in it came from players.</p><p><b>Mortgage:</b> borrow half of a street's value. Until you pay back the loan plus 10%, that street's rent goes to the Bank, its Bricks can't be sold, and you can't cash out. The Bank lends at most 20% of the Commons.</p><p><b>Auction:</b> offer some of your Bricks on a street to other Chogs for 2 hours. The best bid at or above the bank price wins. If nobody bids that high, you keep your Bricks.</p><p>Buy, Sell, Mortgage and Auction are on every street's card. You can only buy where your Chog is standing.</p></section><section id="r-out"><h2>Cashing out</h2><p>Cash-outs are taxed 20%, down to 10% after loyal weeks. They wait 48 hours, are capped city-wide at 2% of all game cash per day, and reset Prestige to zero. After a Chog is sold, the new owner can't cash out for 72 hours.</p></section>
   <section id="r-board"><h2>Every square</h2><div class="tablewrap"><table><thead><tr><th>#</th><th>Square</th><th>District</th><th>What it does</th></tr></thead><tbody>${rows}</tbody></table></div></section>
   <section id="r-glossary"><h2>Glossary</h2><p><b>Appraisal:</b> everything inside a Chog. <b>Commons:</b> the shared treasury, funded by fees and taxes. <b>Nad Lounge:</b> the jackpot corner. <b>Sleeping Chog Dividend:</b> every Chog, even asleep, collects a share of Commons income; waking claims it. <b>Patron Stamp:</b> earned by using a real Monad app on its square, +1% claim weight forever.</p></section>
   </div></div>`;
@@ -357,22 +394,79 @@ function closeSheet() { $("#scrim").hidden = true; $("#modal").innerHTML = ""; }
 function openCard(title, text) { modal(`<div class="plainhead"><div class="eyebrow">${esc(title)}</div><h3 style="font-size:24px;margin-top:6px">${esc(text)}</h3></div><div class="body"><button class="btn primary" data-close>OK</button></div>`); window.Guide?.on("card"); }
 function openTile(i, landed) {
   const s = SQ[i], c = G.me;
-  if (s.t !== "prop") return modal(`<div class="plainhead"><div class="eyebrow">Square ${i}</div><h3 style="font-size:24px;margin-top:6px">${s.name}</h3></div><div class="body"><p class="muted">${squareText(s)}</p><button class="btn primary" data-close>OK</button></div>`);
-  const p = s, n = myBricks(c, p), l = level(p), owners = Object.entries(p.h).sort((a, b) => b[1] - a[1]);
-  const here = c.pos === i, today = c.qday[i] === Math.floor(G.t / DAY), done = c.stamps.has(i);
-  const chainQuest = onChain() ? Chain.questHtml(p, here) : null;
-  modal(`<div class="deedhead" style="background:${D[p.d].c}">${p.brand ? `<img src="${LOGOS[p.brand]}" alt="">` : ""}<div class="eyebrow">Title deed · ${D[p.d].n}</div><h3>${p.name}</h3>${p.i === hotIndex() ? `<span class="pill warn" style="margin-top:6px">Hot Street today: rent ×2</span>` : ""}</div>
+  if (U.deed?.i !== i) { U.deedTab = null; U.qty = null; }
+  U.deed = { i, landed };
+  if (s.t !== "prop") return modal(`<div class="plainhead"><div class="sqglyph">${GLYPH[s.t] || "★"}</div><h3 style="font-size:24px;margin-top:8px">${s.name}</h3></div><div class="body"><p class="muted">${squareText(s)}</p><button class="btn primary" data-close>OK</button></div>`);
+  const p = s, n = myBricks(c, p), l = level(p), here = c.pos === i, owners = Object.entries(p.h).sort((a, b) => b[1] - a[1]);
+  const today = c.qday[i] === Math.floor(G.t / DAY), done = c.stamps.has(i), chainQuest = onChain() ? Chain.questHtml(p, here) : null;
+  const tab = U.deedTab || (here ? "buy" : n ? "sell" : "buy");
+  const rentNow = p.d === "util" ? `dice × ${20 * LEVEL_MULT[l]}` : fmt(rentOf(p));
+  modal(`<div class="deedhead" style="background:${D[p.d].c}">${p.brand ? `<img src="${LOGOS[p.brand]}" alt="">` : ""}<div class="eyebrow">${D[p.d].n}</div><h3>${p.name}</h3>${p.i === hotIndex() ? `<span class="pill gold" style="margin-top:8px">Hot Street today · rent ×2</span>` : ""}</div>
   <div class="body">
-    <table class="renttable">${LEVEL_NAME.map((nm, k) => `<tr class="${k === l ? "cur" : ""}"><td>${nm}${k === l ? " · now" : ""}</td><td>${p.d === "util" ? "dice × " + 20 * LEVEL_MULT[k] : fmt(p.base * LEVEL_MULT[k])}</td></tr>`).join("")}</table>
-    <dl class="kv"><dt>Brick price now</dt><dd>${fmt(price(p))}</dd><dt>Bricks issued</dt><dd>${fmt(p.supply)}</dd><dt>You own</dt><dd>${n} ${n ? `(${Math.round(n / p.supply * 100)}%)` : ""}</dd></dl>
-    <div><div class="eyebrow" style="margin-bottom:4px">Owners</div>${owners.length ? owners.slice(0, 6).map(([id, k]) => { const o = byId(+id); if (!o) return ""; const isMe = o === c; return `<div class="owner"><i class="avatar" style="background-image:url(${o.img})"></i><span><b>${isMe ? "You" : esc(o.name)}</b> <span class="tiny">${Math.round(k / p.supply * 100)}%</span></span>${isMe ? "" : `<span class="row"><button class="btn sm" data-dm="${o.id}">Message</button><button class="btn sm gold" data-hype="${o.id}">Hype</button></span>`}</div>`; }).join("") : `<p class="empty">Nobody owns this street yet. Land here with a buying plan to open it.</p>`}</div>
-    ${p.q ? (chainQuest ?? `<div class="questbox"><div class="row between"><b>${p.dapp}</b><span class="pill ok">Real Monad app</span></div><p class="small">${p.q[2]}.</p><p class="tiny">${done ? "Patron Stamp collected." : "First time: a Patron Stamp (+1% claim weight)."} ${today ? "Today's free roll used." : "Once a day: +1 free roll."}</p>${here ? `<button class="btn primary sm" data-quest="${i}" ${today && done ? "disabled" : ""}>${p.q[1] === "swap" ? "Swap 50 MON (practice)" : "Use 20 MON (practice)"}</button>` : `<p class="tiny">Land here to do this.</p>`}</div>`) : ""}
-    ${n ? `<button class="btn sm ghost" data-sell="${i}">Sell 1 Brick (+${fmt(sellValue(p, 1) * 0.95)})</button>` : ""}
-    <button class="btn primary" data-close>${landed ? "Keep playing" : "Close"}</button>
+    <div class="deedstats"><div><span>Rent now</span><b>${rentNow}</b></div><div><span>Level</span><b>${LEVEL_NAME[l]}</b></div><div><span>You own</span><b>${n ? Math.round(n / p.supply * 100) + "%" : "—"}</b></div></div>
+    <div class="seg deedtabs" role="tablist">${["buy", "sell", "mortgage", "auction"].map(t => `<button data-deedtab="${t}" aria-pressed="${t === tab}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("")}</div>
+    <div class="deedpanel">${deedPanel(tab, p, n, here)}</div>
+    ${owners.length ? `<div><div class="tiny" style="margin-bottom:6px">${owners.length} owner${owners.length > 1 ? "s" : ""} · tap one for their profile</div><div class="ownerrow">${owners.slice(0, 7).map(([id, k]) => { const o = byId(+id); return o ? `<button class="ownerchip ${o === c ? "me" : ""}" data-profile="${o.id}"><i class="avatar" style="background-image:url(${o.img})"></i><span>${Math.round(k / p.supply * 100)}%</span></button>` : ""; }).join("")}</div></div>` : `<p class="tiny">Nobody owns this street yet.</p>`}
+    ${p.q ? (chainQuest ?? `<div class="questbox"><div class="row between"><span class="small">${p.q[2]}</span></div>${here ? `<div><button class="btn sm primary" data-quest="${i}" ${today && done ? "disabled" : ""}>${p.q[1] === "swap" ? "Swap 50 MON" : "Use 20 MON"} · practice</button></div>` : `<span class="tiny">Land here to use ${p.dapp}. First time: a Patron Stamp.</span>`}</div>`) : ""}
+    <details class="more"><summary>Rent by level</summary><table class="renttable">${LEVEL_NAME.map((nm, k) => `<tr class="${k === l ? "cur" : ""}"><td>${nm}</td><td>${p.d === "util" ? "dice × " + 20 * LEVEL_MULT[k] : fmt(p.base * LEVEL_MULT[k])}</td></tr>`).join("")}</table></details>
   </div>`);
   window.Guide?.on("tile", { i, landed });
 }
-function openHeist() {
+function deedPanel(tab, p, n, here) {
+  const c = G.me, q = v => Math.max(1, Math.min(v, U.qty ?? 1));
+  const stepper = (max, label) => `<div class="stepper2"><button data-qty="-1" aria-label="Fewer">−</button><span class="num">${q(max)}</span><button data-qty="1" aria-label="More">+</button><span class="tiny">${label}</span></div>`;
+  const soon = `<p class="small muted">Works in Practice City today. On-chain it needs a contract update first.</p>`;
+  if (tab === "buy") {
+    if (onChain()) return `<p class="small muted">On-chain, your buying plan buys Bricks when you land here.</p>`;
+    if (!here) return `<p class="small muted">You can only buy where your Chog is standing. Roll onto ${p.name} to buy here.</p>`;
+    if (p.fair && appraisal(c) >= K.fairStartMax) return `<p class="small muted">Fair Start street: only Chogs worth under ${fmt(K.fairStartMax)} can buy here.</p>`;
+    if (locked(c, p)) return `<p class="small muted">Lift the mortgage or auction on this street before buying more.</p>`;
+    const max = maxBuyable(c, p, 15, c.cash); if (!max) return `<p class="small muted">Not enough cash, or you're at the 40% cap for this street.</p>`;
+    const k = q(max), cost = buyCost(p, k) * (1 + K.buyFee);
+    return `${stepper(max, `of ${max} you can buy`)}<button class="btn primary" data-buy="${p.i}">Buy ${k} Brick${k > 1 ? "s" : ""} · ${fmt(cost)}</button>`;
+  }
+  if (!n) return `<p class="small muted">You don't own Bricks on ${p.name}.</p>`;
+  if (tab === "sell") {
+    if (locked(c, p)) return `<p class="small muted">${c.mort?.[p.i] ? "Mortgaged. Repay it in the Bank to sell." : "On auction until the bidding ends."}</p>`;
+    if (onChain()) return `<button class="btn" data-sell="${p.i}">Sell 1 Brick to the Bank · ${fmt(sellValue(p, 1) * (1 - K.sellSpread))}</button>`;
+    const k = q(n); return `${stepper(n, `of ${n} you own`)}<button class="btn" data-sell="${p.i}">Sell ${k} to the Bank · ${fmt(sellValue(p, k) * (1 - K.sellSpread))}</button>`;
+  }
+  if (onChain()) return soon;
+  if (tab === "mortgage") {
+    const m = c.mort?.[p.i];
+    if (m) return `<p class="small muted">Loan ${fmt(m)}. Rent from this street goes to the Bank until you repay.</p><button class="btn" data-repay="${p.i}">Repay ${fmt(m * (1 + MORT_FEE))}</button>`;
+    if (c.auc?.[p.i]) return `<p class="small muted">On auction until the bidding ends.</p>`;
+    const offer = Math.min(loanOffer(c, p), loanRoom());
+    return `<p class="small muted">Get ${fmt(offer)} now. This street's rent goes to the Bank until you repay ${fmt(offer * (1 + MORT_FEE))}.</p><button class="btn primary" data-mort="${p.i}" ${offer < 1 ? "disabled" : ""}>Mortgage · +${fmt(offer)}</button>`;
+  }
+  const live = G.auctions.find(a => a.seller === c.id && a.i === p.i);
+  if (live) return `<p class="small muted">${live.n} Brick${live.n > 1 ? "s" : ""} on auction. Ends in ${dur(live.ends - G.t)}. Reserve ${fmt(live.reserve)}.</p>`;
+  if (locked(c, p)) return `<p class="small muted">Mortgaged. Repay it in the Bank first.</p>`;
+  const k = q(n), reserve = sellValue(p, k) * (1 - K.sellSpread);
+  return `${stepper(n, `of ${n} you own`)}<p class="tiny">Other Chogs bid for 2 hours. The best bid at or above ${fmt(reserve)} (the bank price) wins.</p><button class="btn gold" data-auction="${p.i}">Auction ${k} Brick${k > 1 ? "s" : ""}</button>`;
+}
+function openProfile(id) {
+  const o = byId(id); if (!o) return;
+  const me = o === G.me, g = seasonGain(o), rank = ranking().indexOf(o) + 1, streets = PROPS.filter(p => myBricks(o, p)).sort((a, b) => sellValue(b, myBricks(o, b)) - sellValue(a, myBricks(o, a)));
+  modal(`<div class="profhead"><i class="avatar" style="background-image:url(${o.img})"></i><div style="min-width:0"><div class="row" style="gap:6px"><span class="pill purple">${o.tier}</span><span class="pill">${moodOf(o)}</span></div><h3>${me ? "You · " : ""}${esc(o.full || o.name)}</h3><div class="tiny">${esc(traitLine(o))}</div></div></div>
+  <div class="body">
+    <div class="deedstats four"><div><span>Net worth</span><b>${fmt(appraisal(o))}</b></div><div><span>This season</span><b class="${g > 0 ? "up" : g < 0 ? "down" : ""}">${g >= 0 ? "+" : "−"}${fmt(Math.abs(g))}</b></div><div><span>Rank</span><b>#${rank}</b></div><div><span>Streets</span><b>${streets.length}</b></div></div>
+    <dl class="kv"><dt>Prestige</dt><dd>+${prestige(o)}%</dd><dt>Patron stamps</dt><dd>${o.stamps.size}</dd><dt>Guards</dt><dd>${o.guards}</dd><dt>Rolls this season</dt><dd>${o.rollsSeason}</dd></dl>
+    ${streets.length ? `<div><div class="tiny" style="margin-bottom:6px">Biggest streets</div>${streets.slice(0, 3).map(p => streetLine(o, p)).join("")}</div>` : ""}
+    ${me ? `<button class="btn primary" data-room="portfolio">Open your portfolio</button>` : `<div class="row"><button class="btn primary" data-dm="${o.id}">Message</button><button class="btn gold" data-hype="${o.id}">Hype · 300</button></div>`}
+  </div>`);
+}
+// ---------- balance chip dropdown ----------
+function renderMeMenu() {
+  const c = G.me, dbt = debt(c);
+  $("#meMenu").innerHTML = `<div class="row" style="gap:10px;margin-bottom:10px"><i class="avatar" style="width:40px;height:40px;background-image:url(${c.img})"></i><div><b>${esc(c.name)}</b><div class="tiny">#${ranking().indexOf(c) + 1} in the city</div></div></div>
+    <dl class="kv"><dt>Account balance</dt><dd>${fmt(c.cash)}</dd><dt>Unclaimed rent</dt><dd>${fmt(c.unclaimed)}</dd><dt>Bricks</dt><dd>${fmt(brickValue(c))}</dd><dt>App positions</dt><dd>${fmt(positionsValue(c))}</dd>${dbt ? `<dt>Mortgages</dt><dd class="down">−${fmt(dbt)}</dd>` : ""}<dt><b>Net worth</b></dt><dd><b>${fmt(appraisal(c))}</b></dd></dl>
+    <div class="row" style="margin-top:12px"><button class="btn sm primary" data-room="portfolio">Portfolio</button><button class="btn sm" data-profile="${c.id}">Your profile</button></div>`;
+}
+function toggleMeMenu(show) {
+  const m = $("#meMenu"), open = show ?? m.hidden; if (open && !G.me) return;
+  if (open) renderMeMenu(); m.hidden = !open; $("#meChip").setAttribute("aria-expanded", String(open));
+}function openHeist() {
   const me = G.me, opts = G.chogs.filter(t => t !== me && t.unclaimed >= K.heistMinUnclaimed && G.t >= t.immuneUntil).sort((a, b) => b.unclaimed - a.unclaimed).slice(0, 6);
   modal(`<div class="deedhead" style="background:var(--red)"><div class="eyebrow">Heist</div><h3>Pick a target</h3></div><div class="body"><p class="small muted">Win: take 10% of their unclaimed rent. Lose: pay them 500 and go to Rug Jail. Cash and Bricks are never at risk.</p>
     ${opts.length ? opts.map(t => { const ch = clamp(K.heistBase + (isLaser(me) ? 5 : 0) + (isHeistHat(me) ? 5 : 0) - TIER_DEF[t.tier] - t.guards * 5 - (isVisor(t) ? 5 : 0), 10, 80); return `<button class="thread" data-heist="${t.id}"><i class="avatar" style="background-image:url(${t.img})"></i><span><span class="t">${esc(t.name)}</span><span class="s" style="display:block">${fmt(t.unclaimed)} unclaimed · ${t.guards} guards</span></span><span class="pill ${ch >= 50 ? "ok" : "warn"}">${ch}%</span></button>`; }).join("") : `<p class="empty">Nobody has 500+ unclaimed rent right now.</p>`}
@@ -396,7 +490,7 @@ function openThread(id) {
 async function rollMe() {
   if (onChain()) return Chain.roll();
   const c = G.me; if (!c || G.busy) return;
-  if (c.bankrupt === G.seasonNo) { toast("Bankrupt: top up in the Bank to play again, or wait for next season."); return room("bank"); }
+  if (c.bankrupt === G.seasonNo) { toast("Bankrupt: top up in your Portfolio to play again, or wait for next season."); return room("portfolio"); }
   closeSheet();
   if (c.rolls <= 0) { if (c.cash < K.extraRoll) return toast("No rolls left and not enough cash for an extra roll."); payTo(c, K.extraRoll / 2, "burn"); payTo(c, K.extraRoll / 2, "lounge"); c.rolls++; }
   G.busy = true; c.rolls--; c.rollsSeason++; c.plan = G.plan; c.broke = false; render();
@@ -410,7 +504,7 @@ async function rollMe() {
   if (c.doubles === 3) { toJail(c); $("#lastev").textContent = "Three doubles in a row. Straight to Rug Jail."; G.busy = false; render(); return window.Guide?.on("rolled", { jail: true }); }
   for (let k = 0; k < d1 + d2; k++) { step(c, 1); renderPawns(); await sleep(120); }
   const r = land(c, d1 + d2);
-  if (c.broke && c.cash <= 0 && brickValue(c) <= 0) { c.bankrupt = G.seasonNo; act("bankrupt", "You couldn't pay rent and went bankrupt. Top up in the Bank to play again, or wait for next season"); }
+  if (c.broke && c.cash <= 0 && freeBrickValue(c) <= 0) { c.bankrupt = G.seasonNo; act("bankrupt", "You couldn't pay rent and went bankrupt. Top up in your Portfolio to play again, or wait for next season"); }
   let msg = `Rolled ${d1} + ${d2}: ${SQ[c.pos].name}.`;
   if (r.rent) msg += ` Paid ${fmt(r.rent)} rent.`;
   if (r.bought) { msg += ` Your plan bought ${r.bought} Bricks.`; floatAt(c.pos, `+${r.bought} Bricks`); }
@@ -427,6 +521,7 @@ function doGuard() { if (onChain()) return Chain.guard(); const c = G.me; if (c.
 function payBail() { if (onChain()) return Chain.bail(); const c = G.me; if (!c.jail) return; if (c.cash < K.bail) return toast("Not enough cash for bail."); payTo(c, K.bail / 2, "burn"); payTo(c, K.bail / 2, "lounge"); c.jail = 0; render(); }
 function doCashOut(amt) {
   if (onChain()) return Chain.cashOut(amt);
+  if (debt(G.me)) return toast("Pay off your mortgages in the Bank before cashing out.");
   const c = G.me; amt = Math.min(amt, c.cash, dailyCapLeft()); if (amt < 100) return toast("Nothing to cash out within today's city-wide cap.");
   const r = exitTax(c) / 100, tax = amt * r;
   c.cash -= amt; G.commons += tax * 0.5; burn(tax * 0.25); G.season += tax * 0.25; G.cashedToday += amt; c.lastCash = G.t;
@@ -452,16 +547,25 @@ document.addEventListener("click", e => {
   const g = t.closest("[data-go]"); if (g) { if (g.dataset.go === "rules") { if (G.me) { go("app"); room("rules"); } else { U.city = "practice"; startPractice(true); } return; } if (g.dataset.go === "landing" && G.me) return room("desk"); return go(g.dataset.go); }
   const cityB = t.closest("[data-city]"); if (cityB) return chooseCity(cityB.dataset.city);
   const pc = t.closest("[data-pickchog]"); if (pc) { U.pick = +pc.dataset.pickchog; return renderOnboard(); }
-  const r = t.closest("[data-room]"); if (r) return room(r.dataset.room);
+  if (t.closest("#meChip")) return toggleMeMenu();
+  if (!t.closest("#meMenu")) toggleMeMenu(false);
+  const pf = t.closest("[data-profile]"); if (pf) return openProfile(+pf.dataset.profile);
+  const r = t.closest("[data-room]"); if (r) { closeSheet(); toggleMeMenu(false); return room(r.dataset.room); }
+  const dt = t.closest("[data-deedtab]"); if (dt) { U.deedTab = dt.dataset.deedtab; U.qty = null; return openTile(U.deed.i, U.deed.landed); }
+  const qb = t.closest("[data-qty]"); if (qb) { const cur = +$(".stepper2 .num").textContent; U.qty = Math.max(1, cur + +qb.dataset.qty); return openTile(U.deed.i, U.deed.landed); }
+  const bb = t.closest("[data-buy]"); if (bb) { const p = SQ[+bb.dataset.buy], k = +$(".stepper2 .num").textContent, n = Math.min(k, maxBuyable(G.me, p, 15, G.me.cash)); if (n > 0) { buyBricks(G.me, p, n); toast(`Bought ${n} Brick${n > 1 ? "s" : ""} on ${p.name}.`); } U.qty = null; openTile(p.i, U.deed.landed); return render(); }
+  const mb = t.closest("[data-mort]"); if (mb) { const got = mortgage(G.me, SQ[+mb.dataset.mort]); toast(got ? `The Bank lent you ${fmt(got)}.` : "The Bank can't lend on that right now."); if (!$("#scrim").hidden) openTile(+mb.dataset.mort, U.deed?.landed); return render(); }
+  const rb = t.closest("[data-repay]"); if (rb) { const r2 = repayMortgage(G.me, SQ[+rb.dataset.repay]); toast(r2 === -1 ? "Not enough cash to repay." : `Mortgage repaid (${fmt(r2)}).`); if (!$("#scrim").hidden) openTile(+rb.dataset.repay, U.deed?.landed); return render(); }
+  const ab = t.closest("[data-auction]"); if (ab) { const p = SQ[+ab.dataset.auction], k = +$(".stepper2 .num").textContent, a = startAuction(G.me, p, k); toast(a ? `${a.n} Brick${a.n > 1 ? "s" : ""} on auction for 2 hours. Reserve ${fmt(a.reserve)}.` : "Can't auction those Bricks right now."); if (a) act("auction", `You put ${a.n} Brick${a.n > 1 ? "s" : ""} on ${p.name} up for auction`); openTile(p.i, U.deed.landed); return render(); }
   const tl = t.closest("[data-tile]"); if (tl && !tl.closest("#heroMap")) return openTile(+tl.dataset.tile, false);
   const q = t.closest("[data-quest]"); if (q) return doQuest(+q.dataset.quest);
-  const sl = t.closest("[data-sell]"); if (sl) { if (onChain()) return Chain.sell(+sl.dataset.sell); sellBricks(G.me, SQ[+sl.dataset.sell], 1); openTile(+sl.dataset.sell, false); return render(); }
+  const sl = t.closest("[data-sell]"); if (sl) { if (onChain()) return Chain.sell(+sl.dataset.sell); const p = SQ[+sl.dataset.sell], k = +($(".stepper2 .num")?.textContent || 1), got = sellBricks(G.me, p, k); if (got) toast(`Sold ${k} Brick${k > 1 ? "s" : ""} for ${fmt(got)}.`); U.qty = null; openTile(p.i, U.deed?.landed); return render(); }
   const h = t.closest("[data-heist]"); if (h) { if (onChain()) return Chain.heist(+h.dataset.heist); const res = heist(G.me, byId(+h.dataset.heist)); closeSheet(); toast(res.win ? `Heist worked: +${fmt(res.amt)}.` : `Caught. You paid ${fmt(res.amt)} and went to Rug Jail.`); return render(); }
   const dm = t.closest("[data-dm],[data-thread]"); if (dm) return openThread(+(dm.dataset.dm || dm.dataset.thread));
   const hy = t.closest("[data-hype]"); if (hy) { if (onChain()) return Chain.hype(+hy.dataset.hype, 300); if (hype(G.me, byId(+hy.dataset.hype), 300)) { toast("Hyped with 300 $CHOG (30 burned)."); render(); window.Guide?.on("hyped"); } else toast("Not enough cash."); return; }
   const td = t.closest("[data-todo]"); if (td) { const a = td.dataset.todo; if (a === "claim") return doClaim(); return room(a); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#scrim").hidden) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("#scrim").hidden) closeSheet(); toggleMeMenu(false); });
 function chooseCity(city) {
   if (city === "mainnet") return toast("Mainnet City opens after testing. Try Practice or Testnet.");
   U.city = city; G.mode = city;
@@ -488,7 +592,7 @@ setInterval(() => {
   if (!$("#scrim").hidden || document.activeElement?.matches("input,textarea")) return;
   // full re-render only when something you can see changed; otherwise just tick the clocks (keeps clicks and hovers steady)
   const c = G.me, sig = [U.room, c.rolls, Math.round(c.cash), Math.round(c.unclaimed), c.pos, c.jail, G.activity.length, G.inbox.length, G.seasonNo, G.bellEnd !== null, Math.round(appraisal(c) / 50)].join("|");
-  if (sig !== U.sig) { U.sig = sig; if (U.room === "desk" || U.room === "map" || U.room === "leaders") render(); return; }
+  if (sig !== U.sig) { U.sig = sig; if (["desk", "map", "leaders", "bank"].includes(U.room)) render(); return; }
   document.querySelectorAll("#room-desk .timer").forEach(t => t.textContent = dur(seasonEnd() - G.t));
   const eb = $("#room-desk .pagehead .eyebrow"); if (eb) eb.textContent = eb.textContent.replace(/Day \d+ · \d\d:\d\d/, clockStr(G.t));
 }, 1000);

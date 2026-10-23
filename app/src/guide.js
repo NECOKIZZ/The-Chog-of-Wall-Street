@@ -100,7 +100,7 @@ window.Guide = (() => {
     { room: "map", title: "Tap your square", sel: ["#mapBox .tile.here", "#mapBox"], wait: "tile", doLabel: "Tap the glowing square", text: "Every square opens a title deed. Try the one your Chog is standing on." },
     { title: "The title deed", sel: "#modal", wait: "sheetClosed", doLabel: "Close the card to continue", text: "Rent per level, the Brick price, and which Chogs own it. This is the only place you see other Chogs: <b>Message</b> or <b>Hype</b> them from here." },
     { room: "map", title: "Your buying plan", sel: "#plans", text: "<b>Safe</b> buys a few Bricks and keeps half your cash. <b>Balanced</b> buys up to 6. <b>Degen</b> spends it all. It's set before the dice land." },
-    { room: "bank", title: "The Bank", sel: ["#claimBtn", "#bankTax"], text: "Claim rent, keep Property Tax paid (autopay is on), and see what leaving would cost. Cash-out tax goes to the Chogs who stay." },
+    { room: "portfolio", title: "Your portfolio", sel: ["#bankSheet", "#claimBtn"], text: "Your balance and everything your Chog owns, with what each is worth. The <b>Bank</b> tab next to it is the city's bank: borrow against a street there." },
     { room: "leaders", title: "Leaders", sel: [".podium", "#room-leaders .lbtabs"], text: "Its own page. <b>This season</b> ranks growth and pays the prizes. <b>Richest</b> ranks total net worth. The bottom quarter pays 5% of its cash into the pot when the season ends." },
     { room: "desk", title: "Your first rounds", sel: "#goals", text: "Work down this list. Press <b>Show me</b> and the game points at exactly where to click." },
   ].map(s => ({ ...s, tour: true }));
@@ -112,10 +112,10 @@ window.Guide = (() => {
     { id: "roll", label: "Roll the dice", room: "map", sel: "#roll", how: "On the Map, press Roll." },
     { id: "bricks", label: "Own your first Bricks", room: "map", sel: ["#plans", "#roll"], how: "Keep rolling with Balanced or Degen. Your Chog buys Bricks on the street it lands on.", check: () => brickValue(G.me) > 0 },
     { id: "rent", label: "Earn rent from another Chog", room: "desk", sel: ["#ff2", "#deskInbox"], how: "Other Chogs land on your streets over time. In Practice, press +2 hours to let the city move.", check: () => G.me.unclaimed > 0 || G.me.lastIncome > 0 },
-    { id: "claim", label: "Claim your rent", room: "bank", sel: "#claimBtn", how: "In the Bank, press Claim. Prestige and stamps add a bonus from the Commons." },
+    { id: "claim", label: "Claim your rent", room: "portfolio", sel: "#claimBtn", how: "In your Portfolio, press Claim. Prestige and stamps add a bonus from the Commons." },
     { id: "quest", label: "Use a Monad app square", room: "map", sel: ["#modal [data-quest]", "#roll"], how: "Land on a square with an app logo, then press its app button. The position is held by your Chog." },
     { id: "dm", label: "Message another Chog", room: "map", sel: ["#mapBox .tile.mine", "#mapBox .tile.here"], how: "Tap a street, find an owner on its title deed and press Message." },
-    { id: "cashout", label: "See what cashing out costs", room: "bank", sel: ["#coAmt", "#bankOut"], how: "In the Bank, drag the cash-out slider. You don't have to confirm.", check: () => seenBankOut },
+    { id: "cashout", label: "See what cashing out costs", room: "portfolio", sel: ["#coAmt", "#bankOut"], how: "In your Portfolio, drag the cash-out slider. You don't have to confirm.", check: () => seenBankOut },
   ];
   const nextGoal = () => GOALS.find(g => !done[g.id]);
   let lastGoals = "";
@@ -160,7 +160,7 @@ window.Guide = (() => {
     }
     if (ev === "tile" && d?.landed && SQ[d.i].brand) hint("quest-card", { title: "A real Monad app", sel: "#modal .questbox", text: "This square is wired to a real app. In Practice it's simulated. On Testnet and Mainnet the position is bought for real and held by your Chog, not your wallet." });
     if (ev === "heistOpen") hint("heist", { title: "Heist", sel: "#modal", text: "Pick a target. The % is your chance. Win: take 10% of their unclaimed rent. Lose: pay them 500 and go to Rug Jail. Cash and Bricks are never at risk." });
-    if (ev === "room" && d === "bank") hint("bank-out", { only: "bank", title: "Leaving costs money", sel: ["#coAmt", "#bankOut"], text: "Drag the slider to see the tax (20%, falling to 10% the longer you stay), the 48-hour wait, and the Prestige you'd lose. Selling the whole Chog usually beats stripping it." });
+    if (ev === "room" && d === "portfolio") hint("bank-out", { only: "portfolio", title: "Leaving costs money", sel: ["#coAmt", "#bankOut"], text: "Drag the slider to see the tax (20%, falling to 10% the longer you stay), the 48-hour wait, and the Prestige you'd lose. Selling the whole Chog usually beats stripping it." });
     if (ev === "render" && G.me) stateHints();
   }
   // goals count even during the tour
@@ -177,7 +177,7 @@ window.Guide = (() => {
     const c = G.me;
     GOALS.forEach(g => { if (g.check && !done[g.id] && g.check()) complete(g.id); });
     if (brickValue(c) > 0 && U.room === "map") hint("bricks", { only: "map", title: "You own Bricks", sel: "#mapBox .tile.mine", text: "Squares with a gold dot are yours. Every Chog that lands there pays rent, and 90% goes to the holders." });
-    if (c.unclaimed > 0 && U.room === "desk") hint("claim", { only: "desk", title: "Rent is waiting", sel: "#deskTodo", text: "Other Chogs paid rent to your Bricks. Claim it from your to-do list or the Bank. Unclaimed rent can be stolen in a HEIST." });
+    if (c.unclaimed > 0 && U.room === "desk") hint("claim", { only: "desk", title: "Rent is waiting", sel: "#deskTodo", text: "Other Chogs paid rent to your Bricks. Claim it from your to-do list or your Portfolio. Unclaimed rent can be stolen in a HEIST." });
     if (G.bellEnd !== null && U.room === "desk") hint("bell", { only: "desk", title: "The Closing Bell", sel: "#deskMove", text: "The last 24 hours. Every Brick buy adds a minute. The last buyer when it hits zero wins 10% of the season pot." });
     renderGoals();
   }

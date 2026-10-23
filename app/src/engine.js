@@ -108,7 +108,7 @@ const G = {
   seasonNo: 1, seasonStartT: 0, bellEnd: null, lastBuyer: null, golden: null, cashedToday: 0, cashDay: 0,
   me: null, chogs: [], feed: [], plan: "balanced", busy: false, speed: 1, tab: "chog", sheet: null,
   wallet: { chog: 100000, mon: 1000, usdc: 50 }, mode: "practice",
-  activity: [], inbox: [], lastSeen: 0, page: "desk",
+  activity: [], inbox: [], lastSeen: 0, page: "desk", auctions: [],
 };
 let seed = 7;
 const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
@@ -119,7 +119,7 @@ function mkChog(a, bot) {
     id: a.id, name: a.name.replace(/^CHOG /, ""), full: a.name, img: a.img, tier: a.tier, eyes: a.eyes, head: a.head, body: a.body, mouth: a.mouth,
     bot, pos: 0, cash: 0, rolls: K.rollCap, rollAcc: 0, plan: ["safe", "balanced", "degen"][ri(3)], unclaimed: 0, taxUntil: 0,
     lastCash: 0, woke: 0, stamps: new Set(), qday: {}, pos_: {}, jar: 0, hypeMult: 1, hypeUntil: 0, guards: 0, jail: 0, jailCard: false,
-    rollsSeason: 0, warden: 0, seasonAppraisal: 0, queue: [], immuneUntil: 0, act: 0.25 + rnd() * 0.6, mood: "Chill", lastIncome: 0, prevIncome: 0, income: 0,
+    rollsSeason: 0, warden: 0, seasonAppraisal: 0, queue: [], mort: {}, auc: {}, immuneUntil: 0, act: 0.25 + rnd() * 0.6, mood: "Chill", lastIncome: 0, prevIncome: 0, income: 0,
   };
 }
 const traitLine = c => [c.eyes, c.head, c.body, c.mouth].filter(Boolean).join(" · ");
@@ -180,11 +180,57 @@ function buyBricks(c, p, n) {
   return cost + fee;
 }
 function sellBricks(c, p, n) {
+  if (locked(c, p)) return 0;
   n = Math.min(n, myBricks(c, p)); if (n <= 0) return 0;
   const v = sellValue(p, n), spread = v * K.sellSpread;
   p.reserve -= v; p.supply -= n; p.h[c.id] -= n; if (!p.h[c.id]) delete p.h[c.id];
   c.cash += v - spread; toCommons(spread); return v - spread;
 }
+// ---------- the Bank: mortgages and auctions ----------
+// A mortgage is a loan from the Commons against one street: half its Bricks' sell value. While mortgaged, that street's rent
+// share goes to the Commons, its Bricks can't be sold, and you can't cash out. Repaying costs the loan + 10% (the 10% is a fee).
+const MORT_LTV = 0.5, MORT_FEE = 0.1, MORT_POOL = 0.2, AUC_LEN = 2 * HOUR;
+const locked = (c, p) => !!(c.mort?.[p.i] || c.auc?.[p.i]);
+const debt = c => Object.values(c.mort || {}).reduce((a, b) => a + b, 0);
+const freeBrickValue = c => PROPS.reduce((v, p) => v + (myBricks(c, p) && !locked(c, p) ? sellValue(p, myBricks(c, p)) * (1 - K.sellSpread) : 0), 0);
+const loanOffer = (c, p) => myBricks(c, p) ? sellValue(p, myBricks(c, p)) * (1 - K.sellSpread) * MORT_LTV : 0;
+const loanRoom = () => Math.max(0, G.commons * MORT_POOL - G.chogs.reduce((a, c) => a + debt(c), 0));
+function mortgage(c, p) {
+  if (locked(c, p) || !myBricks(c, p)) return 0;
+  const loan = Math.min(loanOffer(c, p), loanRoom(), G.commons); if (loan < 1) return 0;
+  G.commons -= loan; c.cash += loan; c.mort[p.i] = loan;
+  if (c === G.me) act("mortgage", `You mortgaged ${p.name} and got ${fmt(loan)} from the Bank`, loan);
+  return loan;
+}
+function repayMortgage(c, p) {
+  const loan = c.mort?.[p.i]; if (!loan) return 0;
+  const cost = loan * (1 + MORT_FEE); if (c.cash < cost) return -1;
+  c.cash -= cost; G.commons += loan; toCommons(loan * MORT_FEE); delete c.mort[p.i];
+  if (c === G.me) act("repay", `You paid off the mortgage on ${p.name}`, -cost);
+  return cost;
+}
+// An auction offers some of your Bricks on one street to the other Chogs for 2 hours. The bank price (what selling would pay)
+// is the reserve. The best bid at or above it wins: cash moves buyer → seller and the Bricks change hands. Nothing is minted.
+function startAuction(c, p, n) {
+  n = Math.min(n, myBricks(c, p)); if (n <= 0 || locked(c, p)) return null;
+  const a = { seller: c.id, i: p.i, n, reserve: sellValue(p, n) * (1 - K.sellSpread), ends: G.t + AUC_LEN };
+  c.auc[p.i] = true; G.auctions.push(a); return a;
+}
+function settleAuction(a) {
+  const c = byId(a.seller), p = SQ[a.i]; delete c.auc[a.i];
+  const n = Math.min(a.n, myBricks(c, p)); let best = null;
+  if (n > 0) for (const b of G.chogs) {
+    if (b === c || !b.bot || capFor(b, p, n) < n) continue;
+    const bid = Math.round(a.reserve * (0.95 + rnd() * 0.4));
+    if (bid >= a.reserve && b.cash >= bid * 1.5 && (!best || bid > best.bid)) best = { b, bid };
+  }
+  if (!best) { if (c === G.me) act("auction", `Your auction on ${p.name} ended with no bid above the bank price. Your Bricks stay with you`); return null; }
+  best.b.cash -= best.bid; c.cash += best.bid; p.h[c.id] -= n; if (!p.h[c.id]) delete p.h[c.id]; p.h[best.b.id] = myBricks(best.b, p) + n;
+  if (best.b.taxUntil < G.t) best.b.taxUntil = G.t + DAY;
+  if (c === G.me) { act("auction", `${best.b.name} won your ${n} Brick${n > 1 ? "s" : ""} on ${p.name} for ${fmt(best.bid)}`, best.bid); log(`Auction: ${best.b.name} bought your ${n} Brick${n > 1 ? "s" : ""} on ${p.name} for ${fmt(best.bid)}.`, "me"); }
+  return best;
+}
+
 function rentOf(p, dice) {
   const l = level(p);
   if (p.d === "util") return (dice || 7) * 20 * LEVEL_MULT[l];
@@ -197,7 +243,7 @@ function payRent(c, p, dice) {
   let rent = rentOf(p, dice);
   let paid = Math.min(rent, c.cash);
   if (paid < rent) { // auto-sell own Bricks (cheapest first) to cover rent
-    const mine = PROPS.filter(q => myBricks(c, q)).sort((a, b) => a.p0 - b.p0);
+    const mine = PROPS.filter(q => myBricks(c, q) && !locked(c, q)).sort((a, b) => a.p0 - b.p0);
     for (const q of mine) { while (c.cash < rent && myBricks(c, q)) sellBricks(c, q, 1); }
     paid = Math.min(rent, c.cash);
   }
@@ -207,6 +253,7 @@ function payRent(c, p, dice) {
   for (const [id, n] of Object.entries(p.h)) {
     const h = byId(+id); let share = holdersPart * n / p.supply;
     if (hot) { const extra = Math.min(share, G.commons); G.commons -= extra; share += extra; }
+    if (h.mort?.[p.i]) { G.commons += share; continue; } // mortgaged: the Bank keeps this street's rent
     if (G.t <= h.taxUntil) { h.unclaimed += share; h.income += share; } else toCommons(share); // unpaid Property Tax: rent goes to the Commons
     if (h === G.me && c !== G.me && share > 0) {
       if (G.t <= h.taxUntil) act("rent", `${c.name} landed on ${p.name} and paid you rent`, share);
@@ -230,7 +277,7 @@ function districtBonus(c) {
 const claimMult = c => 1 + (prestige(c) + stampPct(c) + TIER_BONUS[c.tier]) / 100;
 const hypeActive = c => G.t < c.hypeUntil ? c.hypeMult : 1;
 const positionsValue = c => Object.values(c.pos_).reduce((a, b) => a + b, 0);
-const appraisal = c => c.cash + c.unclaimed + brickValue(c) + positionsValue(c) + c.jar;
+const appraisal = c => c.cash + c.unclaimed + brickValue(c) + positionsValue(c) + c.jar - debt(c);
 function exitTax(c) { const weeks = Math.floor((G.t - Math.max(c.lastCash, c.woke)) / (7 * DAY)); return clamp(K.exitBase - weeks, K.exitFloor, K.exitBase); }
 function totalCash() { return G.chogs.reduce((a, c) => a + c.cash, 0); }
 function dailyCapLeft() { const d = Math.floor(G.t / DAY); if (d !== G.cashDay) { G.cashDay = d; G.cashedToday = 0; } return Math.max(0, totalCash() * K.dailyCapPct - G.cashedToday); }
@@ -289,7 +336,7 @@ function land(c, dice, viaCard) {
     if (!c.broke) { // roll plan buys Bricks (committed before the dice)
       const plan = { safe: { max: 3, keep: 0.5, lvl: 1 }, balanced: { max: 6, keep: 0.25, lvl: 9 }, degen: { max: 15, keep: 0, lvl: 9 } }[c.plan];
       const fairOk = !p.fair || appraisal(c) < K.fairStartMax;
-      if (fairOk && level(p) <= plan.lvl) {
+      if (fairOk && level(p) <= plan.lvl && !locked(c, p)) {
         const budget = c.cash * (1 - plan.keep);
         const n = maxBuyable(c, p, plan.max, budget);
         if (n > 0) { buyBricks(c, p, n); out.bought = n; }
@@ -370,6 +417,7 @@ function advance(mins) {
     if (G.me && G.me.autoTax && G.me.taxUntil < G.t + 6 * HOUR) prepayTax(G.me, 1);
     G.chogs.forEach(c => { if (c.bot && rnd() < c.act * 0.22) botTurn(c); });
     G.chogs.forEach(c => { c.queue.forEach(q => { if (!q.ready && G.t >= q.at) { q.ready = true; if (c === G.me) { log(`Cash-out of ${fmt(q.net)} is ready to claim.`, "me"); act("cashout", "Your cash-out is ready. Claim it in the Bank", q.net); } } }); });
+    G.auctions = G.auctions.filter(a => { if (G.t < a.ends) return true; settleAuction(a); return false; });
     G.chogs.forEach(c => { if (c.bot && c.pendingReply && G.t >= c.pendingReply.at) { c.pendingReply = null; sendDM(c, G.me, line("reply")); } });
     if (G.me && rnd() < 0.004) { const b = G.chogs.filter(x => x.bot)[ri(G.chogs.length - 1)]; if (b) { const shared = PROPS.find(p => myBricks(G.me, p) && myBricks(b, p)); sendDM(b, G.me, shared ? line("neighbour", shared.name) : line("hello")); } }
     const end = G.seasonStartT + K.seasonLen;

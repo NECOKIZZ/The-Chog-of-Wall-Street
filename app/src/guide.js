@@ -96,10 +96,9 @@ window.Guide = (() => {
   const TOUR = () => [
     { room: "desk", title: "This is your Desk", sel: "#deskChog", text: "Your Chog and what it's worth. Everything you build lives inside this NFT. Start here every visit: it shows what happened while you were away." },
     { room: "desk", title: "Your move and the clock", sel: "#deskMove", text: "Rolls ready and time left in the season. When the clock hits zero, the top Chogs share the season pot and the bottom quarter pays into it." },
-    { room: "map", title: "Press Roll", sel: "#roll", dim: true, wait: "rolled", doLabel: "Click Roll", text: "Your Chog moves around the board, and your <b>buying plan</b> buys Bricks (shares of the street) where it lands. One roll refills every 30 minutes, up to 8." },
+    { room: "map", title: "Press Roll", sel: "#roll", dim: true, wait: "rolled", doLabel: "Click Roll", text: "Your Chog moves around the board. Where it lands, you can buy Bricks: shares of that street that earn rent. One roll refills every 30 minutes, up to 8." },
     { room: "map", title: "Tap your square", sel: ["#mapBox .tile.here", "#mapBox"], wait: "tile", doLabel: "Tap the glowing square", text: "Every square opens a title deed. Try the one your Chog is standing on." },
-    { title: "The title deed", sel: "#modal", wait: "sheetClosed", doLabel: "Close the card to continue", text: "Rent per level, the Brick price, and which Chogs own it. This is the only place you see other Chogs: <b>Message</b> or <b>Hype</b> them from here." },
-    { room: "map", title: "Your buying plan", sel: "#plans", text: "<b>Safe</b> buys a few Bricks and keeps half your cash. <b>Balanced</b> buys up to 6. <b>Degen</b> spends it all. It's set before the dice land." },
+    { title: "The title deed", sel: "#modal", wait: "sheetClosed", doLabel: "Close the card to continue", text: "What 1 Brick costs, what it earns in rent, and who owns the street. Buy here if you like it. This is the only place you see other Chogs: <b>Message</b> or <b>Hype</b> them from here." },
     { room: "portfolio", title: "Your portfolio", sel: ["#bankSheet", "#claimBtn"], text: "Your balance and everything your Chog owns, with what each is worth. The <b>Bank</b> tab next to it is the city's bank: borrow against a street there." },
     { room: "leaders", title: "Leaders", sel: [".podium", "#room-leaders .lbtabs"], text: "Its own page. <b>This season</b> ranks growth and pays the prizes. <b>Richest</b> ranks total net worth. The bottom quarter pays 5% of its cash into the pot when the season ends." },
     { room: "desk", title: "Your first rounds", sel: "#goals", text: "Work down this list. Press <b>Show me</b> and the game points at exactly where to click." },
@@ -110,7 +109,7 @@ window.Guide = (() => {
   let seenBankOut = false;
   const GOALS = [
     { id: "roll", label: "Roll the dice", room: "map", sel: "#roll", how: "On the Map, press Roll." },
-    { id: "bricks", label: "Own your first Bricks", room: "map", sel: ["#plans", "#roll"], how: "Keep rolling with Balanced or Degen. Your Chog buys Bricks on the street it lands on.", check: () => brickValue(G.me) > 0 },
+    { id: "bricks", label: "Own your first Bricks", room: "map", sel: ["#hereCard", "#roll"], how: "Roll onto a street, then press Buy on its card. The card shows what 1 Brick costs.", check: () => brickValue(G.me) > 0 },
     { id: "rent", label: "Earn rent from another Chog", room: "desk", sel: ["#ff2", "#deskInbox"], how: "Other Chogs land on your streets over time. In Practice, press +2 hours to let the city move.", check: () => G.me.unclaimed > 0 || G.me.lastIncome > 0 },
     { id: "claim", label: "Claim your rent", room: "portfolio", sel: "#claimBtn", how: "In your Portfolio, press Claim. Prestige and stamps add a bonus from the Commons." },
     { id: "quest", label: "Use a Monad app square", room: "map", sel: ["#modal [data-quest]", "#roll"], how: "Land on a square with an app logo, then press its app button. The position is held by your Chog." },

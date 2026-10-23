@@ -390,9 +390,9 @@ function land(c, dice, viaCard) {
       }
     }
     if (!c.broke) { // roll plan buys Bricks (committed before the dice)
-      const plan = { safe: { max: 3, keep: 0.5, lvl: 1 }, balanced: { max: 6, keep: 0.25, lvl: 9 }, degen: { max: 15, keep: 0, lvl: 9 } }[c.plan];
+      const plan = { safe: { max: 3, keep: 0.5, lvl: 1 }, balanced: { max: 6, keep: 0.25, lvl: 9 }, degen: { max: 15, keep: 0, lvl: 9 } }[c.plan]; // "manual": you choose on the card
       const fairOk = !p.fair || appraisal(c) < K.fairStartMax;
-      if (fairOk && level(p) <= plan.lvl && !locked(c, p)) {
+      if (!plan) { /* the player buys by hand from the street's card */ } else if (fairOk && level(p) <= plan.lvl && !locked(c, p)) {
         const budget = c.cash * (1 - plan.keep);
         const n = maxBuyable(c, p, plan.max, budget);
         if (n > 0) { buyBricks(c, p, n); out.bought = n; }

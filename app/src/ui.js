@@ -151,7 +151,7 @@ function openPracticeAccount(dep) {
   const fresh = mkChog(CHOG_ART.find(a => a.id === pick.id), false);
   G.chogs[G.chogs.indexOf(pick)] = fresh; G.me = fresh;
   const div = G.sleep / SUPPLY; G.sleep -= div; G.wallet.usdc -= dep; G.inflow += dep;
-  Object.assign(fresh, { cash: dep + div, woke: G.t, lastCash: G.t, lastRoll: G.t, taxUntil: G.t + DAY, immuneUntil: G.t + DAY, seasonAppraisal: 0, plan: G.plan, autoTax: true });
+  Object.assign(fresh, { cash: dep + div, woke: G.t, lastCash: G.t, lastRoll: G.t, taxUntil: G.t + DAY, immuneUntil: G.t + DAY, seasonAppraisal: 0, plan: "manual", autoTax: true });
   fresh.seasonAppraisal = appraisal(fresh); G.lastSeen = G.t;
   act("welcome", `Account opened. You deposited ${fmt(dep)} and claimed a ${fmt(div)} Sleeping Chog Dividend`, dep + div);
   sendDM(G.chogs.find(x => x.bot), fresh, "gm, new neighbour. The Lending Quarter is where the money is.");
@@ -277,7 +277,7 @@ ${onChain() ? "" : `<div class="card" id="deskInbox"><div class="row between"><h
         <div class="card dock stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
           <button class="rollbtn" id="roll">ROLL</button><button class="btn danger" id="bail" hidden>Pay $0.50 bail</button>
           <div class="row between"><span class="tiny">Rolls ready</span><span class="pips" id="mapPips"></span></div>
-          <div><div class="tiny" style="margin-bottom:6px">Buying plan</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
+          <div id="planBox"><div class="tiny" style="margin-bottom:6px">Buying plan</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
           <p class="result" id="lastev"></p></div>
         <div class="card tint stack" id="hereCard"></div></div></div>`;
     buildBoard($("#mapBox")); drawDie($("#d1"), 6); drawDie($("#d2"), 6); host.dataset.built = 1;
@@ -295,7 +295,9 @@ ${onChain() ? "" : `<div class="card" id="deskInbox"><div class="row between"><h
   $("#mapPips").innerHTML = Array.from({ length: K.rollCap + (c.tier !== "Common" ? 1 : 0) }, (_, k) => `<i class="${k < c.rolls ? "on" : ""}" style="width:9px;height:14px"></i>`).join("");
   $("#roll").textContent = c.jail ? "ROLL FOR DOUBLES" : c.rolls ? "ROLL" : "ROLL · 100";
   $("#roll").disabled = G.busy || c.bankrupt === G.seasonNo; $("#bail").hidden = !c.jail;
-  $("#hereCard").innerHTML = `<div class="eyebrow">You are on</div><h3>${s.name}</h3><div><button class="btn sm" data-tile="${c.pos}">Open its card</button></div>`;
+  $("#planBox").hidden = !onChain(); // in Practice you buy by hand from the street's card
+  const brick = s.t === "prop" ? buyCost(s, 1) * (1 + K.buyFee) : 0;
+  $("#hereCard").innerHTML = s.t === "prop" ? `<div class="row between"><div><div class="eyebrow">You are on</div><h3>${s.name}</h3></div><div style="text-align:right"><div class="tiny">1 Brick</div><b class="num" style="font-size:20px">${fmt(brick)}</b></div></div>${onChain() ? "" : `<button class="btn primary" data-tile="${c.pos}" data-buytab>Buy Bricks here</button>`}` : `<div class="eyebrow">You are on</div><h3>${s.name}</h3>`;
   requestAnimationFrame(renderPawns);
 }
 function paintSwitch() {
@@ -560,7 +562,7 @@ async function rollMe() {
   if (c.bankrupt === G.seasonNo) { toast("Bankrupt: top up in your Portfolio to play again, or wait for next season."); return room("portfolio"); }
   closeSheet();
   if (c.rolls <= 0) { if (G.wallet.chog < K.extraRollChog) return toast(`No rolls left. An extra roll costs ${K.extraRollChog} $CHOG.`); G.wallet.chog -= K.extraRollChog; G.chogBurned += K.extraRollChog; c.rolls++; }
-  G.busy = true; c.rolls--; c.rollsSeason++; c.lastRoll = G.t; c.plan = G.plan; c.broke = false; render();
+  G.busy = true; c.rolls--; c.rollsSeason++; c.lastRoll = G.t; c.plan = onChain() ? G.plan : "manual"; c.broke = false; render();
   const d1 = 1 + ri(6), d2 = 1 + ri(6);
   await showDice(d1, d2);
   if (c.jail > 0) {
@@ -634,7 +636,7 @@ document.addEventListener("click", e => {
   const mb = t.closest("[data-mort]"); if (mb) { if (onChain()) return Chain.mortgage(+mb.dataset.mort); const got = mortgage(G.me, SQ[+mb.dataset.mort]); toast(got ? `The Bank lent you ${fmt(got)}.` : "The Bank can't lend on that right now."); if (!$("#scrim").hidden) openTile(+mb.dataset.mort, U.deed?.landed); return render(); }
   const rb = t.closest("[data-repay]"); if (rb) { if (onChain()) return Chain.repay(+rb.dataset.repay); const r2 = repayMortgage(G.me, SQ[+rb.dataset.repay]); toast(r2 === -1 ? "Not enough cash to repay." : `Mortgage repaid (${fmt(r2)}).`); if (!$("#scrim").hidden) openTile(+rb.dataset.repay, U.deed?.landed); return render(); }
   const ab = t.closest("[data-auction]"); if (ab) { if (onChain()) return Chain.startAuction(+ab.dataset.auction, +$(".stepper2 .num").textContent); const p = SQ[+ab.dataset.auction], k = +$(".stepper2 .num").textContent, a = startAuction(G.me, p, k); toast(a ? `${a.n} Brick${a.n > 1 ? "s" : ""} on auction for 2 hours. Reserve ${fmt(a.reserve)}.` : "Can't auction those Bricks right now."); if (a) act("auction", `You put ${a.n} Brick${a.n > 1 ? "s" : ""} on ${p.name} up for auction`); openTile(p.i, U.deed.landed); return render(); }
-  const tl = t.closest("[data-tile]"); if (tl && !tl.closest("#heroMap")) return openTile(+tl.dataset.tile, false);
+  const tl = t.closest("[data-tile]"); if (tl && !tl.closest("#heroMap")) { if (tl.dataset.buytab !== undefined) { U.deedTab = "buy"; U.qty = null; return openTile(+tl.dataset.tile, true); } return openTile(+tl.dataset.tile, false); }
   const q = t.closest("[data-quest]"); if (q) return doQuest(+q.dataset.quest);
   const sl = t.closest("[data-sell]"); if (sl) { if (onChain()) return Chain.sell(+sl.dataset.sell); const p = SQ[+sl.dataset.sell], k = +($(".stepper2 .num")?.textContent || 1), got = sellBricks(G.me, p, k); if (got) toast(`Sold ${k} Brick${k > 1 ? "s" : ""} for ${fmt(got)}.`); U.qty = null; openTile(p.i, U.deed?.landed); return render(); }
   const h = t.closest("[data-heist]"); if (h) { if (onChain()) return Chain.heist(+h.dataset.heist); const res = heist(G.me, byId(+h.dataset.heist)); closeSheet(); toast(res.win ? `Heist worked: +${fmt(res.amt)}.` : `Caught. You paid ${fmt(res.amt)} and went to Rug Jail.`); return render(); }

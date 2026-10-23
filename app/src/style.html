@@ -488,4 +488,72 @@ details.more .renttable{margin-top:8px}
 .goals .tick{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line-2);display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--on-purple)}
 .goals li.ok .tick{background:var(--purple);border-color:var(--purple-deep)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ---------- landing (aumo-style spacing: full-height hero, small labels, big statements, wide gutters) ---------- */
+.L-wrap{max-width:1360px;margin:0 auto;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+@media (min-width:900px){.L-wrap{padding-left:56px;padding-right:56px}}
+.L-hero{position:relative;min-height:100svh;background:radial-gradient(1000px 700px at 80% 40%,var(--stage-2),var(--stage));color:var(--on-stage);display:flex;align-items:flex-end;overflow:hidden}
+.L-hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1.2px,transparent 1.2px);background-size:22px 22px;pointer-events:none}
+.L-wall{position:absolute;top:0;bottom:0;right:4%;width:min(46%,640px);display:flex;align-items:center;z-index:0}
+.L-wall .cardwall{height:100%;width:100%;transform:perspective(1400px) rotateY(-14deg) rotateX(6deg)}
+.L-herocopy{position:relative;z-index:1;width:100%;padding-bottom:clamp(56px,10vh,110px);padding-top:140px}
+.L-herocopy h1{color:var(--on-stage);font-size:clamp(3.2rem,8vw,7.4rem);line-height:.95;letter-spacing:-.035em;max-width:9.5ch;text-wrap:balance}
+.L-herocopy h1 em{font-style:normal;color:var(--gold)}
+.L-herocopy .row{margin-top:40px;gap:28px;align-items:center}
+.L-link{color:var(--on-stage);font-weight:800;text-decoration:none;border-bottom:2px solid rgba(255,255,255,.35);padding-bottom:3px}
+.L-link:hover{border-color:var(--gold)}
+.L-sec{padding-block:clamp(110px,16vh,180px)} .L-tight{padding-block:clamp(70px,10vh,110px)}
+.L-dark{background:var(--stage);color:var(--on-stage)} .L-light{background:var(--cream);color:var(--ink)}
+:root:not([data-theme="dark"]) .L-light{background:#FBF8F1}
+.L-label{font-size:15px;font-weight:700;opacity:.62;letter-spacing:.01em;margin-bottom:28px}
+.L-big{font-family:var(--display);font-size:clamp(2.2rem,5.4vw,5rem);line-height:1.04;letter-spacing:-.03em;max-width:17ch;font-weight:700}
+.L-mid{font-family:var(--display);font-size:clamp(1.4rem,2.4vw,2.1rem);line-height:1.22;letter-spacing:-.015em;font-weight:600;max-width:30ch;margin:0}
+.L-reveal span{opacity:.22;transition:opacity .35s ease} .L-reveal span.on{opacity:1}
+.L-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:40px;align-items:start}
+.L-split .L-label{margin:0}
+@media (max-width:820px){.L-split{grid-template-columns:1fr;gap:18px}}
+.L-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:clamp(56px,9vh,96px)}
+@media (max-width:720px){.L-tiles{grid-template-columns:1fr}}
+.L-tile{margin:0;display:flex;flex-direction:column;gap:14px}
+.L-tile figcaption{display:flex;flex-direction:column;gap:4px} .L-tile figcaption b{font-size:17px} .L-tile figcaption span{color:var(--ink-2);font-size:15px;max-width:46ch}
+.L-scene{position:relative;aspect-ratio:4/3;border-radius:22px;overflow:hidden;max-width:100%}
+.L-scene.t1{background:radial-gradient(circle at 30% 30%,#4B2A9E,var(--stage))} .L-scene.t2{background:radial-gradient(circle at 70% 30%,#FFCB55,#C47F06)}
+.L-scene.t3{background:radial-gradient(circle at 50% 40%,#2A1A5E,#120A2A)} .L-scene.t4{background:radial-gradient(circle at 50% 80%,#7042F5,#2A1460)}
+.L-chog{position:absolute;inset:12% 18% 0;background-size:cover;background-position:center top;border-radius:20px 20px 0 0;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.L-chip{position:absolute;top:9%;right:7%;background:#fff;color:#1C1433;font-weight:800;font-size:clamp(12px,1.4vw,16px);padding:10px 14px;border-radius:14px;box-shadow:0 6px 0 rgba(0,0,0,.18);display:flex;align-items:center;gap:8px;font-family:var(--mono)}
+.L-chip.up{color:#109B57} .L-chip i{width:10px;height:10px;border-radius:3px}
+.L-chip.L-c2{top:auto;bottom:9%;right:auto;left:7%;font-family:var(--body)}
+.L-applogos{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,auto);place-content:center;gap:clamp(14px,3vw,28px)}
+.L-applogos img{width:clamp(56px,9vw,104px);height:clamp(56px,9vw,104px);border-radius:24%;background:#fff;object-fit:contain;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.L-podium{position:absolute;inset:14% 10% 0;display:grid;grid-template-columns:repeat(3,1fr);align-items:end;gap:10px}
+.L-podium>div{display:flex;flex-direction:column;align-items:center;gap:10px}
+.L-podium i{width:68%;aspect-ratio:1;border-radius:50%;background-size:cover;border:4px solid #fff;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+.L-podium b{width:100%;display:grid;place-items:center;background:rgba(255,255,255,.16);color:#fff;font-family:var(--display);font-size:clamp(20px,3vw,34px);border-radius:12px 12px 0 0}
+.L-podium .p0 b{height:90px}.L-podium .p1 b{height:140px;background:var(--gold);color:#2A1A00}.L-podium .p2 b{height:64px}
+.L-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:clamp(56px,9vh,96px);border-top:1px solid rgba(255,255,255,.14);padding-top:32px}
+.L-stats b{display:block;font-family:var(--display);font-size:clamp(2.6rem,5vw,4.4rem);line-height:1;color:var(--gold);letter-spacing:-.03em}
+.L-stats span{display:block;margin-top:10px;opacity:.7;max-width:26ch}
+@media (max-width:720px){.L-stats{grid-template-columns:1fr}}
+.L-logos{display:flex;flex-wrap:wrap;gap:16px 44px;align-items:center}
+.L-logos span{display:flex;align-items:center;gap:12px;font-weight:800;font-size:clamp(17px,2vw,22px);opacity:.9}
+.L-logos img,.L-logos b{width:36px;height:36px;border-radius:10px;background:#fff;object-fit:contain;padding:3px;display:grid;place-items:center;color:#1C1433;font-size:18px}
+.L-cities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:clamp(56px,9vh,96px);border-top:1px solid var(--line-2)}
+.L-city{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:12px;padding:32px 28px 36px 0;border-right:1px solid var(--line-2);color:var(--ink)}
+.L-city+.L-city{padding-left:28px} .L-city:last-child{border-right:0}
+.L-city h3{font-size:clamp(1.4rem,2vw,1.8rem)} .L-city p{color:var(--ink-2);max-width:30ch;margin:0}
+.L-cn{font-family:var(--mono);font-size:13px;color:var(--ink-3)} .L-go{margin-top:auto;font-weight:800;color:var(--purple)} .L-soon{color:var(--ink-3)}
+.L-city:hover h3{color:var(--purple)}
+@media (max-width:820px){.L-cities{grid-template-columns:1fr}.L-city,.L-city+.L-city{padding:26px 0;border-right:0;border-bottom:1px solid var(--line-2)}}
+#faq .faq{max-width:none}
+.L-cta{text-align:left} .L-cta h2{color:var(--on-stage);font-size:clamp(3rem,8vw,7rem);line-height:.95;letter-spacing:-.035em;margin-bottom:40px} .L-cta h2 em{font-style:normal;color:var(--gold)}
+.L-foot{background:var(--stage);color:var(--on-stage);padding-block:56px 40px;border-top:1px solid rgba(255,255,255,.1)}
+.L-fcols{display:grid;grid-template-columns:2fr 1fr 1fr;gap:32px}
+.L-fcols h4{font-size:13px;opacity:.6;margin-bottom:12px;font-weight:700}
+.L-fcols a,.L-fcols button{display:block;all:unset;cursor:pointer;display:block;color:var(--on-stage);opacity:.85;margin-bottom:10px;font-weight:600}
+.L-fcols a:hover,.L-fcols button:hover{opacity:1;color:var(--gold)}
+.L-fbrand .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-family:var(--display);font-size:18px}
+.L-fbrand .brand i{width:34px;height:34px;border-radius:10px;background:var(--purple);display:grid;place-items:center;font-style:normal;font-size:13px}
+.L-fbrand p{opacity:.6;margin-top:10px}
+.L-fine{margin-top:40px;font-size:13px;opacity:.5}
+@media (max-width:720px){.L-fcols{grid-template-columns:1fr 1fr}.L-fbrand{grid-column:1/-1}}
+@media (max-width:820px){.L-hero{flex-direction:column;align-items:stretch;justify-content:flex-end}.L-wall{position:relative;inset:auto;width:100%;height:46svh;margin-top:84px;right:auto}.L-wall .cardwall{transform:none}.L-herocopy{padding-top:24px}}
 </style>

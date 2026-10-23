@@ -489,6 +489,74 @@ details.more .renttable{margin-top:8px}
 .goals .tick{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line-2);display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--on-purple)}
 .goals li.ok .tick{background:var(--purple);border-color:var(--purple-deep)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ---------- landing (aumo-style spacing: full-height hero, small labels, big statements, wide gutters) ---------- */
+.L-wrap{max-width:1360px;margin:0 auto;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+@media (min-width:900px){.L-wrap{padding-left:56px;padding-right:56px}}
+.L-hero{position:relative;min-height:100svh;background:radial-gradient(1000px 700px at 80% 40%,var(--stage-2),var(--stage));color:var(--on-stage);display:flex;align-items:flex-end;overflow:hidden}
+.L-hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1.2px,transparent 1.2px);background-size:22px 22px;pointer-events:none}
+.L-wall{position:absolute;top:0;bottom:0;right:4%;width:min(46%,640px);display:flex;align-items:center;z-index:0}
+.L-wall .cardwall{height:100%;width:100%;transform:perspective(1400px) rotateY(-14deg) rotateX(6deg)}
+.L-herocopy{position:relative;z-index:1;width:100%;padding-bottom:clamp(56px,10vh,110px);padding-top:140px}
+.L-herocopy h1{color:var(--on-stage);font-size:clamp(3.2rem,8vw,7.4rem);line-height:.95;letter-spacing:-.035em;max-width:9.5ch;text-wrap:balance}
+.L-herocopy h1 em{font-style:normal;color:var(--gold)}
+.L-herocopy .row{margin-top:40px;gap:28px;align-items:center}
+.L-link{color:var(--on-stage);font-weight:800;text-decoration:none;border-bottom:2px solid rgba(255,255,255,.35);padding-bottom:3px}
+.L-link:hover{border-color:var(--gold)}
+.L-sec{padding-block:clamp(110px,16vh,180px)} .L-tight{padding-block:clamp(70px,10vh,110px)}
+.L-dark{background:var(--stage);color:var(--on-stage)} .L-light{background:var(--cream);color:var(--ink)}
+:root:not([data-theme="dark"]) .L-light{background:#FBF8F1}
+.L-label{font-size:15px;font-weight:700;opacity:.62;letter-spacing:.01em;margin-bottom:28px}
+.L-big{font-family:var(--display);font-size:clamp(2.2rem,5.4vw,5rem);line-height:1.04;letter-spacing:-.03em;max-width:17ch;font-weight:700}
+.L-mid{font-family:var(--display);font-size:clamp(1.4rem,2.4vw,2.1rem);line-height:1.22;letter-spacing:-.015em;font-weight:600;max-width:30ch;margin:0}
+.L-reveal span{opacity:.22;transition:opacity .35s ease} .L-reveal span.on{opacity:1}
+.L-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:40px;align-items:start}
+.L-split .L-label{margin:0}
+@media (max-width:820px){.L-split{grid-template-columns:1fr;gap:18px}}
+.L-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:clamp(56px,9vh,96px)}
+@media (max-width:720px){.L-tiles{grid-template-columns:1fr}}
+.L-tile{margin:0;display:flex;flex-direction:column;gap:14px}
+.L-tile figcaption{display:flex;flex-direction:column;gap:4px} .L-tile figcaption b{font-size:17px} .L-tile figcaption span{color:var(--ink-2);font-size:15px;max-width:46ch}
+.L-scene{position:relative;aspect-ratio:4/3;border-radius:22px;overflow:hidden;max-width:100%}
+.L-scene.t1{background:radial-gradient(circle at 30% 30%,#4B2A9E,var(--stage))} .L-scene.t2{background:radial-gradient(circle at 70% 30%,#FFCB55,#C47F06)}
+.L-scene.t3{background:radial-gradient(circle at 50% 40%,#2A1A5E,#120A2A)} .L-scene.t4{background:radial-gradient(circle at 50% 80%,#7042F5,#2A1460)}
+.L-chog{position:absolute;inset:12% 18% 0;background-size:cover;background-position:center top;border-radius:20px 20px 0 0;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.L-chip{position:absolute;top:9%;right:7%;background:#fff;color:#1C1433;font-weight:800;font-size:clamp(12px,1.4vw,16px);padding:10px 14px;border-radius:14px;box-shadow:0 6px 0 rgba(0,0,0,.18);display:flex;align-items:center;gap:8px;font-family:var(--mono)}
+.L-chip.up{color:#109B57} .L-chip i{width:10px;height:10px;border-radius:3px}
+.L-chip.L-c2{top:auto;bottom:9%;right:auto;left:7%;font-family:var(--body)}
+.L-applogos{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,auto);place-content:center;gap:clamp(14px,3vw,28px)}
+.L-applogos img{width:clamp(56px,9vw,104px);height:clamp(56px,9vw,104px);border-radius:24%;background:#fff;object-fit:contain;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.L-podium{position:absolute;inset:14% 10% 0;display:grid;grid-template-columns:repeat(3,1fr);align-items:end;gap:10px}
+.L-podium>div{display:flex;flex-direction:column;align-items:center;gap:10px}
+.L-podium i{width:68%;aspect-ratio:1;border-radius:50%;background-size:cover;border:4px solid #fff;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+.L-podium b{width:100%;display:grid;place-items:center;background:rgba(255,255,255,.16);color:#fff;font-family:var(--display);font-size:clamp(20px,3vw,34px);border-radius:12px 12px 0 0}
+.L-podium .p0 b{height:90px}.L-podium .p1 b{height:140px;background:var(--gold);color:#2A1A00}.L-podium .p2 b{height:64px}
+.L-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:clamp(56px,9vh,96px);border-top:1px solid rgba(255,255,255,.14);padding-top:32px}
+.L-stats b{display:block;font-family:var(--display);font-size:clamp(2.6rem,5vw,4.4rem);line-height:1;color:var(--gold);letter-spacing:-.03em}
+.L-stats span{display:block;margin-top:10px;opacity:.7;max-width:26ch}
+@media (max-width:720px){.L-stats{grid-template-columns:1fr}}
+.L-logos{display:flex;flex-wrap:wrap;gap:16px 44px;align-items:center}
+.L-logos span{display:flex;align-items:center;gap:12px;font-weight:800;font-size:clamp(17px,2vw,22px);opacity:.9}
+.L-logos img,.L-logos b{width:36px;height:36px;border-radius:10px;background:#fff;object-fit:contain;padding:3px;display:grid;place-items:center;color:#1C1433;font-size:18px}
+.L-cities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:clamp(56px,9vh,96px);border-top:1px solid var(--line-2)}
+.L-city{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:12px;padding:32px 28px 36px 0;border-right:1px solid var(--line-2);color:var(--ink)}
+.L-city+.L-city{padding-left:28px} .L-city:last-child{border-right:0}
+.L-city h3{font-size:clamp(1.4rem,2vw,1.8rem)} .L-city p{color:var(--ink-2);max-width:30ch;margin:0}
+.L-cn{font-family:var(--mono);font-size:13px;color:var(--ink-3)} .L-go{margin-top:auto;font-weight:800;color:var(--purple)} .L-soon{color:var(--ink-3)}
+.L-city:hover h3{color:var(--purple)}
+@media (max-width:820px){.L-cities{grid-template-columns:1fr}.L-city,.L-city+.L-city{padding:26px 0;border-right:0;border-bottom:1px solid var(--line-2)}}
+#faq .faq{max-width:none}
+.L-cta{text-align:left} .L-cta h2{color:var(--on-stage);font-size:clamp(3rem,8vw,7rem);line-height:.95;letter-spacing:-.035em;margin-bottom:40px} .L-cta h2 em{font-style:normal;color:var(--gold)}
+.L-foot{background:var(--stage);color:var(--on-stage);padding-block:56px 40px;border-top:1px solid rgba(255,255,255,.1)}
+.L-fcols{display:grid;grid-template-columns:2fr 1fr 1fr;gap:32px}
+.L-fcols h4{font-size:13px;opacity:.6;margin-bottom:12px;font-weight:700}
+.L-fcols a,.L-fcols button{display:block;all:unset;cursor:pointer;display:block;color:var(--on-stage);opacity:.85;margin-bottom:10px;font-weight:600}
+.L-fcols a:hover,.L-fcols button:hover{opacity:1;color:var(--gold)}
+.L-fbrand .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-family:var(--display);font-size:18px}
+.L-fbrand .brand i{width:34px;height:34px;border-radius:10px;background:var(--purple);display:grid;place-items:center;font-style:normal;font-size:13px}
+.L-fbrand p{opacity:.6;margin-top:10px}
+.L-fine{margin-top:40px;font-size:13px;opacity:.5}
+@media (max-width:720px){.L-fcols{grid-template-columns:1fr 1fr}.L-fbrand{grid-column:1/-1}}
+@media (max-width:820px){.L-hero{flex-direction:column;align-items:stretch;justify-content:flex-end}.L-wall{position:relative;inset:auto;width:100%;height:46svh;margin-top:84px;right:auto}.L-wall .cardwall{transform:none}.L-herocopy{padding-top:24px}}
 </style>
 </head><body>
 
@@ -496,7 +564,7 @@ details.more .renttable{margin-top:8px}
   <div class="navpill">
     <button class="brand" data-go="landing" aria-label="The Chog of Wall Street, home"><i>CW</i><span>The Chog of Wall Street</span></button>
     <nav class="navlinks landing-links" id="landingLinks">
-      <a href="#how">How it works</a><a href="#apps">The board</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
+      <a href="#how">How it works</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
       <button class="btn primary sm" data-go="onboard" style="margin-left:6px">Open an account</button>
     </nav>
     <nav class="navlinks app-links" id="appLinks" hidden>
@@ -516,61 +584,68 @@ details.more .renttable{margin-top:8px}
 
 <!-- ================= LANDING ================= -->
 <main id="landing">
-  <section class="hero"><div class="wrap">
-    <div class="herogrid">
-      <div class="herocopy">
-        <h1>The city where <em>Chogs</em> own the land.</h1>
-        <div class="row">
-          <button class="btn gold lg" data-city="practice">Play free now</button>
-          <a class="btn ghost lg" href="#how">How it works</a>
-        </div>
-      </div>
-      <div class="herostage" aria-hidden="true">
-        <div class="cardwall" id="heroCards"></div>
+  <section class="L-hero">
+    <div class="L-wall" aria-hidden="true"><div class="cardwall" id="heroCards"></div></div>
+    <div class="L-wrap L-herocopy">
+      <h1>The city where <em>Chogs</em> own the land.</h1>
+      <div class="row">
+        <button class="btn gold lg" data-city="practice">Play free now</button>
+        <a class="L-link" href="#how">How it works</a>
       </div>
     </div>
-  </div></section>
-  <div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
+  </section>
 
-  <section class="band a" id="how"><div class="wrap">
-    <div class="sechead"><div class="eyebrow">How it works</div><h2>Four moves. That's the whole game.</h2><p>You never wait for a turn. Play a few rolls whenever you like, and your Chog keeps earning while you're away.</p></div>
-    <div class="steps">
-      <div class="card step"><div class="n">1</div><h3>Open an account</h3><p class="muted">Deposit $20 of USDC into your Chog. Everyone starts with the same $20.</p></div>
-      <div class="card step"><div class="n">2</div><h3>Roll</h3><p class="muted">Your Chog moves. Your buying plan buys Bricks (shares) of the street it lands on.</p></div>
-      <div class="card step"><div class="n">3</div><h3>Collect rent</h3><p class="muted">Every Chog that lands on your street pays rent to its Brick holders. Claim it from your Desk.</p></div>
-      <div class="card step"><div class="n">4</div><h3>Stay or sell</h3><p class="muted">Bricks never leave the Chog. Cashing out costs 10 to 20%. Selling the whole Chog keeps everything.</p></div>
+  <section class="L-sec L-dark" id="how"><div class="L-wrap">
+    <div class="L-label">Our thesis</div>
+    <p class="L-big L-reveal">A Chog shouldn't just sit in your wallet. Here it owns streets, collects rent from every Chog that passes, and grows into a business you can sell.</p>
+  </div></section>
+
+  <section class="L-sec L-light" id="apps"><div class="L-wrap">
+    <div class="L-split"><div class="L-label">What it runs</div><p class="L-mid L-reveal">One Chog, four ways to earn. Shares of streets by default, with a bank, real Monad apps and weekly seasons on top.</p></div>
+    <div class="L-tiles" id="landTiles"></div>
+  </div></section>
+
+  <section class="L-sec L-dark"><div class="L-wrap">
+    <div class="L-split"><div class="L-label">Guardrails</div><p class="L-mid L-reveal">Nothing is ever minted. Every dollar comes from a player, the rules live in the contract, and the contract proves its books balance.</p></div>
+    <div class="L-stats">
+      <div><b>$20</b><span>The same start for every Chog</span></div>
+      <div><b>48h</b><span>Roll at least every two days, or your streets stop paying</span></div>
+      <div><b>0</b><span>Dollars minted, ever</span></div>
     </div>
   </div></section>
 
-  <section class="band b" id="apps"><div class="wrap">
-    <div class="sechead"><div class="eyebrow">The board</div><h2>Six squares are real Monad apps.</h2><p>Land on one and your Chog does the real thing on Monad, without leaving the game. The positions belong to the NFT.</p></div>
-    <div class="apps" id="appCards"></div>
+  <section class="L-sec L-dark L-tight"><div class="L-wrap">
+    <div class="L-label">Runs on</div>
+    <div class="L-logos" id="landLogos"></div>
   </div></section>
 
-  <section class="band c" id="why"><div class="wrap split">
-    <div class="sechead" style="margin:0"><div class="eyebrow" style="color:inherit;opacity:.7">Why your Chog gets more valuable</div><h2>The land belongs to the NFT, not to your wallet.</h2>
-      <p>Bricks, stamps and Prestige are recorded against your Chog's token ID. They can't be withdrawn or sent anywhere. Sell the Chog and the buyer gets the whole empire. That's what makes every Chog worth more than its floor.</p></div>
-    <div class="stack">
-      <div class="card"><h3>Nothing is minted</h3><p class="muted">Every dollar you earn was paid by another Chog. The game never prints money, and part of every fee buys $CHOG and burns it.</p></div>
-      <div class="card"><h3>Leaving costs, staying pays</h3><p class="muted">Cash-outs are taxed 10 to 20% and the tax goes to the players who stay. Every day you stay adds 1% Prestige.</p></div>
-      <div class="card"><h3>Fair for everyone</h3><p class="muted">Everyone starts with $20, one Chog can own at most 40% of a street, and streets stop paying Chogs that haven't rolled in 48 hours.</p></div>
+  <section class="L-sec L-light" id="cities"><div class="L-wrap">
+    <div class="L-split"><div class="L-label">Three cities</div><p class="L-mid">Same board. Pick your stakes.</p></div>
+    <div class="L-cities">
+      <button class="L-city" data-city="practice"><span class="L-cn">01</span><h3>Practice City</h3><p>Play money, no wallet. Start in seconds.</p><span class="L-go">Play →</span></button>
+      <button class="L-city" data-city="testnet"><span class="L-cn">02</span><h3>Testnet City</h3><p>The real contracts on Monad testnet. Free test Chog and USDC.</p><span class="L-go">Enter →</span></button>
+      <button class="L-city" data-city="mainnet"><span class="L-cn">03</span><h3>Mainnet City</h3><p>Your real Chog Genesis and real USDC.</p><span class="L-go L-soon">Coming soon</span></button>
     </div>
   </div></section>
 
-  <section class="band a" id="cities"><div class="wrap">
-    <div class="sechead"><div class="eyebrow">Three cities</div><h2>Same board. Pick your stakes.</h2></div>
-    <div class="cities">
-      <button class="city" data-city="practice"><span class="row between"><h3>Practice City</h3><span class="pill ok">No wallet</span></span><span class="what">Play money and 14 bot Chogs that keep playing. Fast-forward time to see rent, Prestige and seasons play out.</span><span class="btn primary">Play Practice</span></button>
-      <button class="city" data-city="testnet"><span class="row between"><h3>Testnet City</h3><span class="pill purple">Monad testnet</span></span><span class="what">The real contracts on Monad testnet. Mint a free test Chog, test USDC and test $CHOG. Every move is a real transaction.</span><span class="btn">Enter Testnet</span></button>
-      <button class="city" data-city="mainnet"><span class="row between"><h3>Mainnet City</h3><span class="pill warn">Coming soon</span></span><span class="what">Your real Chog Genesis NFT, real USDC, and $CHOG for power-ups. The six app squares do real things on Monad.</span><span class="btn" disabled>Not open yet</span></button>
-    </div>
-  </div></section>
-
-  <section class="band c" id="faq"><div class="wrap">
-    <div class="sechead"><div class="eyebrow" style="color:inherit;opacity:.7">FAQ</div><h2>Questions people ask</h2></div>
+  <section class="L-sec L-light L-tight" id="faq"><div class="L-wrap L-split">
+    <div class="L-label">Questions</div>
     <div class="faq" id="faqList"></div>
-    <footer>The Chog of Wall Street · a Chogathon 2026 project · community-built, not an official Chog product · unaudited contracts, play with what you can afford to lose.</footer>
   </div></section>
+
+  <section class="L-sec L-dark L-cta"><div class="L-wrap">
+    <h2>Make your Chog <em>earn.</em></h2>
+    <button class="btn gold lg" data-city="practice">Play free now</button>
+  </div></section>
+
+  <footer class="L-foot"><div class="L-wrap">
+    <div class="L-fcols">
+      <div class="L-fbrand"><span class="brand"><i>CW</i><span>The Chog of Wall Street</span></span><p>Built on Monad for Chogathon 2026.</p></div>
+      <div><h4>Play</h4><button data-city="practice">Practice City</button><button data-city="testnet">Testnet City</button><button data-go="rules">Rules</button></div>
+      <div><h4>Learn</h4><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="https://github.com/NECOKIZZ/The-Chog-of-Wall-Street" target="_blank" rel="noopener">GitHub</a></div>
+    </div>
+    <p class="L-fine">Community-built, not an official Chog product. Unaudited contracts: only play with what you can afford to lose.</p>
+  </div></footer>
 </main>
 
 <!-- ================= OPEN AN ACCOUNT ================= -->
@@ -1185,9 +1260,6 @@ function room(name) {
 
 // ---------- landing ----------
 function renderLanding() {
-  $("#appCards").innerHTML = Object.entries(WIRED).map(([k, w]) => `<div class="card appc"><img src="${LOGOS[k]}" alt=""><div><h3>${w.name}</h3><p class="muted small">${w.what}</p><p class="tiny">${SQ.filter(s => s.brand === k).map(s => s.name).join(" · ")}</p></div></div>`).join("");
-  const tick = ["CHOG #1462 bought 6 Bricks on Penny Stock Row", "Rent paid on Leverage Pit <b>+$1.54</b>", "Nad Lounge jackpot <b>+$2.31</b>", "Heist foiled on Lender's Court", "Prestige +1% · day 12", "Cash-out tax <b class=dn>-19%</b> paid to the stayers", "Closing Bell: last buyer wins 10% of the pot", "Fees bought back and burned 14,077 $CHOG", "Everyone starts with $20"];
-  $("#ticker").innerHTML = [...tick, ...tick].map(t => `<span>${t}</span>`).join("");
   const faq = [
     ["Do I have to wait for my turn?", "No. There are no turns. You get one roll every 30 minutes (store up to 8) and play whenever you like. Everyone shares one city."],
     ["When does the game start and end?", "The city never resets, so your Bricks and Prestige keep their value. Seasons last 7 days. A timer on your Desk counts down; in the last 24 hours the Closing Bell rings and the last Brick buyer wins 10% of the season pot. At the end of a season the richest Chogs share the pot, and the poorest active Chogs pay a small 5% wealth tax on their cash into it."],
@@ -1200,7 +1272,21 @@ function renderLanding() {
     ["Why can't I just withdraw everything?", "You can, but it costs 10 to 20% (paid to the players who stay), waits 48 hours, and resets your Prestige. Bricks can't be withdrawn at all. Selling the whole Chog is usually the better exit."],
     ["Do I need a Chog NFT?", "Not for Practice City. Testnet gives you a free test Chog. Mainnet needs a real Chog Genesis NFT."],
   ];
-  $("#faqList").innerHTML = faq.map(([q, a]) => `<details><summary>${q}</summary><p class="muted">${a}</p></details>`).join("");
+  $("#faqList").innerHTML = faq.slice(0, 6).map(([q, a]) => `<details><summary>${q}</summary><p class="muted">${a}</p></details>`).join("");
+  // "What it runs": four big tiles, each a little scene made of real Chogs and real numbers from the game
+  const art = id => (CHOG_ART.find(a => a.id === id) || CHOG_ART[0]).img;
+  const tiles = [
+    ["Streets", "Buy Bricks, shares of a street. Every Chog that lands there pays you rent.", "t1", `<i class="L-chog" style="background-image:url(${art(1)})"></i><span class="L-chip up">RENT +$1.54</span><span class="L-chip L-c2"><i style="background:var(--d-pink)"></i>Payday Lane · 1 Brick $0.13</span>`],
+    ["The Bank", "Borrow against your streets, bid at auction, save in Morpho's USDC vault.", "t2", `<i class="L-chog" style="background-image:url(${art(900)})"></i><span class="L-chip">Loan +$0.42</span><span class="L-chip L-c2">Savings · 6.2% a year</span>`],
+    ["Monad apps", "Six squares do real things: buy $CHOG, stake MON, swap to USDC.", "t3", `<div class="L-applogos">${["nadfun", "fastlane", "apriori", "kintsu", "uniswap"].map(k => `<img src="${LOGOS[k]}" alt="${WIRED[k].name}">`).join("")}</div>`],
+    ["Seasons", "Every week the Chogs that grew most share the prize pool.", "t4", `<div class="L-podium">${[758, 561, 1].map((id, k) => `<div class="p${k}"><i style="background-image:url(${art(id)})"></i><b>${[2, 1, 3][k]}</b></div>`).join("")}</div><span class="L-chip L-c2">Season pot $13.24</span>`],
+  ];
+  $("#landTiles").innerHTML = tiles.map(([h, p, cls, scene]) => `<figure class="L-tile"><div class="L-scene ${cls}">${scene}</div><figcaption><b>${h}</b><span>${p}</span></figcaption></figure>`).join("");
+  $("#landLogos").innerHTML = ["nadfun", "fastlane", "apriori", "kintsu", "uniswap"].map(k => `<span><img src="${LOGOS[k]}" alt="">${WIRED[k].name}</span>`).join("") + `<span><b class="L-morpho">M</b>Morpho</span><span><b class="L-monad">◆</b>Monad</span>`;
+  // statements light up word by word as they scroll into view
+  document.querySelectorAll(".L-reveal").forEach(el => { if (!el.dataset.split) { el.dataset.split = 1; el.innerHTML = el.textContent.split(" ").map(w => `<span>${w}</span>`).join(" "); } });
+  const lit = () => document.querySelectorAll(".L-reveal").forEach(el => { const r = el.getBoundingClientRect(), k = Math.min(1, Math.max(0, (innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.35))), w = el.children, n = Math.round(k * w.length); for (let i = 0; i < w.length; i++) w[i].classList.toggle("on", i < n); });
+  if (!window.__litOn) { window.__litOn = 1; addEventListener("scroll", lit, { passive: true }); addEventListener("resize", lit); } lit();
   // the hero: three columns of Chog cards drifting past, each showing what a Chog owns and how it's doing this season
   const streets = PROPS.filter(x => !x.brand).slice(0, 15), card = (a, k) => { const st = streets[k % streets.length], g = ((a.id * 37) % 900 + 40) * 10, nw = 20000 + ((a.id * 53) % 400) * 120;
     return `<div class="ccard"><i class="cimg" style="background-image:url(${a.img})"></i><div class="cbody"><div class="row between"><b>${esc(a.name.replace(/^CHOG /, ""))}</b><span class="pill purple">${a.tier}</span></div><div class="cstreet"><i style="background:${D[st.d].c}"></i>${st.name}</div><div class="row between"><span class="num">${fmt(nw)}</span><span class="num up">+${fmt(g)}</span></div></div></div>`; };

@@ -3,7 +3,7 @@
   <div class="navpill">
     <button class="brand" data-go="landing" aria-label="The Chog of Wall Street, home"><i>CW</i><span>The Chog of Wall Street</span></button>
     <nav class="navlinks landing-links" id="landingLinks">
-      <a href="#how">How it works</a><a href="#apps">The board</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
+      <a href="#how">How it works</a><a href="#cities">Cities</a><a href="#faq">FAQ</a>
       <button class="btn primary sm" data-go="onboard" style="margin-left:6px">Open an account</button>
     </nav>
     <nav class="navlinks app-links" id="appLinks" hidden>
@@ -23,61 +23,68 @@
 
 <!-- ================= LANDING ================= -->
 <main id="landing">
-  <section class="hero"><div class="wrap">
-    <div class="herogrid">
-      <div class="herocopy">
-        <h1>The city where <em>Chogs</em> own the land.</h1>
-        <div class="row">
-          <button class="btn gold lg" data-city="practice">Play free now</button>
-          <a class="btn ghost lg" href="#how">How it works</a>
-        </div>
-      </div>
-      <div class="herostage" aria-hidden="true">
-        <div class="cardwall" id="heroCards"></div>
+  <section class="L-hero">
+    <div class="L-wall" aria-hidden="true"><div class="cardwall" id="heroCards"></div></div>
+    <div class="L-wrap L-herocopy">
+      <h1>The city where <em>Chogs</em> own the land.</h1>
+      <div class="row">
+        <button class="btn gold lg" data-city="practice">Play free now</button>
+        <a class="L-link" href="#how">How it works</a>
       </div>
     </div>
-  </div></section>
-  <div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
+  </section>
 
-  <section class="band a" id="how"><div class="wrap">
-    <div class="sechead"><div class="eyebrow">How it works</div><h2>Four moves. That's the whole game.</h2><p>You never wait for a turn. Play a few rolls whenever you like, and your Chog keeps earning while you're away.</p></div>
-    <div class="steps">
-      <div class="card step"><div class="n">1</div><h3>Open an account</h3><p class="muted">Deposit $20 of USDC into your Chog. Everyone starts with the same $20.</p></div>
-      <div class="card step"><div class="n">2</div><h3>Roll</h3><p class="muted">Your Chog moves. Your buying plan buys Bricks (shares) of the street it lands on.</p></div>
-      <div class="card step"><div class="n">3</div><h3>Collect rent</h3><p class="muted">Every Chog that lands on your street pays rent to its Brick holders. Claim it from your Desk.</p></div>
-      <div class="card step"><div class="n">4</div><h3>Stay or sell</h3><p class="muted">Bricks never leave the Chog. Cashing out costs 10 to 20%. Selling the whole Chog keeps everything.</p></div>
+  <section class="L-sec L-dark" id="how"><div class="L-wrap">
+    <div class="L-label">Our thesis</div>
+    <p class="L-big L-reveal">A Chog shouldn't just sit in your wallet. Here it owns streets, collects rent from every Chog that passes, and grows into a business you can sell.</p>
+  </div></section>
+
+  <section class="L-sec L-light" id="apps"><div class="L-wrap">
+    <div class="L-split"><div class="L-label">What it runs</div><p class="L-mid L-reveal">One Chog, four ways to earn. Shares of streets by default, with a bank, real Monad apps and weekly seasons on top.</p></div>
+    <div class="L-tiles" id="landTiles"></div>
+  </div></section>
+
+  <section class="L-sec L-dark"><div class="L-wrap">
+    <div class="L-split"><div class="L-label">Guardrails</div><p class="L-mid L-reveal">Nothing is ever minted. Every dollar comes from a player, the rules live in the contract, and the contract proves its books balance.</p></div>
+    <div class="L-stats">
+      <div><b>$20</b><span>The same start for every Chog</span></div>
+      <div><b>48h</b><span>Roll at least every two days, or your streets stop paying</span></div>
+      <div><b>0</b><span>Dollars minted, ever</span></div>
     </div>
   </div></section>
 
-  <section class="band b" id="apps"><div class="wrap">
-    <div class="sechead"><div class="eyebrow">The board</div><h2>Six squares are real Monad apps.</h2><p>Land on one and your Chog does the real thing on Monad, without leaving the game. The positions belong to the NFT.</p></div>
-    <div class="apps" id="appCards"></div>
+  <section class="L-sec L-dark L-tight"><div class="L-wrap">
+    <div class="L-label">Runs on</div>
+    <div class="L-logos" id="landLogos"></div>
   </div></section>
 
-  <section class="band c" id="why"><div class="wrap split">
-    <div class="sechead" style="margin:0"><div class="eyebrow" style="color:inherit;opacity:.7">Why your Chog gets more valuable</div><h2>The land belongs to the NFT, not to your wallet.</h2>
-      <p>Bricks, stamps and Prestige are recorded against your Chog's token ID. They can't be withdrawn or sent anywhere. Sell the Chog and the buyer gets the whole empire. That's what makes every Chog worth more than its floor.</p></div>
-    <div class="stack">
-      <div class="card"><h3>Nothing is minted</h3><p class="muted">Every dollar you earn was paid by another Chog. The game never prints money, and part of every fee buys $CHOG and burns it.</p></div>
-      <div class="card"><h3>Leaving costs, staying pays</h3><p class="muted">Cash-outs are taxed 10 to 20% and the tax goes to the players who stay. Every day you stay adds 1% Prestige.</p></div>
-      <div class="card"><h3>Fair for everyone</h3><p class="muted">Everyone starts with $20, one Chog can own at most 40% of a street, and streets stop paying Chogs that haven't rolled in 48 hours.</p></div>
+  <section class="L-sec L-light" id="cities"><div class="L-wrap">
+    <div class="L-split"><div class="L-label">Three cities</div><p class="L-mid">Same board. Pick your stakes.</p></div>
+    <div class="L-cities">
+      <button class="L-city" data-city="practice"><span class="L-cn">01</span><h3>Practice City</h3><p>Play money, no wallet. Start in seconds.</p><span class="L-go">Play →</span></button>
+      <button class="L-city" data-city="testnet"><span class="L-cn">02</span><h3>Testnet City</h3><p>The real contracts on Monad testnet. Free test Chog and USDC.</p><span class="L-go">Enter →</span></button>
+      <button class="L-city" data-city="mainnet"><span class="L-cn">03</span><h3>Mainnet City</h3><p>Your real Chog Genesis and real USDC.</p><span class="L-go L-soon">Coming soon</span></button>
     </div>
   </div></section>
 
-  <section class="band a" id="cities"><div class="wrap">
-    <div class="sechead"><div class="eyebrow">Three cities</div><h2>Same board. Pick your stakes.</h2></div>
-    <div class="cities">
-      <button class="city" data-city="practice"><span class="row between"><h3>Practice City</h3><span class="pill ok">No wallet</span></span><span class="what">Play money and 14 bot Chogs that keep playing. Fast-forward time to see rent, Prestige and seasons play out.</span><span class="btn primary">Play Practice</span></button>
-      <button class="city" data-city="testnet"><span class="row between"><h3>Testnet City</h3><span class="pill purple">Monad testnet</span></span><span class="what">The real contracts on Monad testnet. Mint a free test Chog, test USDC and test $CHOG. Every move is a real transaction.</span><span class="btn">Enter Testnet</span></button>
-      <button class="city" data-city="mainnet"><span class="row between"><h3>Mainnet City</h3><span class="pill warn">Coming soon</span></span><span class="what">Your real Chog Genesis NFT, real USDC, and $CHOG for power-ups. The six app squares do real things on Monad.</span><span class="btn" disabled>Not open yet</span></button>
-    </div>
-  </div></section>
-
-  <section class="band c" id="faq"><div class="wrap">
-    <div class="sechead"><div class="eyebrow" style="color:inherit;opacity:.7">FAQ</div><h2>Questions people ask</h2></div>
+  <section class="L-sec L-light L-tight" id="faq"><div class="L-wrap L-split">
+    <div class="L-label">Questions</div>
     <div class="faq" id="faqList"></div>
-    <footer>The Chog of Wall Street · a Chogathon 2026 project · community-built, not an official Chog product · unaudited contracts, play with what you can afford to lose.</footer>
   </div></section>
+
+  <section class="L-sec L-dark L-cta"><div class="L-wrap">
+    <h2>Make your Chog <em>earn.</em></h2>
+    <button class="btn gold lg" data-city="practice">Play free now</button>
+  </div></section>
+
+  <footer class="L-foot"><div class="L-wrap">
+    <div class="L-fcols">
+      <div class="L-fbrand"><span class="brand"><i>CW</i><span>The Chog of Wall Street</span></span><p>Built on Monad for Chogathon 2026.</p></div>
+      <div><h4>Play</h4><button data-city="practice">Practice City</button><button data-city="testnet">Testnet City</button><button data-go="rules">Rules</button></div>
+      <div><h4>Learn</h4><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="https://github.com/NECOKIZZ/The-Chog-of-Wall-Street" target="_blank" rel="noopener">GitHub</a></div>
+    </div>
+    <p class="L-fine">Community-built, not an official Chog product. Unaudited contracts: only play with what you can afford to lose.</p>
+  </div></footer>
 </main>
 
 <!-- ================= OPEN AN ACCOUNT ================= -->

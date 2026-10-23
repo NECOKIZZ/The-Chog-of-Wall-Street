@@ -47,9 +47,6 @@ function room(name) {
 
 // ---------- landing ----------
 function renderLanding() {
-  $("#appCards").innerHTML = Object.entries(WIRED).map(([k, w]) => `<div class="card appc"><img src="${LOGOS[k]}" alt=""><div><h3>${w.name}</h3><p class="muted small">${w.what}</p><p class="tiny">${SQ.filter(s => s.brand === k).map(s => s.name).join(" · ")}</p></div></div>`).join("");
-  const tick = ["CHOG #1462 bought 6 Bricks on Penny Stock Row", "Rent paid on Leverage Pit <b>+$1.54</b>", "Nad Lounge jackpot <b>+$2.31</b>", "Heist foiled on Lender's Court", "Prestige +1% · day 12", "Cash-out tax <b class=dn>-19%</b> paid to the stayers", "Closing Bell: last buyer wins 10% of the pot", "Fees bought back and burned 14,077 $CHOG", "Everyone starts with $20"];
-  $("#ticker").innerHTML = [...tick, ...tick].map(t => `<span>${t}</span>`).join("");
   const faq = [
     ["Do I have to wait for my turn?", "No. There are no turns. You get one roll every 30 minutes (store up to 8) and play whenever you like. Everyone shares one city."],
     ["When does the game start and end?", "The city never resets, so your Bricks and Prestige keep their value. Seasons last 7 days. A timer on your Desk counts down; in the last 24 hours the Closing Bell rings and the last Brick buyer wins 10% of the season pot. At the end of a season the richest Chogs share the pot, and the poorest active Chogs pay a small 5% wealth tax on their cash into it."],
@@ -62,7 +59,21 @@ function renderLanding() {
     ["Why can't I just withdraw everything?", "You can, but it costs 10 to 20% (paid to the players who stay), waits 48 hours, and resets your Prestige. Bricks can't be withdrawn at all. Selling the whole Chog is usually the better exit."],
     ["Do I need a Chog NFT?", "Not for Practice City. Testnet gives you a free test Chog. Mainnet needs a real Chog Genesis NFT."],
   ];
-  $("#faqList").innerHTML = faq.map(([q, a]) => `<details><summary>${q}</summary><p class="muted">${a}</p></details>`).join("");
+  $("#faqList").innerHTML = faq.slice(0, 6).map(([q, a]) => `<details><summary>${q}</summary><p class="muted">${a}</p></details>`).join("");
+  // "What it runs": four big tiles, each a little scene made of real Chogs and real numbers from the game
+  const art = id => (CHOG_ART.find(a => a.id === id) || CHOG_ART[0]).img;
+  const tiles = [
+    ["Streets", "Buy Bricks, shares of a street. Every Chog that lands there pays you rent.", "t1", `<i class="L-chog" style="background-image:url(${art(1)})"></i><span class="L-chip up">RENT +$1.54</span><span class="L-chip L-c2"><i style="background:var(--d-pink)"></i>Payday Lane · 1 Brick $0.13</span>`],
+    ["The Bank", "Borrow against your streets, bid at auction, save in Morpho's USDC vault.", "t2", `<i class="L-chog" style="background-image:url(${art(900)})"></i><span class="L-chip">Loan +$0.42</span><span class="L-chip L-c2">Savings · 6.2% a year</span>`],
+    ["Monad apps", "Six squares do real things: buy $CHOG, stake MON, swap to USDC.", "t3", `<div class="L-applogos">${["nadfun", "fastlane", "apriori", "kintsu", "uniswap"].map(k => `<img src="${LOGOS[k]}" alt="${WIRED[k].name}">`).join("")}</div>`],
+    ["Seasons", "Every week the Chogs that grew most share the prize pool.", "t4", `<div class="L-podium">${[758, 561, 1].map((id, k) => `<div class="p${k}"><i style="background-image:url(${art(id)})"></i><b>${[2, 1, 3][k]}</b></div>`).join("")}</div><span class="L-chip L-c2">Season pot $13.24</span>`],
+  ];
+  $("#landTiles").innerHTML = tiles.map(([h, p, cls, scene]) => `<figure class="L-tile"><div class="L-scene ${cls}">${scene}</div><figcaption><b>${h}</b><span>${p}</span></figcaption></figure>`).join("");
+  $("#landLogos").innerHTML = ["nadfun", "fastlane", "apriori", "kintsu", "uniswap"].map(k => `<span><img src="${LOGOS[k]}" alt="">${WIRED[k].name}</span>`).join("") + `<span><b class="L-morpho">M</b>Morpho</span><span><b class="L-monad">◆</b>Monad</span>`;
+  // statements light up word by word as they scroll into view
+  document.querySelectorAll(".L-reveal").forEach(el => { if (!el.dataset.split) { el.dataset.split = 1; el.innerHTML = el.textContent.split(" ").map(w => `<span>${w}</span>`).join(" "); } });
+  const lit = () => document.querySelectorAll(".L-reveal").forEach(el => { const r = el.getBoundingClientRect(), k = Math.min(1, Math.max(0, (innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.35))), w = el.children, n = Math.round(k * w.length); for (let i = 0; i < w.length; i++) w[i].classList.toggle("on", i < n); });
+  if (!window.__litOn) { window.__litOn = 1; addEventListener("scroll", lit, { passive: true }); addEventListener("resize", lit); } lit();
   // the hero: three columns of Chog cards drifting past, each showing what a Chog owns and how it's doing this season
   const streets = PROPS.filter(x => !x.brand).slice(0, 15), card = (a, k) => { const st = streets[k % streets.length], g = ((a.id * 37) % 900 + 40) * 10, nw = 20000 + ((a.id * 53) % 400) * 120;
     return `<div class="ccard"><i class="cimg" style="background-image:url(${a.img})"></i><div class="cbody"><div class="row between"><b>${esc(a.name.replace(/^CHOG /, ""))}</b><span class="pill purple">${a.tier}</span></div><div class="cstreet"><i style="background:${D[st.d].c}"></i>${st.name}</div><div class="row between"><span class="num">${fmt(nw)}</span><span class="num up">+${fmt(g)}</span></div></div></div>`; };

@@ -18,7 +18,7 @@
   --up:#109B57; --down:#D93A40;
   --stage:#22124D; --stage-2:#331C6E; --on-stage:#FFFFFF; --on-stage-2:rgba(255,255,255,.72);
   --shadow:0 10px 30px rgba(42,22,99,.08);
-  --board:#DDD4F3; --tile:#FFFFFF; --tile-2:#F2EDFC; --tile-edge:#C4B7E6;
+  --board:#E9E3F6; --tile:#FFFFFF; --tile-2:#F2EDFC; --tile-edge:#C4B7E6; --cream:#FFFDF7; --cream-hi:#FFF7E3; --tile-line:rgba(28,20,51,.32);
   --d-brown:#9A5B3C; --d-lblue:#4FB6E5; --d-pink:#E85CA8; --d-orange:#F08A24; --d-red:#DD3F4E; --d-yellow:#E8BB16;
   --d-green:#159F9B; --d-dblue:#3550D9; --d-station:#6F7690; --d-util:#9C8FB8;
   --display:'Bricolage Grotesque','Arial Rounded MT Bold',system-ui,sans-serif; --body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
@@ -33,7 +33,7 @@
   --up:#3ED492; --down:#FF6B76;
   --stage:#1A0F3C; --stage-2:#2A1A5E;
   --shadow:0 10px 30px rgba(0,0,0,.35);
-  --board:#2A2050; --tile:#2C2354; --tile-2:#241C47; --tile-edge:#120C29; color-scheme:dark}}
+  --board:#17102E; --tile:#2C2354; --tile-2:#241C47; --tile-edge:#0A0716; --cream:#221A3F; --cream-hi:#2B2250; --tile-line:rgba(241,237,255,.28); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#100B20; --bg-2:#17102E; --card:#1C1536; --raise:#241B44; --ink:#F1EDFF; --ink-2:#B9B0D6; --ink-3:#8278A4;
   --line:rgba(241,237,255,.09); --line-2:rgba(241,237,255,.18); --ledge:#0A0716;
@@ -43,7 +43,7 @@
   --up:#3ED492; --down:#FF6B76;
   --stage:#1A0F3C; --stage-2:#2A1A5E;
   --shadow:0 10px 30px rgba(0,0,0,.35);
-  --board:#2A2050; --tile:#2C2354; --tile-2:#241C47; --tile-edge:#120C29; color-scheme:dark}
+  --board:#17102E; --tile:#2C2354; --tile-2:#241C47; --tile-edge:#0A0716; --cream:#221A3F; --cream-hi:#2B2250; --tile-line:rgba(241,237,255,.28); color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
 [hidden]{display:none!important}
@@ -292,28 +292,28 @@ body[data-mode="mainnet"] .citybadge{background:var(--gold-soft);color:var(--gol
 .mapbox.angled{max-width:min(860px,calc((100vh - 230px) * 1.45))}
 #heroMap{max-width:none}
 .mapbox.angled{aspect-ratio:1.45/1;perspective:1600px}
-.board{position:absolute;inset:0;display:grid;grid-template-columns:1.55fr repeat(9,1fr) 1.55fr;grid-template-rows:1.55fr repeat(9,1fr) 1.55fr;gap:4px;padding:7px;background:var(--board);border-radius:22px;box-shadow:0 6px 0 var(--tile-edge)}
+/* Board: design A "Classic deed". Cream tiles on thin ink lines, the colour band on the inner edge, names in capitals, everything upright. */
+.board{position:absolute;inset:0;display:grid;grid-template-columns:1.55fr repeat(9,1fr) 1.55fr;grid-template-rows:1.55fr repeat(9,1fr) 1.55fr;gap:0;background:var(--board);border:2px solid var(--ink);border-radius:6px;box-shadow:0 6px 0 var(--tile-edge)}
 .mapbox.angled .board{width:64%;height:auto;aspect-ratio:1/1;inset:auto;left:18%;top:2%;transform:rotateX(56deg) rotateZ(-45deg);box-shadow:16px 16px 0 var(--tile-edge)}
-.tile{position:relative;border:0;padding:0;background:var(--tile);border-radius:7px;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;color:var(--ink);text-align:center;box-shadow:0 2px 0 var(--tile-edge);transition:transform .1s}
-.tile:hover{transform:translateY(-1px)}
-.tile .bd{flex:none;height:21%;min-height:5px;display:flex;align-items:center;justify-content:center}
-.tile.b .bd{order:0} .tile.t .bd{order:2}
-.tile.l,.tile.r{flex-direction:row} .tile.l .bd,.tile.r .bd{width:21%;height:auto;min-width:5px}
-.tile.l .bd{order:2}
+.tile{position:relative;padding:0;background:var(--cream);border:1px solid var(--tile-line);border-radius:0;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0;color:var(--ink);text-align:center}
+.tile:hover{background:var(--cream-hi)}
+.tile .bd{flex:none;height:22%;min-height:5px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--tile-line)}
+.tile.t .bd{order:2;border-bottom:0;border-top:1px solid var(--tile-line)}
+.tile.l,.tile.r{flex-direction:row} .tile.l .bd,.tile.r .bd{width:22%;height:auto;min-width:5px;border-bottom:0}
+.tile.l .bd{order:2;border-left:1px solid var(--tile-line)} .tile.r .bd{border-right:1px solid var(--tile-line)}
 .tile .tb{flex:1;min-width:0;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:2px}
-.tile .tn{flex:none;width:100%;font-size:clamp(4px,min(14cqi,20cqb),12px);font-weight:700;line-height:1.08;text-align:center;word-break:keep-all;overflow-wrap:normal;hyphens:none;text-wrap:balance}
+.tile .tn{flex:none;width:100%;font-size:clamp(4px,min(13cqi,19cqb),12px);font-weight:800;text-transform:uppercase;letter-spacing:.02em;line-height:1.08;text-align:center;word-break:keep-all;overflow-wrap:normal;hyphens:none;text-wrap:balance}
 .tile .tp,.tile .logo,.tile .gl{flex:none}
-.tile .tp{font-family:var(--mono);font-size:clamp(4px,min(10cqi,15cqb),10px);font-weight:700;color:var(--ink-3);line-height:1}
-.tile .logo{width:min(34cqi,30cqb);height:min(34cqi,30cqb);border-radius:22%;background:#fff;object-fit:contain;flex:none}
-.tile .gl{font-family:var(--display);font-weight:800;font-size:clamp(6px,min(32cqi,34cqb),26px);line-height:1;color:var(--purple)}
-.tile.corner,.tile.special{background:var(--tile-2)}
-.tile.corner .tn{font-family:var(--display);font-weight:800;font-size:clamp(5px,min(15cqi,15cqb),15px)}
-.tile.corner .tp{font-family:var(--body);font-weight:600;font-size:clamp(4px,min(9cqi,9cqb),10px);text-align:center;padding:0 4%}
-.tile.special .tn{font-weight:600;color:var(--ink-2)}
+.tile .tp{font-family:var(--mono);font-size:clamp(4px,min(10cqi,15cqb),10px);font-weight:700;color:var(--ink-2);line-height:1}
+.tile .logo{width:min(34cqi,30cqb);height:min(34cqi,30cqb);border-radius:22%;background:#fff;object-fit:contain}
+.tile .gl{font-family:var(--display);font-weight:800;font-size:clamp(6px,min(32cqi,32cqb),26px);line-height:1;color:var(--ink)}
+.tile.corner .tn{font-family:var(--display);font-size:clamp(5px,min(15cqi,15cqb),16px)}
+.tile.corner .tp{font-family:var(--body);font-weight:600;font-size:clamp(4px,min(9cqi,9cqb),10px);text-align:center;padding:0 4%;color:var(--ink-3)}
+.tile.special .tn{font-size:clamp(4px,min(11.5cqi,17cqb),11px)}
 @container (max-width:30px){.tile .tn,.tile .tp{display:none}}
-.tile.mine::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--tile)}
-.tile.hot{box-shadow:inset 0 0 0 2.5px var(--red),0 2px 0 var(--tile-edge)}
-.tile.here{box-shadow:inset 0 0 0 3px var(--purple),0 2px 0 var(--tile-edge)}
+.tile.mine::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--cream)}
+.tile.hot{box-shadow:inset 0 0 0 2.5px var(--red)}
+.tile.here{box-shadow:inset 0 0 0 3px var(--purple)}
 .lvl{display:flex;gap:2px;justify-content:center;flex-wrap:wrap}
 .l .lvl,.r .lvl{flex-direction:column}
 .lvl i{width:5px;height:5px;border-radius:1.5px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.25)}
@@ -494,7 +494,7 @@ details.more .renttable{margin-top:8px}
       <div class="herocopy">
         <span class="heropill"><i></i>Chogathon 2026 · Built on Monad</span>
         <h1>The city where <em>Chogs</em> own the land.</h1>
-        <p class="lead">Roll around Monad City, buy Bricks where you land, and collect rent every time another Chog lands there. Everything you build lives inside your NFT.</p>
+        <p class="lead">Roll around Chog Street, buy Bricks where you land, and collect rent every time another Chog lands there. Everything you build lives inside your NFT.</p>
         <div class="row">
           <button class="btn gold lg" data-city="practice">Play free now</button>
           <a class="btn ghost lg" href="#how">How it works</a>
@@ -1112,7 +1112,7 @@ function tileInner(s, i) {
   if (s.t === "prop") return { cls: side, html: `<div class="bd" style="background:${D[s.d].c}"><span class="lvl"></span></div><div class="tb">${s.brand ? `<img class="logo" src="${LOGOS[s.brand]}" alt="">` : ""}<div class="tn">${s.name}</div><div class="tp"></div></div>` };
   return { cls: "special " + side, html: `<div class="tb"><div class="gl">${GLYPH[s.t] || ""}</div><div class="tn">${s.name}</div></div>` };
 }function buildBoard(box, { preview } = {}) {
-  box.innerHTML = `<div class="board">${SQ.map((s, i) => { const [r, c] = gridPos(i); const t = tileInner(s, i); return `<button class="tile ${t.cls}" data-tile="${i}" style="grid-row:${r};grid-column:${c}" aria-label="${esc(s.name)}" ${preview ? 'tabindex="-1"' : ""}>${t.html}</button>`; }).join("")}<div class="boardcenter"><div><b>Monad City</b><small id="${preview ? "" : "centerNote"}">${preview ? "40 squares · 6 real Monad apps" : ""}</small></div></div></div><div class="pawn" ${preview ? "" : 'id="pawn"'} hidden></div>`;
+  box.innerHTML = `<div class="board">${SQ.map((s, i) => { const [r, c] = gridPos(i); const t = tileInner(s, i); return `<button class="tile ${t.cls}" data-tile="${i}" style="grid-row:${r};grid-column:${c}" aria-label="${esc(s.name)}" ${preview ? 'tabindex="-1"' : ""}>${t.html}</button>`; }).join("")}<div class="boardcenter"><div><b>Chog Street</b><small id="${preview ? "" : "centerNote"}">${preview ? "40 squares · 6 real Monad apps" : ""}</small></div></div></div><div class="pawn" ${preview ? "" : 'id="pawn"'} hidden></div>`;
   if (preview) {
     const p = box.querySelector(".pawn"); const art = CHOG_ART.find(a => a.id === 561) || CHOG_ART[0];
     p.style.backgroundImage = `url(${art.img})`; p.hidden = false;
@@ -1301,7 +1301,7 @@ function renderLeaders() {
   const host = $("#room-map");
   if (!host.dataset.built) {
     host.innerHTML = `<div class="grid-map">
-      <div class="stage"><div class="stagebar"><div><div class="eyebrow">Monad City</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
+      <div class="stage"><div class="stagebar"><div><div class="eyebrow">Chog Street</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
           <button class="viewswitch" id="viewSwitch" role="switch" aria-checked="${U.angled}" aria-label="3D view"><span data-v="flat">Flat</span><span class="vs"><i></i></span><span data-v="3d">3D</span></button></div>
         <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div>
         <div class="legend"><span><i style="background:var(--purple)"></i>You are here</span><span><i style="background:var(--gold);border-radius:50%"></i>Your streets</span><span><i style="background:var(--red)"></i>Hot Street (rent ×2)</span><span>Tap any square for its card</span></div></div>
@@ -1395,7 +1395,7 @@ function renderBank() {
   const c = G.me, mine = PROPS.filter(p => myBricks(c, p)), dbt = debt(c), room_ = loanRoom();
   const myAuc = G.auctions.filter(a => a.seller === c.id);
   $("#room-bank").innerHTML = `
-  <div class="pagehead"><div><div class="eyebrow">The house</div><h1>Bank of Monad City</h1></div></div>
+  <div class="pagehead"><div><div class="eyebrow">The house</div><h1>Bank of Chog Street</h1></div></div>
   <p class="muted" style="margin:-8px 0 20px;max-width:62ch">Every coin in the Bank came from players. Nothing is minted. It lends against your streets and runs the auction house.</p>
   <div class="treasury"><div class="stat"><span>Commons (treasury)</span><b>${fmt(G.commons)}</b></div><div class="stat"><span>Nad Lounge pot</span><b>${fmt(G.lounge)}</b></div><div class="stat"><span>Season pot</span><b>${fmt(G.season)}</b></div><div class="stat"><span>Burned for good</span><b>${fmt(G.burned)}</b></div></div>
   <div class="cols" style="margin-top:18px">

@@ -391,7 +391,7 @@ These use the real trait values from Chog Genesis (taken from Chog Raid's `trait
 ## 10. Look and feel
 - **A toy-box diorama board** (Hoodopoly's cartoon brightness meets Fomopoly's isometric city):
   - Chunky tiles.
-  - The centre of the board is a **Monad City skyline** with the **Golden Chog statue**.
+  - The centre of the board is a **Chog Street skyline** with the **Golden Chog statue**.
   - A **day and night cycle** on real UTC time.
 - **Buildings grow with each property's Brick reserve:** lot → cottage → shop → tower → skyscraper → neon landmark.
 - **Your real Chog art is the pawn**, as a hopping standee. It wears its mood and tier.

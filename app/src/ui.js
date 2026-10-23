@@ -73,7 +73,7 @@ function tileInner(s, i) {
   if (s.t === "prop") return { cls: side, html: `<div class="bd" style="background:${D[s.d].c}"><span class="lvl"></span></div><div class="tb">${s.brand ? `<img class="logo" src="${LOGOS[s.brand]}" alt="">` : ""}<div class="tn">${s.name}</div><div class="tp"></div></div>` };
   return { cls: "special " + side, html: `<div class="tb"><div class="gl">${GLYPH[s.t] || ""}</div><div class="tn">${s.name}</div></div>` };
 }function buildBoard(box, { preview } = {}) {
-  box.innerHTML = `<div class="board">${SQ.map((s, i) => { const [r, c] = gridPos(i); const t = tileInner(s, i); return `<button class="tile ${t.cls}" data-tile="${i}" style="grid-row:${r};grid-column:${c}" aria-label="${esc(s.name)}" ${preview ? 'tabindex="-1"' : ""}>${t.html}</button>`; }).join("")}<div class="boardcenter"><div><b>Monad City</b><small id="${preview ? "" : "centerNote"}">${preview ? "40 squares · 6 real Monad apps" : ""}</small></div></div></div><div class="pawn" ${preview ? "" : 'id="pawn"'} hidden></div>`;
+  box.innerHTML = `<div class="board">${SQ.map((s, i) => { const [r, c] = gridPos(i); const t = tileInner(s, i); return `<button class="tile ${t.cls}" data-tile="${i}" style="grid-row:${r};grid-column:${c}" aria-label="${esc(s.name)}" ${preview ? 'tabindex="-1"' : ""}>${t.html}</button>`; }).join("")}<div class="boardcenter"><div><b>Chog Street</b><small id="${preview ? "" : "centerNote"}">${preview ? "40 squares · 6 real Monad apps" : ""}</small></div></div></div><div class="pawn" ${preview ? "" : 'id="pawn"'} hidden></div>`;
   if (preview) {
     const p = box.querySelector(".pawn"); const art = CHOG_ART.find(a => a.id === 561) || CHOG_ART[0];
     p.style.backgroundImage = `url(${art.img})`; p.hidden = false;
@@ -262,7 +262,7 @@ function renderLeaders() {
   const host = $("#room-map");
   if (!host.dataset.built) {
     host.innerHTML = `<div class="grid-map">
-      <div class="stage"><div class="stagebar"><div><div class="eyebrow">Monad City</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
+      <div class="stage"><div class="stagebar"><div><div class="eyebrow">Chog Street</div><h2 style="font-size:clamp(1.5rem,3vw,2rem)">Map</h2></div>
           <button class="viewswitch" id="viewSwitch" role="switch" aria-checked="${U.angled}" aria-label="3D view"><span data-v="flat">Flat</span><span class="vs"><i></i></span><span data-v="3d">3D</span></button></div>
         <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div>
         <div class="legend"><span><i style="background:var(--purple)"></i>You are here</span><span><i style="background:var(--gold);border-radius:50%"></i>Your streets</span><span><i style="background:var(--red)"></i>Hot Street (rent ×2)</span><span>Tap any square for its card</span></div></div>
@@ -356,7 +356,7 @@ function renderBank() {
   const c = G.me, mine = PROPS.filter(p => myBricks(c, p)), dbt = debt(c), room_ = loanRoom();
   const myAuc = G.auctions.filter(a => a.seller === c.id);
   $("#room-bank").innerHTML = `
-  <div class="pagehead"><div><div class="eyebrow">The house</div><h1>Bank of Monad City</h1></div></div>
+  <div class="pagehead"><div><div class="eyebrow">The house</div><h1>Bank of Chog Street</h1></div></div>
   <p class="muted" style="margin:-8px 0 20px;max-width:62ch">Every coin in the Bank came from players. Nothing is minted. It lends against your streets and runs the auction house.</p>
   <div class="treasury"><div class="stat"><span>Commons (treasury)</span><b>${fmt(G.commons)}</b></div><div class="stat"><span>Nad Lounge pot</span><b>${fmt(G.lounge)}</b></div><div class="stat"><span>Season pot</span><b>${fmt(G.season)}</b></div><div class="stat"><span>Burned for good</span><b>${fmt(G.burned)}</b></div></div>
   <div class="cols" style="margin-top:18px">

@@ -274,12 +274,11 @@ ${onChain() ? "" : `<div class="card" id="deskInbox"><div class="row between"><h
           <button class="viewswitch" id="viewSwitch" role="switch" aria-checked="${U.angled}" aria-label="3D view"><span data-v="flat">Flat</span><span class="vs"><i></i></span><span data-v="3d">3D</span></button></div>
         <div class="mapbox ${U.angled ? "angled" : ""}" id="mapBox"></div></div>
       <div class="rail">
-        <div class="card hudme" id="hudMe"></div>
         <div class="card dock stack" id="rollCard"><div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
           <button class="rollbtn" id="roll">ROLL</button><button class="btn danger" id="bail" hidden>Pay $0.50 bail</button>
           <div class="row between"><span class="tiny">Rolls ready</span><span class="pips" id="mapPips"></span></div>
-          <div><div class="tiny" style="margin-bottom:6px">Buying plan: what your Chog buys where it lands</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
-          <p class="result" id="lastev">Press ROLL. Your Chog moves, and your plan buys Bricks where it lands.</p></div>
+          <div><div class="tiny" style="margin-bottom:6px">Buying plan</div><div class="seg" id="plans" role="group" aria-label="Buying plan"><button data-plan="safe">Safe</button><button data-plan="balanced">Balanced</button><button data-plan="degen">Degen</button></div><p class="tiny" id="planNote" style="margin-top:6px"></p></div>
+          <p class="result" id="lastev"></p></div>
         <div class="card tint stack" id="hereCard"></div></div></div>`;
     buildBoard($("#mapBox")); drawDie($("#d1"), 6); drawDie($("#d2"), 6); host.dataset.built = 1;
     paintSwitch();
@@ -290,13 +289,13 @@ ${onChain() ? "" : `<div class="card" id="deskInbox"><div class="row between"><h
   }
   const c = G.me, s = SQ[c.pos];
   renderTiles($("#mapBox"));
-  $("#hudMe").innerHTML = `<i class="avatar" style="background-image:url(${c.img})"></i><div style="min-width:0"><div class="row between"><b>${esc(c.name)}</b><span class="tiny">#${ranking().indexOf(c) + 1} in the city</span></div><div class="row between" style="margin-top:4px"><span class="tiny">Cash</span><b class="num">${fmt(c.cash)}</b></div><div class="row between"><span class="tiny">Worth</span><b class="num">${fmt(appraisal(c))}</b></div></div>`;
+  if ($("#hudMe")) $("#hudMe").innerHTML = `<i class="avatar" style="background-image:url(${c.img})"></i><div style="min-width:0"><div class="row between"><b>${esc(c.name)}</b><span class="tiny">#${ranking().indexOf(c) + 1} in the city</span></div><div class="row between" style="margin-top:4px"><span class="tiny">Cash</span><b class="num">${fmt(c.cash)}</b></div><div class="row between"><span class="tiny">Worth</span><b class="num">${fmt(appraisal(c))}</b></div></div>`;
   $("#plans").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.plan === G.plan)));
-  $("#planNote").textContent = { safe: "Up to 3 Bricks, only on cheap streets. Keeps half your cash.", balanced: "Up to 6 Bricks anywhere. Keeps a quarter of your cash.", degen: "Up to 15 Bricks. Keeps nothing back." }[G.plan];
+  $("#planNote").textContent = { safe: "Up to 3 Bricks, cheap streets only.", balanced: "Up to 6 Bricks.", degen: "Up to 15 Bricks." }[G.plan];
   $("#mapPips").innerHTML = Array.from({ length: K.rollCap + (c.tier !== "Common" ? 1 : 0) }, (_, k) => `<i class="${k < c.rolls ? "on" : ""}" style="width:9px;height:14px"></i>`).join("");
   $("#roll").textContent = c.jail ? "ROLL FOR DOUBLES" : c.rolls ? "ROLL" : "ROLL · 100";
   $("#roll").disabled = G.busy || c.bankrupt === G.seasonNo; $("#bail").hidden = !c.jail;
-  $("#hereCard").innerHTML = `<div class="eyebrow">You are on</div><h3>${s.name}</h3><p class="small muted">${s.t === "prop" ? `${D[s.d].n} · rent ${s.d === "util" ? "dice × " + 20 * LEVEL_MULT[level(s)] : fmt(rentOf(s))}` : squareText(s)}</p><div><button class="btn sm" data-tile="${c.pos}">Open its card</button></div>`;
+  $("#hereCard").innerHTML = `<div class="eyebrow">You are on</div><h3>${s.name}</h3><div><button class="btn sm" data-tile="${c.pos}">Open its card</button></div>`;
   requestAnimationFrame(renderPawns);
 }
 function paintSwitch() {
@@ -475,7 +474,7 @@ function openTile(i, landed) {
     <div class="deedstats"><div><span>Rent now</span><b>${rentNow}</b></div><div><span>Level</span><b>${LEVEL_NAME[l]}</b></div><div><span>You own</span><b>${n ? Math.round(n / p.supply * 100) + "%" : "—"}</b></div></div>
     <div class="seg deedtabs" role="tablist">${["buy", "sell", "mortgage", "auction"].map(t => `<button data-deedtab="${t}" aria-pressed="${t === tab}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("")}</div>
     <div class="deedpanel">${deedPanel(tab, p, n, here)}</div>
-    ${owners.length ? `<div><div class="tiny" style="margin-bottom:6px">${owners.length} owner${owners.length > 1 ? "s" : ""} · tap one for their profile</div><div class="ownerrow">${owners.slice(0, 7).map(([id, k]) => { const o = byId(+id); return o ? `<button class="ownerchip ${o === c ? "me" : ""}" data-profile="${o.id}"><i class="avatar" style="background-image:url(${o.img})"></i><span>${Math.round(k / p.supply * 100)}%</span></button>` : ""; }).join("")}</div></div>` : `<p class="tiny">Nobody owns this street yet.</p>`}
+    ${owners.length ? `<div><div class="tiny" style="margin-bottom:6px">Owners</div><div class="ownerrow">${owners.slice(0, 7).map(([id, k]) => { const o = byId(+id); return o ? `<button class="ownerchip ${o === c ? "me" : ""}" data-profile="${o.id}"><i class="avatar" style="background-image:url(${o.img})"></i><span>${Math.round(k / p.supply * 100)}%</span></button>` : ""; }).join("")}</div></div>` : `<p class="tiny">Nobody owns this street yet.</p>`}
     ${p.q ? (chainQuest ?? `<div class="questbox"><div class="row between"><span class="small">${p.q[2]}</span></div>${here ? `<div><button class="btn sm primary" data-quest="${i}" ${today && done ? "disabled" : ""}>${p.q[1] === "stake" ? "Stake" : "Swap"} 20 MON · practice</button></div>` : `<span class="tiny">Land here to use ${p.dapp}. First time: a Patron Stamp.</span>`}</div>`) : ""}
     <details class="more"><summary>Rent by level</summary><table class="renttable">${LEVEL_NAME.map((nm, k) => `<tr class="${k === l ? "cur" : ""}"><td>${nm}</td><td>${p.d === "util" ? "dice × " + 20 * LEVEL_MULT[k] : fmt(p.base * LEVEL_MULT[k])}</td></tr>`).join("")}</table></details>
   </div>`);
@@ -486,7 +485,7 @@ function deedPanel(tab, p, n, here) {
   const stepper = (max, label) => `<div class="stepper2"><button data-qty="-1" aria-label="Fewer">−</button><span class="num">${q(max)}</span><button data-qty="1" aria-label="More">+</button><span class="tiny">${label}</span></div>`;
   if (tab === "buy") {
     if (onChain()) return `<p class="small muted">On-chain, your buying plan buys Bricks when you land here.</p>`;
-    if (!here) return `<p class="small muted">You can only buy where your Chog is standing. Roll onto ${p.name} to buy here.</p>`;
+    if (!here) return `<p class="small muted">Land here to buy.</p>`;
     if (p.fair && appraisal(c) >= K.fairStartMax) return `<p class="small muted">Fair Start street: only Chogs worth under ${fmt(K.fairStartMax)} can buy here.</p>`;
     if (locked(c, p)) return `<p class="small muted">Lift the mortgage or auction on this street before buying more.</p>`;
     const max = maxBuyable(c, p, 15, c.cash); if (!max) return `<p class="small muted">Not enough cash, or you're at the 40% cap for this street.</p>`;

@@ -18,7 +18,7 @@ jobs:
         run: bash app/src/build.sh
       - name: Push to gh-pages
         run: |
-          mkdir site && cp app/index.html site/index.html && touch site/.nojekyll
+          mkdir -p site/app && cp app/index.html site/index.html && cp app/index.html site/app/index.html && touch site/.nojekyll  # app/ too, so a Vercel project with Root Directory "app" can build this branch
           cd site
           git init -q -b gh-pages
           git config user.name "github-actions[bot]"
